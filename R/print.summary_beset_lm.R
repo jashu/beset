@@ -1,0 +1,25 @@
+#' @export
+
+print.summary_beset_lm <- function(object){
+  cat(paste("\n=======================================================",
+            "\nBest Model:\n",
+            object$form,
+            "\n\nCoefficients:\n"))
+  coefs <- round(object$coef, 3)
+  coefs[,4] <- ifelse(coefs[,4] < .001, "<.001", coefs[,4])
+  print(coefs, quote = FALSE)
+  cat(paste("\n\nWithin-fold R-squared:", round(object$train_R2,2),
+            "\nOut-of-fold R-squared:", round(object$cv_R2,2),
+            "\nIndependent R-squared:", round(object$test_R2,2),
+            "\n=======================================================",
+            "\nMost Parsimonious Model (within 1 SE of Best Model):\n",
+            object$form_1SE,
+            "\n\nCoefficients:\n"))
+  coefs <- round(object$coef_1SE, 3)
+  coefs[,4] <- ifelse(coefs[,4] < .001, "<.001", coefs[,4])
+  print(coefs, quote = FALSE)
+  cat(paste("\n\nWithin-fold R-squared:", round(object$train_R2_1SE,2),
+            "\nOut-of-fold R-squared:", round(object$cv_R2_1SE,2),
+            "\nIndependent R-squared:", round(object$test_R2_1SE,2),
+            "\n======================================================="))
+}
