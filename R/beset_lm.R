@@ -103,6 +103,7 @@ beset_lm <- function(form, train_data, test_data = NULL, k=c(5,10), seed = 42)
   mf <- model.frame(form, data = train_data)
   p <- ncol(mf) - 1
   y <- mf[,1]
+  response <- names(mf)[1]
   for(n in 1:length(k))
   {
     set.seed(seed)
@@ -118,7 +119,7 @@ beset_lm <- function(form, train_data, test_data = NULL, k=c(5,10), seed = 42)
       for (j in 1:p)
       {
         best_preds <- mf[folds != i, fit_info$which[j,]]
-        best_lm <- lm(form, data = best_preds)
+        best_lm <- lm(paste(response, ".", sep = "~"), data = best_preds)
         cv_R2[i,j] <- predict_R2(best_lm, mf[folds == i,])
         if(!is.null(test_data)) test_R2[i,j] <- predict_R2(best_lm, test_data)
       }
@@ -146,7 +147,7 @@ beset_lm <- function(form, train_data, test_data = NULL, k=c(5,10), seed = 42)
   best_fit <- leaps::regsubsets(form, data = mf, nvmax = n_pred)
   fit_info <- summary(best_fit)
   best_preds <- mf[, fit_info$which[n_pred,]]
-  best_model <- lm(form, data = best_preds)
+  best_model <- lm(paste(response, ".", sep = "~"), data = best_preds)
 
   min_R2 <- max_R2 - R2$R2_cv_SE[R2$R2_cv == max_R2]
   temp <- R2[R2$R2_cv > min_R2,]
@@ -154,7 +155,7 @@ beset_lm <- function(form, train_data, test_data = NULL, k=c(5,10), seed = 42)
   best_fit <- leaps::regsubsets(form, data = mf, nvmax = n_pred)
   fit_info <- summary(best_fit)
   best_preds <- mf[, fit_info$which[n_pred,]]
-  best_model_1SE <- lm(form, data = best_preds)
+  best_model_1SE <- lm(paste(response, ".", sep = "~"), data = best_preds)
 
   output <- structure(list(R2 = R2, best_model = best_model,
                            best_model_1SE = best_model_1SE),
