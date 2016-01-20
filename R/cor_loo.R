@@ -9,14 +9,14 @@
 #' have undue influence on the size of the correlation coefficient. It is
 #' equivalent to fitting a linear model to all possible sets of \eqn{n-1}
 #' observations, predicting the left-out observation, and using the root mean
-#' square error (RMSE) of the predicitions to recalculate r. With linear models,
-#' this quantity can be computed without repeating the leave-one-out procedure
-#' eqn{N} times by using the companion \code{\link{predict_R2}} function, which
-#' computes the predicted r-squared using the PRESS statistic. The LOO estimate
-#' of \eqn{r} is then given as the square root of the predicted
-#' \eqn{r^2}{r-squared} for each bivariate linear regression model, with the
-#' sign of the LOO \eqn{r} assigned to match that of the corresponding
-#' \eqn{beta} coefficient.
+#' square error (RMSE) of the predicitions to recalculate \eqn{r}. With linear
+#' models, this quantity can be computed without repeating the leave-one-out
+#' procedure \eqn{N} times by using the companion \code{\link{predict_R2}}
+#' function, which computes the predicted \eqn{r^2}{r-squared} using the PRESS
+#' statistic. The LOO estimate of \eqn{r} is then given as the square root of
+#' the predicted \eqn{r^2}{r-squared} for each bivariate linear regression
+#' model, with the sign of the LOO \eqn{r} assigned to match that of the
+#' corresponding \eqn{beta} coefficient.
 #'
 #' @section Note:
 #' Correlations are computed using pairwise complete observations.
@@ -27,8 +27,6 @@
 #'  unique pairwise combination of variables.
 #'
 #' @seealso \code{\link{predict_R2}}
-#'
-#' @family Correlation functions
 #'
 #' @export
 

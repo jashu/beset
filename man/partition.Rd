@@ -50,7 +50,5 @@ it will automatically choose the appropriate data frame for the task at hand.
 }
 \seealso{
 \code{\link[caret]{createDataPartition}}
-
-Other res: \code{\link{cor_loo}}
 }
 

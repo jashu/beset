@@ -42,7 +42,7 @@ arising from a networked system.
 \code{cor_dif} can be used with small sample sizes and, by default, uses
 leave-one-out cross validation to produce more realistic estimates of the
 correlation coefficients themselves, provides bootstrapped estimates of the
-95% confidence intervals for the correlation coefficients, and conducts
+95\% confidence intervals for the correlation coefficients, and conducts
 permutation tests to calculate p-values conditioned on the number of
 correlations being assessed. (For example, if 15 correlation coefficients are
 being computed, then the resulting p value corresponds to the probability of

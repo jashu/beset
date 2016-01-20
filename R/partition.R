@@ -38,8 +38,6 @@
 #' frames named \code{train} and \code{test}, containing the training and
 #' testing sets, respectively.
 #'
-#' @family Data Manipulation
-#'
 #' @seealso \code{\link[caret]{createDataPartition}}
 #'
 #' @export
