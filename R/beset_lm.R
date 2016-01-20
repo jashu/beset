@@ -62,8 +62,7 @@
 #' @param seed An integer used to seed the random number generator when
 #' assigning observations to folds.
 #'
-#' @return An object of \code{bss} class. This will be a list with the following
-#' three components:
+#' @return A list with the following three components:
 #' \enumerate{
 #'  \item\describe{
 #'    \item{best_model}{an object of class \code{\link[stats]{lm}} corresponding

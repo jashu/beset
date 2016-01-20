@@ -22,8 +22,7 @@ for cross-validation. By default, both 5 and 10 folds will be performed.}
 assigning observations to folds.}
 }
 \value{
-An object of \code{bss} class. This will be a list with the following
-three components:
+A list with the following three components:
 \enumerate{
  \item\describe{
    \item{best_model}{an object of class \code{\link[stats]{lm}} corresponding
