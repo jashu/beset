@@ -25,11 +25,10 @@
 #' @export
 
 cor <- function(x, y = NULL, as_matrix = FALSE, use = "pairwise.complete.obs",
-                     method = c("pearson", "kendall", "spearman")){
-  output <- stats::cor(x, y = NULL, use = "pairwise.complete.obs",
-                    method = c("pearson", "kendall", "spearman"))
+                     method = "pearson"){
+  output <- stats::cor(x, y = y, use = use, method = method)
   stat <- "r"
-  if(method[1] != "pearson") stat <- ifelse(method == "kendall", "tau", "rho")
+  if(method != "pearson") stat <- ifelse(method == "kendall", "tau", "rho")
   if(!as_matrix){
     output <- cor_list(output)
     attr(output, "row.names") <- NULL
