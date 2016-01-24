@@ -32,7 +32,8 @@
 #'
 #' @export
 
-binary_to_factor <- function(binary_var, label0 = 0, label1 = 1){
+binary_to_factor <- function(binary_var, label_0 = "class_0",
+                             label_1 = "class_1"){
   binary_var <- as.numeric(binary_var)
-  factor(binary_var, levels = c(1,0), labels = c(label1, label0))
+  factor(binary_var, levels = c(1,0), labels = c(label_1, label_0))
 }
