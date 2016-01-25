@@ -4,7 +4,7 @@
 \alias{binary_to_factor}
 \title{Convert Binary Logical or Numeric Variable to Factor}
 \usage{
-binary_to_factor(binary_var, label0 = 0, label1 = 1)
+binary_to_factor(binary_var, label_0 = "class_0", label_1 = "class_1")
 }
 \arguments{
 \item{binary_var}{Logical vector or numeric vector containing only 0s and 1s.}

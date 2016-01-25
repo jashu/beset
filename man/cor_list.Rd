@@ -2,41 +2,29 @@
 % Please edit documentation in R/cor_list.R
 \name{cor_list}
 \alias{cor_list}
-\title{Correlation List}
+\title{Construct a Correlation List}
 \usage{
-cor_list(data, use = "pairwise.complete.obs", method = "pearson")
+cor_list(cor_matrix)
 }
 \arguments{
-\item{data}{A numeric matrix or data frame containing only numeric variables.}
-
-\item{use}{An optional character string giving a method for computing
-covariances in the presence of missing values. This must be (an abbreviation
-of) one of the strings "everything", "all.obs", "complete.obs",
-"na.or.complete", or "pairwise.complete.obs".}
-
-\item{method}{A character string indicating which correlation coefficient
-is to be computed. One of "pearson" (default), "kendall", or "spearman": can
-be abbreviated.}
+\item{cor_matrix}{Correlation matrix}
 }
 \value{
-A numeric vector of correlation coefficients, named according to each
- unique pairwise combination of variables.
+A \code{cor_list} object with the following three vectors:
+ \describe{
+   \item{\code{i}}{the row names of the correlation matrix}
+   \item{\code{j}}{the column names of the correlatin matrix}
+   \item{\code{coef}}{the correlation coefficient corresponding to element
+   \code{(i, j)} of the correlation matrix}
+ }
 }
 \description{
-\code{cor_list} is a wrapper for \code{\link[stats]{cor}} that returns
-correlations in a list (as opposed to a matrix)
+Construct a \code{cor_list} object from a correlation matrix.
 }
 \details{
 The R stats package returns bivariate correlations as a matrix of values,
-which can be difficult to read when there are many correlations and which
-contains redundant and useless information; i.e., one only needs to look at
-values either above or below the diagonal. \code{cor_list} extracts unique
-pairwise combinations of variables and displays their correlations in an
-easy-to-read list. It also uses pairwise complete observations by default,
-which is the more common use case for exploratory analyses, but is otherwise
-equivalent to \code{\link[stats]{cor}} in behavior.
-}
-\seealso{
-\code{\link{cor}}
+which can be difficult to parse when there are many correlations.
+\code{cor_list} converts the correlation matrix into a list of all
+row-column pairs, removing the diagonal entries.
 }
 
