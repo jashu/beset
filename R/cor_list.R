@@ -4,8 +4,8 @@
 #'
 #' The R stats package returns bivariate correlations as a matrix of values,
 #' which can be difficult to parse when there are many correlations.
-#' \code{cor_list} converts the correlation matrix into an adjacency list data
-#' structure, removing the diagonal entries.
+#' \code{cor_list} converts the correlation matrix into a list of all
+#' row-column pairs, removing the diagonal entries.
 #'
 #' @return A \code{cor_list} object with the following three vectors:
 #'  \describe{
