@@ -143,19 +143,27 @@ beset_lm <- function(form, train_data, test_data = NULL, k=c(5,10), seed = 42)
   }
 
   max_R2 <- max(R2$R2_cv)
-  n_pred <- R2$n_preds[R2$R2_cv == max_R2]
-  best_fit <- leaps::regsubsets(form, data = mf, nvmax = n_pred)
-  fit_info <- summary(best_fit)
-  best_preds <- mf[, fit_info$which[n_pred,]]
-  best_model <- lm(paste(response, ".", sep = "~"), data = best_preds)
+  if(max_R2 <= 0){
+    best_model <- lm(paste(response, "~ 1"), data = mf)
+  } else {
+    n_pred <- R2$n_preds[R2$R2_cv == max_R2]
+    best_fit <- leaps::regsubsets(form, data = mf, nvmax = n_pred)
+    fit_info <- summary(best_fit)
+    best_preds <- mf[, fit_info$which[n_pred,]]
+    best_model <- lm(paste(response, "~ ."), data = best_preds)
+  }
 
   min_R2 <- max_R2 - R2$R2_cv_SE[R2$R2_cv == max_R2]
+  if(min_R2 <= 0){
+    best_model_1SE <- lm(paste(response, "~ 1"), data = mf)
+  } else {
   temp <- R2[R2$R2_cv > min_R2,]
   n_pred <- min(temp$n_preds)
   best_fit <- leaps::regsubsets(form, data = mf, nvmax = n_pred)
   fit_info <- summary(best_fit)
   best_preds <- mf[, fit_info$which[n_pred,]]
   best_model_1SE <- lm(paste(response, ".", sep = "~"), data = best_preds)
+  }
 
   output <- structure(list(R2 = R2, best_model = best_model,
                            best_model_1SE = best_model_1SE),
