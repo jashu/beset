@@ -40,7 +40,7 @@ plot.beset_lm <- function(object, SE = TRUE, title = ""){
     ggtitle(title) +
     xlab("Number of Predictors") +
     ylab(expression(R^{2})) +
-    scale_x_discrete(limits = c(1, xmax)) +
+    scale_x_continuous(breaks = 1:xmax) +
     scale_y_continuous(limits = c(ymin, ymax)) +
     scale_color_manual(name = "", values = color_legend) +
     facet_wrap(~ k_folds) +
