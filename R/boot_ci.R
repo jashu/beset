@@ -27,7 +27,7 @@
 #' documented in \code{\link{cor_list}}.
 #'
 #' @return Object of class "bootstrap", a list containing an object of class
-#' "boot" and a stats data frame with the following columns:
+#' "boot" and a stats data frame or list with the following vectors:
 #' \describe{
 #'  \item{statistic}{observed statistic for each measurement}
 #'  \item{ci_lower}{lower endpoint of the confidence interval}
@@ -63,7 +63,7 @@ boot_mean <- function(data, n_rep = 1000, conf = 0.95){
   return(out)
 }
 
-#' @describeIn boot_ci Bootstrapped confidence interval for Pearson's \emph{r}
+#' @describeIn boot_ci Bootstrapped confidence interval for correlations
 #' @export
 
 boot_cor <- function(data, n_rep = 1000, conf = 0.95, ...){
