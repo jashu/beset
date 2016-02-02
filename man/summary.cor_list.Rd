@@ -4,7 +4,7 @@
 \alias{summary.cor_list}
 \title{Summarizing Correlation Lists}
 \usage{
-\method{summary}{cor_list}(object, seed = everything(), vars = everything(),
+\method{summary}{cor_list}(object, x1 = everything(), x2 = everything(),
   sort = TRUE)
 }
 \arguments{

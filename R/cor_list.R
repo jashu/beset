@@ -23,6 +23,6 @@ cor_list <- function(cor_matrix){
   i <- rep(rownames(cor_matrix), times = ncol(cor_matrix))
   j <- rep(colnames(cor_matrix), each = nrow(cor_matrix))
   coef = as.vector(cor_matrix)
-  output <- data.frame(i = i, j = j, coef = coef, stringsAsFactors = FALSE)
-  structure(dplyr::filter(output, i != j), class = "cor_list")
+  output <- data.frame(x1 = j, x2 = i, coef = coef, stringsAsFactors = FALSE)
+  structure(dplyr::filter(output, x1 != x2), class = "cor_list")
 }

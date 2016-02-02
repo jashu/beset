@@ -47,7 +47,7 @@ boot_ci <- function(data, statistic, n_rep = 1000, conf = 0.95, ...){
   index <- seq_along(boot_out$t0)
   ci <- t(parallel::mcmapply(.get_ci, index))
   stats <- cbind(boot_out$t0, ci)
-  colnames(stats) <- c("statistic", "lower_endpoint", "upper_endpoint")
+  colnames(stats) <- c("statistic", "lower", "upper")
   stats <- as.data.frame(stats)
   return(structure(list(boot = boot_out, stats = stats), class = "bootstrap"))
 }
@@ -67,12 +67,14 @@ boot_mean <- function(data, n_rep = 1000, conf = 0.95){
 #' @export
 
 boot_cor <- function(data, n_rep = 1000, conf = 0.95, ...){
-  .boot_cor <- function(data, indices, use = "pairwise.complete.obs",
-                        method = "pearson"){
-      cor_list(data[indices,], use, method)
+  .boot_cor <- function(data, indices, ...){
+      cor(data[indices,], ...)$coef
   }
   out <- boot_ci(data, .boot_cor, n_rep, conf, ...)
-  colnames(out$stats)[1] <- attr(out$boot$t0, "statistic")
+  cors <- cor(data, ...)
+  colnames(out$stats)[1] <- "coef"
+  out$stats <- structure(c(cors, out$stats[,2:3]), class = "cor_list")
+  attr(out$stats, "coef") <- attr(cors, "coef")
   return(out)
 }
 
