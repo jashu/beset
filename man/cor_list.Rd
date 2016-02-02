@@ -12,10 +12,10 @@ cor_list(cor_matrix)
 \value{
 A \code{cor_list} object with the following three vectors:
  \describe{
-   \item{\code{i}}{the row names of the correlation matrix}
-   \item{\code{j}}{the column names of the correlatin matrix}
-   \item{\code{coef}}{the correlation coefficient corresponding to element
-   \code{(i, j)} of the correlation matrix}
+   \item{\code{x1}}{variables on one side of the correlation}
+   \item{\code{x2}}{variables on the other side of the correlation}
+   \item{\code{coef}}{the correlation coefficient between \code{x1} and
+     \code{x2}}
  }
 }
 \description{

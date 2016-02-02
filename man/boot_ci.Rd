@@ -35,7 +35,7 @@ documented in \code{\link{cor_list}}.}
 }
 \value{
 Object of class "bootstrap", a list containing an object of class
-"boot" and a stats data frame with the following columns:
+"boot" and a stats data frame or list with the following vectors:
 \describe{
  \item{statistic}{observed statistic for each measurement}
  \item{ci_lower}{lower endpoint of the confidence interval}
@@ -50,7 +50,7 @@ from either univariate or multivariate data.
 \itemize{
 \item \code{boot_mean}: Bootstrapped confidence interval for the mean
 
-\item \code{boot_cor}: Bootstrapped confidence interval for Pearson's \emph{r}
+\item \code{boot_cor}: Bootstrapped confidence interval for correlations
 }}
 \seealso{
 \code{\link[boot]{boot}}, \code{\link[boot]{boot.ci}},

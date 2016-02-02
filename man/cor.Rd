@@ -42,11 +42,35 @@ stats library to give the option of returning correlations as a
 \details{
 \code{cor} differs from R's native \code{\link[stats]{cor}} only in that it
 uses pairwise-complete observations and returns a \code{\link{cor_list}}
-object by default. If you want \code{beset::cor} to mimic the default
+object by default, which has special summary methods that can be used to
+selectively view the relationships of interest. See examples and
+\code{\link{summary.cor_list}}.
+}
+\section{Note}{
+
+If you want \code{beset::cor} to mimic the default
 behavior of \code{stats::cor}, set \code{as_matrix = TRUE} and
 \code{use = "everything"}.
 }
+\examples{
+# Create a correlation list for the numeric variables from the iris data set
+iris_cors <- cor(iris[,-5])
+
+# Look at all correlations with Sepal.Length
+summary(iris_cors, x1 = Sepal.Length)
+
+# Look at all correlations between sepal measurements and petal measurements
+summary(iris_cors, x1 = starts_with("Sepal"), x2 = starts_with("Petal"))
+
+# Look at all correlations with Sepal.Length, excluding Sepal.Width
+summary(iris_cors, x1 = Sepal.Length, x2 = -Sepal.Width)
+
+# Look at all correlations in their original order
+summary(iris_cors, sort = FALSE)
+
+}
 \seealso{
-\code{\link[stats]{cor}}, \code{\link{cor_list}}
+\code{\link[stats]{cor}}, \code{\link{cor_list}},
+\code{\link{summary.cor_list}}
 }
 
