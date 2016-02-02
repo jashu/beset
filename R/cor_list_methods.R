@@ -1,8 +1,46 @@
-#' Summarizing Correlation Lists
+#' Summarize Correlation List
 #'
-#' Methods for the \code{cor_list} class.
+#' Summary method for the \code{cor_list} class.
+#'
+#' The \code{summary} method for the \code{cor_list} class allows for
+#' interactive exploration of the results of \code{\link{cor}}. Use
+#' \code{dplyr::\link[dplyr]{select}} expressions to return specific groups
+#' of variables from a correlation matrix that you want to look at.
+#'
+#' @examples
+#' # Create a correlation list for the numeric variables from the iris data set
+#' iris_cors <- cor(iris[,-5])
+#'
+#' # Look at all correlations with Sepal.Length
+#' summary(iris_cors, x1 = Sepal.Length)
+#'
+#' # Look at all correlations between sepal measurements and petal measurements
+#' summary(iris_cors, x1 = starts_with("Sepal"), x2 = starts_with("Petal"))
+#'
+#' # Look at all correlations with Sepal.Length, excluding Sepal.Width
+#' summary(iris_cors, x1 = Sepal.Length, x2 = -Sepal.Width)
+#'
+#' # Look at all correlations in their original order
+#' summary(iris_cors, sort = FALSE)
 #'
 #' @param object An object of class \code{\link{cor_list}}.
+#'
+#' @param x1 Variables to include/exclude from one side of the correlation.
+#' You can use the same specifications as in \code{\link[dplyr]{select}}. If
+#' missing, defaults to all variables.
+#'
+#' @param x2 Variables to include/exclude from the other side of the
+#' correlation. You can use the same specifications as in
+#' \code{\link[dplyr]{select}}. If missing, defaults to all variables.
+#'
+#' @param sort Logical value indicating whether the output should be sorted. If
+#' \code{TRUE} (the default), output will first be sorted alphabetically by the
+#' names of the variables specified by \code{x1} and then by the correlation
+#' coefficients (in descending order). If \code{FALSE}, output will appear in
+#' the same order as the columns of the data frame passed to \code{\link{cor}}.
+#'
+#' @seealso \code{\link[dplyr]{select}}, \code{\link{cor}}
+#'
 #' @export
 
 summary.cor_list <- function (object,
@@ -31,8 +69,6 @@ summary.cor_list <- function (object,
 
 #' @export
 as.data.frame.cor_list <- function (object){
-  # j is assigned to first column of data frame because it is the clustered
-  # index; i is assigned to second column because it permutes within j
   output <- data.frame(x1 = object$x1,
                        x2 = object$x2,
                        coef = object$coef,
