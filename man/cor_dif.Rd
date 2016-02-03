@@ -28,16 +28,13 @@ correlation is signficantly different between samples.
 }
 \details{
 \code{cor_dif} was designed to test multiple hypotheses of group differences
-in correlations between elements of a network, such as whether a treatment
-alters the correlation between the activity of two brain regions. Fisher's z
-test is traditionally used for this purpose, but may yield inaccurate
-probability estiamtes when a) one or both variables being correlated is not
-normally distributed, b) the sample size for each group is small (n <= 10),
-or c) there are multiple pairwise correlations from the same data set.
-Although the latter is a multiple-comparisons problem, conventional
-statistical corrections assume that the hypothesis tests are independent,
-which is assuredly not the case for multiple hypothesis tests on correlations
-arising from a networked system.
+in correlations. Fisher's z test is traditionally used for this purpose, but
+may yield inaccurate probability estiamtes when a) one or both variables
+being correlated is not normally distributed, b) the sample size for each
+group is small (n <= 10), or c) there are multiple pairwise correlations from
+the same data set. Although the latter is a multiple-comparisons problem,
+conventional statistical corrections assume that the hypothesis tests are
+independent, which is assuredly not the case for multiple correlations.
 
 \code{cor_dif} can be used with small sample sizes and, by default, uses
 leave-one-out cross validation to produce more realistic estimates of the

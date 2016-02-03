@@ -6,11 +6,12 @@
 \alias{boot_mean}
 \title{Bootstrapped Confidence Intervals}
 \usage{
-boot_ci(data, statistic, n_rep = 1000, conf = 0.95, ...)
+boot_ci(data, statistic, n_rep = 1000, conf = 0.95, seed = 42,
+  n_cores = 1, ...)
 
-boot_mean(data, n_rep = 1000, conf = 0.95)
+boot_mean(data, n_rep = 1000, conf = 0.95, seed = 42, n_cores = 1)
 
-boot_cor(data, n_rep = 1000, conf = 0.95, ...)
+boot_cor(data, n_rep = 1000, conf = 0.95, seed = 42, n_cores = 1, ...)
 }
 \arguments{
 \item{data}{The data as a vector, matrix or data frame. If it is a matrix or
