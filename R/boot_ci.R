@@ -35,17 +35,23 @@
 #' }
 #' @export
 
-boot_ci <- function(data, statistic, n_rep = 1000, conf = 0.95, ...){
+boot_ci <- function(data, statistic, n_rep = 1000, conf = 0.95, seed = 42,
+                    n_cores = 1, ...){
+  RNGkind("L'Ecuyer-CMRG")
+  set.seed(seed)
+  parallel::mc.reset.stream()
   boot_out <- boot::boot(data = data,
                          statistic = statistic,
                          R = n_rep,
-                         ...)
+                         ...,
+                         parallel = "multicore",
+                         ncpus = n_cores)
   .get_ci <- function(i){
     boot_ci <-  boot::boot.ci(boot_out, conf = conf, type = "bca", index = i)
     boot_ci$bca[4:5]
   }
   index <- seq_along(boot_out$t0)
-  ci <- t(parallel::mcmapply(.get_ci, index))
+  ci <- t(parallel::mcmapply(.get_ci, index, mc.cores = n_cores))
   stats <- cbind(boot_out$t0, ci)
   colnames(stats) <- c("statistic", "lower", "upper")
   stats <- as.data.frame(stats)
@@ -54,7 +60,7 @@ boot_ci <- function(data, statistic, n_rep = 1000, conf = 0.95, ...){
 
 #' @describeIn boot_ci Bootstrapped confidence interval for the mean
 #' @export
-boot_mean <- function(data, n_rep = 1000, conf = 0.95){
+boot_mean <- function(data, n_rep = 1000, conf = 0.95, seed = 42, n_cores = 1){
   .boot_mean <- function(data, indices){
     apply(data[indices,], 2, mean, na.rm = T)
   }
@@ -66,7 +72,8 @@ boot_mean <- function(data, n_rep = 1000, conf = 0.95){
 #' @describeIn boot_ci Bootstrapped confidence interval for correlations
 #' @export
 
-boot_cor <- function(data, n_rep = 1000, conf = 0.95, ...){
+boot_cor <- function(data, n_rep = 1000, conf = 0.95, seed = 42, n_cores = 1,
+                     ...){
   .boot_cor <- function(data, indices, ...){
       cor(data[indices,], ...)$coef
   }
