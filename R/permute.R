@@ -63,7 +63,8 @@ permute <- function(form, data, statistic, n_perm = 1000){
     max(permutation, na.rm = T)
   }
   seed <- 1:n_perm
-  distribution <- parallel::mcmapply(.permute, seed)
+  n_cores <- parallel::detectCores() %/% 2
+  distribution <- parallel::mcmapply(.permute, seed, mc.cores = n_cores)
   get_p <- function(observed, distribution){
     (sum(distribution >= observed) + 1) / (n_perm + 1)
   }
@@ -108,8 +109,8 @@ permute_cor_dif <- function(form, data, loo = TRUE, n_perm = 1000){
   } else {
     .cor_dif <- function(x, y){
       group <- unique(x)
-      cor1 <- cor_list(y[x == group[1],])
-      cor2 <- cor_list(y[x == group[2],])
+      cor1 <- cor(y[x == group[1],])$coef
+      cor2 <- cor(y[x == group[2],])$coef
       d <- abs(atanh(cor1) - atanh(cor2))
       return(d)
     }
