@@ -49,12 +49,23 @@
 cor <- function(x, y = NULL, as_matrix = FALSE, use = "pairwise.complete.obs",
                      method = "pearson"){
   output <- stats::cor(x, y = y, use = use, method = method)
+  if (class(output) == "numeric"){
+    x_name <- names(x)[1]
+    if (is.null(x_name)) x_name <- "x"
+    y_name <- names(y)
+    if (is.null(y_name)) y_name <- names(x)[2]
+    if (is.null(y_name)) y_name <- "y"
+    output <- structure(list(
+      x1 = c(x_name, y_name),
+      x2 = c(y_name, x_name),
+      coef = rep(output, 2)),
+      class = "cor_list")
+  } else if (!as_matrix){
+      output <- cor_list(output)
+      attr(output, "row.names") <- NULL
+  }
   stat <- "r"
   if(method != "pearson") stat <- ifelse(method == "kendall", "tau", "rho")
-  if(!as_matrix){
-    output <- cor_list(output)
-    attr(output, "row.names") <- NULL
-  }
   attr(output, "coef") <- stat
   output
 }
