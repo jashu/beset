@@ -82,6 +82,17 @@ as.data.frame.cor_list <- function (object){
   output
 }
 
+as.matrix.cor_list <- function (object){
+  x_names <- unique(object$x1)
+  cor_mat <- matrix(1, nrow = length(x_names), ncol = length(x_names))
+  rownames(cor_mat) <- x_names
+  colnames(cor_mat) <- x_names
+  for(i in seq_along(object$x1)){
+    cor_mat[object$x1[i], object$x2[i]] <- object$coef[i]
+  }
+  return(cor_mat)
+}
+
 #' @export
 print.cor_list <- function(object){
   temp <- summary(object)
