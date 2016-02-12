@@ -38,9 +38,11 @@
 #'
 #' @param seed Seed for random number generator.
 #'
-#' @param cores Number of cores to use for parallel execution. If not specified,
-#' computations will be performed serially using a single core. To determine
-#' the theoretical maximum number of cores you have available, see
+#' @param n_cores Number of cores to use for parallel execution. If not
+#' specified, the number of cores is set to the value of
+#' \code{options("cores")}, if specified, or to approximately half the number of
+#' cores detected by the \code{parallel} package. To determine the theoretical
+#' maximum number of cores you have available, see
 #' \code{\link[parallel]{detectCores}}, but note that the actual number of cores
 #' available may be less. See \href{
 #' https://stat.ethz.ch/R-manual/R-devel/library/parallel/doc/parallel.pdf}{
@@ -54,13 +56,11 @@ beset_glmnet <- function(form, train_data, test_data = NULL,
                          alpha = c(.05, .5, .95),
                          cv_control = c(5,5),
                          impute = "none",
-                         seed = 42, parallel = FALSE){
+                         seed = 42, n_cores = NULL){
   #===================================================================
   # Register parallel processing
   #-------------------------------------------------------------------
-  if(parallel){
-    doMC::registerDoMC()
-  }
+  doMC::registerDoMC(cores = n_cores)
   #===================================================================
   # Set up preprocessing
   #-------------------------------------------------------------------
@@ -85,7 +85,7 @@ beset_glmnet <- function(form, train_data, test_data = NULL,
     x <- x[!is.na(y),]
     y <- na.omit(y)
   }
-  if(length(unique(y)) == 2 && !is.factor(y)){
+  if(length(unique(y)) <= 5 && !is.factor(y)){
     y <- binary_to_factor(y)
   }
   #==================================================================
@@ -93,9 +93,15 @@ beset_glmnet <- function(form, train_data, test_data = NULL,
   #------------------------------------------------------------------
   glmnet_summary <- function(data, lev = NULL, model = NULL){
     if(is.factor(y)){
-      return(c(caret::defaultSummary(data, lev, model),
-               caret::twoClassSummary(data, lev, model),
-               caret::mnLogLoss(data, lev, model)))
+      if(length(levels(y)) == 2){
+        return(c(caret::defaultSummary(data, lev, model),
+                 caret::twoClassSummary(data, lev, model),
+                 caret::mnLogLoss(data, lev, model)))
+      } else {
+        return(c(caret::defaultSummary(data, lev, model),
+                 caret::multiClassSummary(data, lev, model),
+                 caret::mnLogLoss(data, lev, model)))
+      }
     } else {
       return(caret::defaultSummary(data, lev, model))
     }
@@ -106,7 +112,8 @@ beset_glmnet <- function(form, train_data, test_data = NULL,
   glmnet_grid <- expand.grid(alpha = alpha,
                              lambda = c(seq(.001, .009, .001),
                                         seq(.01, .09, .01),
-                                        seq(.1, 1, .1)))
+                                        seq(.1, .9, .1),
+                                        seq(1, 10, 1)))
   # =====================================================================
   # Make random seeds to insure reproducibility when cross-validation
   # is performed in parallel across independent cores.
@@ -123,7 +130,6 @@ beset_glmnet <- function(form, train_data, test_data = NULL,
   ctrl <- caret::trainControl(method = "repeatedcv",
                                       number = cv_control[1],
                                       repeats = cv_control[2],
-                                      verboseIter = TRUE,
                                       classProbs = is.factor(y),
                                       summaryFunction = glmnet_summary,
                                       seeds = seeds)
@@ -146,35 +152,7 @@ beset_glmnet <- function(form, train_data, test_data = NULL,
   SD_cols <- grep("SD$", names(results))
   results[, SD_cols] <- results[, SD_cols] / sqrt(cv_control[1] * cv_control[2])
   names(results)[SD_cols] <- gsub("SD$", "SE", names(results)[SD_cols])
-  best_result <- results[which.min(results[, metric]),
-                         c(metric, paste(metric, "SE", sep = ""))]
-  oneSE_results <- results[results[, metric] < sum(best_result),]
-  oneSE_results <-
-    oneSE_results[oneSE_results$alpha == max(oneSE_results$alpha),]
-  oneSE_results <-
-    oneSE_results[oneSE_results$lambda == min(oneSE_results$lambda),]
-  #======================================================================
-  # Fit 1SE model.
-  #----------------------------------------------------------------------
-  best_model <- glmnet_train$finalModel
-  best_model_1SE <- best_model
-  if(oneSE_results$alpha != best_model$tuneValue$alpha){
-    glmnet_grid <- data.frame(alpha = oneSE_results$alpha,
-                              lambda = oneSE_results$lambda)
-    ctrl$method <- "none"
-    glmnet_train <- caret::train(x = x,
-                                 y = y,
-                                 method = "glmnet",
-                                 preProcess = preprocess,
-                                 metric = metric,
-                                 trControl = ctrl,
-                                 tuneGrid = glmnet_grid)
-    best_model_1SE <- glmnet_train$finalModel
-  }
-  best_model_1SE$lambdaOpt <- oneSE_results$lambda
-  best_model_1SE$tuneValue$lambda <- oneSE_results$lambda
   structure(list(results = results,
-                 best_model = best_model,
-                 best_model_1SE = best_model_1SE),
+                 glmnet = glmnet_train),
             class = "beset_glmnet")
 }
