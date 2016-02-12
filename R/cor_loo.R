@@ -31,21 +31,16 @@
 #' @export
 
 cor_loo <- function(data){
-  cor_matrix <- cor(data, use = "pairwise")
-  upper_tri <- upper.tri(cor_matrix)
-  indices <- which(upper_tri, arr.ind = TRUE)
-  from <- rownames(cor_matrix)[indices[,1]]
-  to <- colnames(cor_matrix)[indices[,2]]
-  indices <- lapply(seq_len(nrow(indices)), function(i) indices[i,])
-  loo_cor <- function(i){
-    x <- unlist(data[,i[1]])
-    y <- unlist(data[,i[2]])
+  out <- cor(data)
+  loo_cor <- function(x1, x2){
+    x <- unlist(data[, x1])
+    y <- unlist(data[, x2])
     model <- lm(y ~ x)
     pR2 <- predict_R2(model)
     if(!is.na(pR2) && pR2 < 0) pR2 <- 0
-    loo_r <- ifelse(coef(model)[2] < 0, sqrt(pR2) * -1, sqrt(pR2))
+    ifelse(coef(model)[2] < 0, sqrt(pR2) * -1, sqrt(pR2))
   }
-  loo_r <- parallel::mcmapply(loo_cor, indices)
-  names(loo_r) <- paste(from, to, sep = "<->")
-  return(loo_r)
+  out$coef <- mapply(loo_cor, out$x1, out$x2)
+  attr(out, "coef") <- "loo_r"
+  return(out)
 }
