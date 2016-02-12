@@ -5,7 +5,7 @@
 \title{Beset GLM with Elasticnet Regularization}
 \usage{
 beset_glmnet(form, train_data, test_data = NULL, alpha = c(0.05, 0.5, 0.95),
-  cv_control = c(5, 5), impute = "none", seed = 42, parallel = FALSE)
+  cv_control = c(5, 5), impute = "none", seed = 42, n_cores = NULL)
 }
 \arguments{
 \item{form}{A formula of the form y ~ x1 + x2 + ...}
@@ -34,9 +34,11 @@ result in listwise deletion of any cases with missing values), "knn"
 
 \item{seed}{Seed for random number generator.}
 
-\item{cores}{Number of cores to use for parallel execution. If not specified,
-computations will be performed serially using a single core. To determine
-the theoretical maximum number of cores you have available, see
+\item{n_cores}{Number of cores to use for parallel execution. If not
+specified, the number of cores is set to the value of
+\code{options("cores")}, if specified, or to approximately half the number of
+cores detected by the \code{parallel} package. To determine the theoretical
+maximum number of cores you have available, see
 \code{\link[parallel]{detectCores}}, but note that the actual number of cores
 available may be less. See \href{
 https://stat.ethz.ch/R-manual/R-devel/library/parallel/doc/parallel.pdf}{
