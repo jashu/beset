@@ -82,6 +82,7 @@ as.data.frame.cor_list <- function (object){
   output
 }
 
+#' @export
 as.matrix.cor_list <- function (object){
   x_names <- unique(object$x1)
   cor_mat <- matrix(1, nrow = length(x_names), ncol = length(x_names))
