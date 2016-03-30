@@ -2,19 +2,19 @@ Package: beset
 Type: Package
 Title: Tools for Data Exploration and Mining
 Version: 0.0.0.9000
-Date: 2016-01-18
+Date: 2016-03-04
 Authors@R: person("Jason", "Shumake", email = "shumake@utexas.edu",
   role = c("aut","cre"))
-Description: Tools for exploring multivariate data and mining useful features
-  for future hypothesis testing and/or outcome prediction.
+Description: Tools for exploring multivariate data sets and mining useful
+    features for future hypothesis testing and/or outcome prediction.
 Depends:
   R (>= 3.2),
   stats,
   methods
 Imports:
+  pROC,
   boot,
   caret,
-  doMC,
   dplyr,
   ggplot2,
   glmnet,
