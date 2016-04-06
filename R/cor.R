@@ -46,8 +46,8 @@
 #'
 #' @export
 
-cor <- function(x, y = NULL, as_matrix = FALSE, use = "pairwise.complete.obs",
-                     method = "pearson"){
+cor <- function(x, y = NULL, use = "pairwise.complete.obs", method = "pearson",
+                as_matrix = TRUE){
   output <- stats::cor(x, y = y, use = use, method = method)
   if (class(output) == "numeric"){
     x_name <- names(x)[1]
