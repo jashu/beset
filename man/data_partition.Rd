@@ -4,23 +4,28 @@
 \alias{data_partition}
 \title{\code{data_partition} Constructor}
 \usage{
-data_partition(train, test)
+data_partition(train, test, y)
 }
 \arguments{
 \item{train}{A data frame containing the training set.}
 
 \item{test}{A data frame containing the test set.}
+
+\item{y}{String corresponding to the name of the response variable to be
+predicted}
 }
 \description{
 Constructs an object of class {data_partition}.
 }
 \details{
 A \code{data_partition} object is a list containing exactly two data frames
-(\code{train} and \code{test}). This object will normally be constructed by
-passing a single data frame to \code{\link{partition}}. Use this constructor
-function in the event that you wish to manually link two independent data
-sets: one to be used for model training and the other to be used for model
-testing. For your protection, construction will fail if any variables in
-the training set are not found in the test set.
+(\code{train} and \code{test}) and a list detailing the name, class, and (if
+applicable) levels of the response variable (\code{y}). This object will
+normally be constructed by passing a single data frame to
+\code{\link{partition}}. Use this constructor function in the event that you
+wish to manually link two independent data sets: one to be used for model
+training and the other to be used for model testing. For your protection,
+construction will fail if any variables in the training set are not found in
+the test set.
 }
 
