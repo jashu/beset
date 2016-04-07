@@ -14,20 +14,22 @@
 #' the row positions that are returned.
 #'
 #' \code{partition} consolidates the above steps into a single function call.
-#' In addition, it insures that the partition can be reproduced by including a
-#' default randomization seed (in case the user forgets to set one), and it
+#' In addition, it insures that binary response variables are converted to
+#' factors using \code{\link{binary_to_factor}} and that the partition can be
+#' reproduced by including a randomization seed as a function argument, and it
 #' creates analysis-ready \code{train} and \code{test} data frames, which are
-#' bound together in a "\code{data_partition}" structure so that their common
-#' ancestry is maintained and self-documented. For example, if you name your
-#' \code{data_partition} "\code{data}", you can intutively access the training
-#' set with \code{data$train} and its corresponding test set with
-#' \code{data$test}. Moreover, you can lazily pass a \code{data_partition}
-#' object to any predictive modeling function in the \code{beset} package, and
-#' it will automatically choose the appropriate data frame for the task at hand.
-#'
-#' @param outcome Name of the outcome variable.
+#' bound together in a "\code{\link{data_partition}}" structure so that their
+#' common ancestry is maintained and self-documented. For example, if you name
+#' your \code{\link{data_partition}} "\code{data}", you can intutively access
+#' the training set with \code{data$train} and its corresponding test set with
+#' \code{data$test}. Moreover, you can lazily pass a
+#' \code{\link{data_partition}} object to any predictive modeling function in
+#' the \code{\link{beset}} package, and it will automatically choose the
+#' appropriate data frame for the task at hand.
 #'
 #' @param data Data frame to be partitioned.
+#'
+#' @param y Name of the response variable, without quotes.
 #'
 #' @param p The fraction of data that should be included in the training set.
 #'
@@ -38,16 +40,21 @@
 #' frames named \code{train} and \code{test}, containing the training and
 #' testing sets, respectively.
 #'
-#' @seealso \code{\link[caret]{createDataPartition}}
+#' @seealso \code{\link[caret]{createDataPartition}},
+#' \code{\link{binary_to_factor}}, \code{\link[base]{set.seed}},
+#' \code{\link{data_partition}}
 #'
 #' @export
 
-partition <- function(data, outcome, p = .75, seed = 42){
+partition <- function(data, y, p = .75, seed = 42){
   a <- as.list(match.call())
-  y <- eval(a$outcome, data)
+  response <- eval(a$y, data)
+  if(length(unique(response)) == 2 && !is.factor(response)){
+    response <- binary_to_factor(response)
+  }
   set.seed(seed)
-  inTrain <- caret::createDataPartition(y = y, p = p, list = F)
+  inTrain <- caret::createDataPartition(y = response, p = p, list = F)
   test <- data[-inTrain,]
   train <- data[inTrain,]
-  return(data_partition(train, test))
+  data_partition(train, test, as.character(a$y))
 }

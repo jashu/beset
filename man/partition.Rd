@@ -4,12 +4,12 @@
 \alias{partition}
 \title{Partition Data into Training and Test Sets}
 \usage{
-partition(data, outcome, p = 0.75, seed = 42)
+partition(data, y, p = 0.75, seed = 42)
 }
 \arguments{
 \item{data}{Data frame to be partitioned.}
 
-\item{outcome}{Name of the outcome variable.}
+\item{y}{Name of the response variable, without quotes.}
 
 \item{p}{The fraction of data that should be included in the training set.}
 
@@ -37,18 +37,22 @@ a subsequent construction of separate training and testing data frames using
 the row positions that are returned.
 
 \code{partition} consolidates the above steps into a single function call.
-In addition, it insures that the partition can be reproduced by including a
-default randomization seed (in case the user forgets to set one), and it
+In addition, it insures that binary response variables are converted to
+factors using \code{\link{binary_to_factor}} and that the partition can be
+reproduced by including a randomization seed as a function argument, and it
 creates analysis-ready \code{train} and \code{test} data frames, which are
-bound together in a "\code{data_partition}" structure so that their common
-ancestry is maintained and self-documented. For example, if you name your
-\code{data_partition} "\code{data}", you can intutively access the training
-set with \code{data$train} and its corresponding test set with
-\code{data$test}. Moreover, you can lazily pass a \code{data_partition}
-object to any predictive modeling function in the \code{beset} package, and
-it will automatically choose the appropriate data frame for the task at hand.
+bound together in a "\code{\link{data_partition}}" structure so that their
+common ancestry is maintained and self-documented. For example, if you name
+your \code{\link{data_partition}} "\code{data}", you can intutively access
+the training set with \code{data$train} and its corresponding test set with
+\code{data$test}. Moreover, you can lazily pass a
+\code{\link{data_partition}} object to any predictive modeling function in
+the \code{\link{beset}} package, and it will automatically choose the
+appropriate data frame for the task at hand.
 }
 \seealso{
-\code{\link[caret]{createDataPartition}}
+\code{\link[caret]{createDataPartition}},
+\code{\link{binary_to_factor}}, \code{\link[base]{set.seed}},
+\code{\link{data_partition}}
 }
 
