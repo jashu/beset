@@ -4,15 +4,15 @@
 \alias{binary_to_factor}
 \title{Convert Binary Logical or Numeric Variable to Factor}
 \usage{
-binary_to_factor(binary_var, label_0 = "class_0", label_1 = "class_1")
+binary_to_factor(binary, neg = "class_0", pos = "class_1")
 }
 \arguments{
-\item{binary_var}{Logical vector or numeric vector containing only 0s and 1s.}
+\item{binary}{Logical vector or numeric vector containing only 0s and 1s.}
 
-\item{label0}{Optional character string of length 1 with a label for the
+\item{neg}{Optional character string of length 1 with a label for the
 negative class (the class coded as \code{FALSE} or \code{0}).}
 
-\item{label1}{Optional character string of length 1 with a label for the
+\item{pos}{Optional character string of length 1 with a label for the
 positive class (the class coded as \code{TRUE} or \code{1}).}
 }
 \value{

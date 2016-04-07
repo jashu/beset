@@ -20,20 +20,19 @@
 #' automatic reordering of factor levels and a simpler method of specifying
 #' factor labels.
 #'
-#' @param binary_var Logical vector or numeric vector containing only 0s and 1s.
+#' @param binary Logical vector or numeric vector containing only 0s and 1s.
 #'
-#' @param label0 Optional character string of length 1 with a label for the
+#' @param neg Optional character string of length 1 with a label for the
 #' negative class (the class coded as \code{FALSE} or \code{0}).
 #'
-#' @param label1 Optional character string of length 1 with a label for the
+#' @param pos Optional character string of length 1 with a label for the
 #' positive class (the class coded as \code{TRUE} or \code{1}).
 #'
 #' @return an object of class "\code{factor}"
 #'
 #' @export
 
-binary_to_factor <- function(binary_var, label_0 = "class_0",
-                             label_1 = "class_1"){
-  binary_var <- as.numeric(binary_var)
-  factor(binary_var, levels = c(1,0), labels = c(label_1, label_0))
+binary_to_factor <- function(binary, neg = "class_0", pos = "class_1"){
+  binary <- as.numeric(binary)
+  factor(binary, levels = c(1,0), labels = c(pos, neg))
 }
