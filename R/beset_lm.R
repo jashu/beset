@@ -34,7 +34,7 @@
 #'    \code{\link[leaps]{regsubsets}} performs an exhaustive search over all
 #'    possible variable subsets, including subsets that are hierarchically
 #'    incomplete, i.e. subsets that contain an interaction term but are missing
-#'    one or more of the subterms that comprise it. At worse, it may return one
+#'    one or more of the subterms that comprise it. At worst, it may return one
 #'    of these hierarchically incomplete models as the best model, an
 #'    undesirable result if one cares about interpretability. If one wishes the
 #'    model search to include interaction and/or non-linear effects, the
@@ -53,8 +53,8 @@
 #' @param train_data A \code{\link[base]{data.frame}} with the variables in
 #' \code{form} and the data to be used in model training.
 #'
-#' @param test_data Optional \code{\link[base]{data.frame}} with the variables in
-#' \code{form} and the data to be used in model testing.
+#' @param test_data Optional \code{\link[base]{data.frame}} with the variables
+#' in \code{form} and the data to be used in model testing.
 #'
 #' @param k Single integer or integer vector of number of \code{k} folds to use
 #' for cross-validation. By default, both 5 and 10 folds will be performed.
@@ -79,8 +79,8 @@
 #'    \describe{
 #'    \item{k_folds}{the number of k-folds used}
 #'    \item{n_preds}{the number of predictors in model}
-#'    \item{R2_train}{the mean in-fold (training) R-squared for each size of best
-#'      model}
+#'    \item{R2_train}{the mean in-fold (training) R-squared for each size of
+#'      best model}
 #'    \item{R2_train_SE}{the standard error of the mean in-fold (training)
 #'      R-squared for each size of best model}
 #'    \item{R2_cv}{the mean out-of-fold (test) R-squared for each size of best
@@ -101,7 +101,27 @@
 beset_lm <- function(form, train_data, test_data = NULL, k=c(5,10), seed = 42)
 {
   mf <- model.frame(form, data = train_data)
+  colinear_vars <- caret::findLinearCombos(mf[,2:ncol(mf)])
+  if(!is.null(colinear_vars$remove)){
+    stop(paste(length(colinear_vars$remove), " linear dependencies found. ",
+                  "Consider removing the following predictors:\n\t",
+                  paste0(names(mf)[colinear_vars$remove], collapse = "\n\t"),
+               sep = ""),
+            immediate. = TRUE)
+    mf <- mf[, -colinear_vars$remove]
+  }
   p <- ncol(mf) - 1
+  if(p > 20){
+    stop(paste("`beset_lm` does not allow more than 20 predictors.",
+               "Use `beset_glmnet` instead."))
+  }
+  alt_p <- nrow(mf) - 1 - nrow(mf) %/% min(k)
+  if(p > alt_p){
+    warning(paste("You have more predictors than your sample size will support",
+                  ".\n  Setting maximum subset size to ", alt_p, ".",
+                  sep = ""), immediate. = TRUE)
+    p <- alt_p
+  }
   y <- mf[,1]
   response <- names(mf)[1]
   for(n in 1:length(k))
@@ -113,13 +133,23 @@ beset_lm <- function(form, train_data, test_data = NULL, k=c(5,10), seed = 42)
     test_R2 <- matrix(nrow = k[n], ncol = p)
     for (i in 1:k[n])
     {
-      best_fit <- leaps::regsubsets(form, data = mf[folds != i,], nvmax = p)
-      fit_info <- summary(best_fit)
-      train_R2[i,] <- fit_info$rsq
+      if(p > 1){
+        best_fit <- leaps::regsubsets(form, data = mf[folds != i,], nvmax = p)
+        fit_info <- summary(best_fit)
+        train_R2[i,] <- fit_info$rsq
+      } else {
+        best_fit <- lm(form, data = mf[folds != i,])
+        fit_info <- summary(best_fit)
+        train_R2[i,] <- fit_info$r.squared
+      }
       for (j in 1:p)
       {
-        best_preds <- mf[folds != i, fit_info$which[j,]]
-        best_lm <- lm(paste(response, ".", sep = "~"), data = best_preds)
+        if(p > 1){
+          best_preds <- mf[folds != i, fit_info$which[j,]]
+          best_lm <- lm(paste(response, ".", sep = "~"), data = best_preds)
+        } else {
+          best_lm <- best_fit
+        }
         cv_R2[i,j] <- predict_R2(best_lm, mf[folds == i,])
         if(!is.null(test_data)) test_R2[i,j] <- predict_R2(best_lm, test_data)
       }
@@ -145,6 +175,8 @@ beset_lm <- function(form, train_data, test_data = NULL, k=c(5,10), seed = 42)
   max_R2 <- max(R2$R2_cv)
   if(max_R2 <= 0){
     best_model <- lm(paste(response, "~ 1"), data = mf)
+  } else if(p == 1){
+    best_model <- lm(form, data = mf)
   } else {
     n_pred <- R2$n_preds[R2$R2_cv == max_R2]
     best_fit <- leaps::regsubsets(form, data = mf, nvmax = n_pred)
@@ -152,20 +184,21 @@ beset_lm <- function(form, train_data, test_data = NULL, k=c(5,10), seed = 42)
     best_preds <- mf[, fit_info$which[n_pred,]]
     best_model <- lm(paste(response, "~ ."), data = best_preds)
   }
-
   min_R2 <- max_R2 - R2$R2_cv_SE[R2$R2_cv == max_R2]
   if(min_R2 <= 0){
     best_model_1SE <- lm(paste(response, "~ 1"), data = mf)
+  } else if(p == 1){
+    best_model_1SE <- lm(form, data = mf)
   } else {
-  temp <- R2[R2$R2_cv > min_R2,]
-  n_pred <- min(temp$n_preds)
-  best_fit <- leaps::regsubsets(form, data = mf, nvmax = n_pred)
-  fit_info <- summary(best_fit)
-  best_preds <- mf[, fit_info$which[n_pred,]]
-  best_model_1SE <- lm(paste(response, ".", sep = "~"), data = best_preds)
+    temp <- R2[R2$R2_cv > min_R2,]
+    n_pred <- min(temp$n_preds)
+    best_fit <- leaps::regsubsets(form, data = mf, nvmax = n_pred)
+    fit_info <- summary(best_fit)
+    best_preds <- mf[, fit_info$which[n_pred,]]
+    best_model_1SE <- lm(paste(response, ".", sep = "~"), data = best_preds)
   }
 
-  output <- structure(list(R2 = R2, best_model = best_model,
-                           best_model_1SE = best_model_1SE),
-                      class = "beset_lm")
+  structure(list(R2 = R2, best_model = best_model,
+                 best_model_1SE = best_model_1SE),
+            class = "beset_lm")
 }

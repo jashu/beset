@@ -12,8 +12,8 @@ beset_lm(form, train_data, test_data = NULL, k = c(5, 10), seed = 42)
 \item{train_data}{A \code{\link[base]{data.frame}} with the variables in
 \code{form} and the data to be used in model training.}
 
-\item{test_data}{Optional \code{\link[base]{data.frame}} with the variables in
-\code{form} and the data to be used in model testing.}
+\item{test_data}{Optional \code{\link[base]{data.frame}} with the variables
+in \code{form} and the data to be used in model testing.}
 
 \item{k}{Single integer or integer vector of number of \code{k} folds to use
 for cross-validation. By default, both 5 and 10 folds will be performed.}
@@ -39,8 +39,8 @@ A list with the following three components:
    \describe{
    \item{k_folds}{the number of k-folds used}
    \item{n_preds}{the number of predictors in model}
-   \item{R2_train}{the mean in-fold (training) R-squared for each size of best
-     model}
+   \item{R2_train}{the mean in-fold (training) R-squared for each size of
+     best model}
    \item{R2_train_SE}{the standard error of the mean in-fold (training)
      R-squared for each size of best model}
    \item{R2_cv}{the mean out-of-fold (test) R-squared for each size of best
@@ -93,7 +93,7 @@ number generator as one of its arguments.
    \code{\link[leaps]{regsubsets}} performs an exhaustive search over all
    possible variable subsets, including subsets that are hierarchically
    incomplete, i.e. subsets that contain an interaction term but are missing
-   one or more of the subterms that comprise it. At worse, it may return one
+   one or more of the subterms that comprise it. At worst, it may return one
    of these hierarchically incomplete models as the best model, an
    undesirable result if one cares about interpretability. If one wishes the
    model search to include interaction and/or non-linear effects, the
