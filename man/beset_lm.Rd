@@ -101,7 +101,7 @@ number generator as one of its arguments.
    technique is recommended instead.
  \item \code{beset_lm} is best suited for searching over a small number of
    predictors (less than 10). For a large number of predictors (more than
-   20), ridge or lasso regression is recommended instead.
+   20), \code{\link{beset_elnet}} is recommended instead.
 }
 }
 \seealso{
