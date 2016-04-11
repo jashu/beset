@@ -15,6 +15,7 @@ print.summary_beset_elnet <- function(object){
   best_coef <- dplyr::select(object$var_imp, variable, coef = best)
   best_coef <- dplyr::filter(best_coef, abs(coef) > 0)
   best_coef <- dplyr::arrange(best_coef, desc(abs(coef)))
+  best_coef <- dplyr::mutate(best_coef, coef = round(coef, 3))
   best_coef <- as.data.frame(best_coef)
   if(nrow(best_coef) > 1){
     print(best_coef, quote = FALSE)
