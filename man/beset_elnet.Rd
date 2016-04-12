@@ -4,17 +4,14 @@
 \alias{beset_elnet}
 \title{Beset GLM with Elasticnet Regularization}
 \usage{
-beset_elnet(form, train_data, test_data = NULL, alpha = c(0.05, 0.5, 0.95),
-  n_folds = 5, n_repeats = 5, seed = 42, n_cores = NULL)
+beset_elnet(form, train_data, alpha = c(0.05, 0.5, 0.95), n_folds = 5,
+  n_repeats = 5, seed = 42, n_cores = NULL)
 }
 \arguments{
 \item{form}{A formula of the form y ~ x1 + x2 + ...}
 
 \item{train_data}{Data frame containing the training data set and all of the
 variables specified in \code{form}.}
-
-\item{test_data}{Optional data frame containing an independent test data set
-and all of the variables specified in \code{form}.}
 
 \item{alpha}{Numeric vector of alpha values between 0 and 1 to use as tuning
 parameters. \code{alpha = 0} results in ridge regression, and \code{alpha =
@@ -39,7 +36,7 @@ https://stat.ethz.ch/R-manual/R-devel/library/parallel/doc/parallel.pdf}{
 \code{parallel} package vignette} for more information.}
 }
 \description{
-\code{beset_glmnet} is a wrapper to \code{\link[glmnet]{glmnet}} for fitting
+\code{beset_elnet} is a wrapper to \code{\link[glmnet]{glmnet}} for fitting
  generalized linear modesl via penalized maximum likelihood, providing
  automated data preprocessing and selection of both the elasticnet penalty
  and regularization parameter through cross-validation.

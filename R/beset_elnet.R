@@ -1,6 +1,6 @@
 #' Beset GLM with Elasticnet Regularization
 #'
-#' \code{beset_glmnet} is a wrapper to \code{\link[glmnet]{glmnet}} for fitting
+#' \code{beset_elnet} is a wrapper to \code{\link[glmnet]{glmnet}} for fitting
 #'  generalized linear modesl via penalized maximum likelihood, providing
 #'  automated data preprocessing and selection of both the elasticnet penalty
 #'  and regularization parameter through cross-validation.
@@ -9,9 +9,6 @@
 #'
 #' @param train_data Data frame containing the training data set and all of the
 #' variables specified in \code{form}.
-#'
-#' @param test_data Optional data frame containing an independent test data set
-#' and all of the variables specified in \code{form}.
 #'
 #' @param alpha Numeric vector of alpha values between 0 and 1 to use as tuning
 #' parameters. \code{alpha = 0} results in ridge regression, and \code{alpha =
@@ -39,7 +36,7 @@
 #'
 #' @export
 
-beset_elnet <- function(form, train_data, test_data = NULL,
+beset_elnet <- function(form, train_data,
                          alpha = c(.05, .5, .95), n_folds = 5, n_repeats = 5,
                          seed = 42, n_cores = NULL){
   #===================================================================
