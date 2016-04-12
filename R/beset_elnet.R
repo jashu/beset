@@ -83,8 +83,7 @@ beset_elnet <- function(form, train_data,
   }
 
   #======================================================================
-  # Extract results, transform standard deviations to standard errors,
-  # and determine largest alpha and smallest lambda within 1 SE.
+  # Extract results and determine largest alpha and smallest lambda within 1 SE
   #----------------------------------------------------------------------
   results <- dplyr::mutate(results, lambda = round(lambda, 3))
   results <- dplyr::group_by(results, alpha, lambda)
