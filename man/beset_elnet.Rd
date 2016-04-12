@@ -39,11 +39,10 @@ https://stat.ethz.ch/R-manual/R-devel/library/parallel/doc/parallel.pdf}{
 \code{parallel} package vignette} for more information.}
 }
 \description{
-\code{beset_glmnet} is a wrapper to \code{\link[glmnet]{glmnet}} via
-\code{\link[caret]{train}} for fitting generalized linear modesl via
-penalized maximum likelihood, providing automated data preprocessing and
-selection of both the elasticnet penalty and regularization parameter through
-cross-validation.
+\code{beset_glmnet} is a wrapper to \code{\link[glmnet]{glmnet}} for fitting
+ generalized linear modesl via penalized maximum likelihood, providing
+ automated data preprocessing and selection of both the elasticnet penalty
+ and regularization parameter through cross-validation.
 }
 \seealso{
 \code{\link[glmnet]{glmnet}}, \code{\link[caret]{train}}
