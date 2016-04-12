@@ -11,7 +11,7 @@ summary.beset_elnet <- function(object){
   best_coefs <- coef(object$best_model, s = object$best_lambda)
   i <- best_coefs@i[-1]
   vars <- best_coefs@Dimnames[[1]][-1]
-  var_imp <- data_frame(variable = vars, best = 0, best_sparse = 0)
+  var_imp <- dplyr::data_frame(variable = vars, best = 0, best_sparse = 0)
   var_imp$best[i] <- best_coefs@x[-1]
   best_coefs <- coef(object$best_model_1SE, s = object$best_lambda_1SE)
   i <- best_coefs@i[-1]
