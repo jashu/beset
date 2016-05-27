@@ -4,7 +4,8 @@
 \alias{beset_elnet}
 \title{Beset GLM with Elasticnet Regularization}
 \usage{
-beset_elnet(form, train_data, alpha = c(0.05, 0.5, 0.95), n_folds = 5,
+beset_elnet(form, train_data, standardize = TRUE, method = c("best", "1SE"),
+  max_features = 1000, alpha = c(0.05, 0.5, 0.95), n_folds = 5,
   n_repeats = 5, seed = 42, n_cores = NULL)
 }
 \arguments{

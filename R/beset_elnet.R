@@ -36,9 +36,10 @@
 #'
 #' @export
 
-beset_elnet <- function(form, train_data,
-                         alpha = c(.05, .5, .95), n_folds = 5, n_repeats = 5,
-                         seed = 42, n_cores = NULL){
+beset_elnet <- function(form, train_data, standardize = TRUE,
+                        method = c("best", "1SE"),
+                        max_features = 1000, alpha = c(.05, .5, .95),
+                        n_folds = 5, n_repeats = 5, seed = 42, n_cores = NULL){
   #===================================================================
   # Register parallel backend
   #-------------------------------------------------------------------
@@ -47,15 +48,56 @@ beset_elnet <- function(form, train_data,
   #==================================================================
   # ETL x and y from formula and data frame
   #------------------------------------------------------------------
-  mf <- model.frame(form, data = train_data)
-  x <- as.matrix(mf[,2:ncol(mf)])
-  y <- mf[,1]
+  if("data.frame" %in% class(train_data)){
+    mf <- model.frame(form, data = train_data)
+    x <- as.matrix(mf[,2:ncol(mf)])
+    y <- mf[,1]
+  } else {
+    x <- train_data[, 2:ncol(train_data)]
+    y <- train_data[, 1]
+  }
   if(any(is.na(y))){
     warning("Cases missing response will be deleted.", immediate. = TRUE)
     x <- x[!is.na(y),]
     y <- na.omit(y)
   }
-  x <- apply(x, 2, scale)
+  if(standardize){
+    x <- apply(x, 2, scale)
+  }
+
+  #==================================================================
+  # For very high-dimensional data, implement recursively
+  #------------------------------------------------------------------
+  while(ncol(x) > max_features){
+    n_features <- ncol(x)
+    vars_to_keep <- NULL
+    for(start in seq(1, n_features, max_features)){
+      ptm <- proc.time()
+      end <- min(start + max_features - 1, n_features)
+      temp <- cbind(y, x[, start:end])
+      colnames(temp)[1] <- all.vars(form)[1]
+      temp_model <- beset_elnet(form, train_data = temp,
+                                max_features = max_features,
+                                standardize = FALSE, method = "best")
+      temp_summary <- summary(temp_model)
+      vars_to_keep <- c(vars_to_keep, temp_summary$var_imp$variable[
+        abs(temp_summary$var_imp$best) > 0])
+      elapsed_time <- (proc.time() - ptm)[3]
+      runs_remain <- (n_features - end) / max_features
+      time_remain <- elapsed_time * runs_remain
+      hrs_remain <- time_remain %/% (60 * 60)
+      time_remain <- time_remain %% (60 * 60)
+      min_remain <- time_remain %/% 60
+      message(paste(end, "vars screened;",
+                    length(vars_to_keep), "vars selected."))
+      message(paste("Estimated time remaining:",
+                    hrs_remain, "hours,",
+                    min_remain, "minutes."))
+      save(vars_to_keep, file = ".temp.RData")
+    }
+    x <- x[, vars_to_keep]
+    if(ncol(x) > max_features) max_features <- 2 * max_features
+  }
 
   #==================================================================
   # Assign cross-validation folds
@@ -68,13 +110,17 @@ beset_elnet <- function(form, train_data,
   #======================================================================
   # Train glmnet
   #----------------------------------------------------------------------
+  family <- "gaussian"
+  if(dplyr::n_distinct(y) == 2){
+    family <- "binomial"
+  }
   results <- data.frame()
   pb <- txtProgressBar(min = 0, max = length(alpha) * n_repeats, style = 3)
   i <- 1
   for(a in seq_along(alpha)){
     for(r in 1:n_repeats){
       temp <- glmnet::cv.glmnet(x, y, foldid = folds[, r], parallel = TRUE,
-                        alpha = alpha[a])
+                        alpha = alpha[a], family = family, standardize = FALSE)
       temp <- cbind(alpha = alpha[a], as.data.frame(temp[1:2]))
       results <- rbind(results, temp)
       setTxtProgressBar(pb, i)
@@ -105,13 +151,21 @@ beset_elnet <- function(form, train_data,
   #======================================================================
   # Fit best model and best model within 1 SD
   #----------------------------------------------------------------------
-  best_model <- glmnet::glmnet(x, y, alpha = best_alpha)
-  if(best_alpha != best_alpha_1SE){
-    best_model_1SE <- glmnet::glmnet(x, y, alpha = best_alpha_1SE)
-  } else {
-    best_model_1SE <- best_model
+  best_model <- NULL; best_model_1SE <- NULL
+  if("best" %in% method){
+    best_model <- glmnet::glmnet(x, y, family = family,
+                                 alpha = best_alpha,
+                                 standardize = FALSE)
   }
-
+  if("1SE" %in% method){
+    if(best_alpha == best_alpha_1SE){
+      best_model_1SE <- best_model
+      } else {
+        best_model_1SE <- glmnet::glmnet(x, y, family = family,
+                                         alpha = best_alpha_1SE,
+                                         standardize = FALSE)
+      }
+  }
   structure(list(results = results,
                  best_alpha = best_alpha,
                  best_alpha_1SE = best_alpha_1SE,
