@@ -98,7 +98,8 @@
 #'
 #' @export
 
-beset_lm <- function(form, train_data, test_data = NULL, k=c(5,10), seed = 42)
+beset_lm <- function(form, train_data, test_data = NULL, n_folds = 5,
+                     n_repeats = 5, seed = 42)
 {
   mf <- model.frame(form, data = train_data)
   colinear_vars <- caret::findLinearCombos(mf[,2:ncol(mf)])
@@ -113,9 +114,9 @@ beset_lm <- function(form, train_data, test_data = NULL, k=c(5,10), seed = 42)
   p <- ncol(mf) - 1
   if(p > 20){
     stop(paste("`beset_lm` does not allow more than 20 predictors.",
-               "Use `beset_glmnet` instead."))
+               "Use `beset_elnet` instead."))
   }
-  alt_p <- nrow(mf) - 1 - nrow(mf) %/% min(k)
+  alt_p <- nrow(mf) - 1 - nrow(mf) %/% n_folds
   if(p > alt_p){
     warning(paste("You have more predictors than your sample size will support",
                   ".\n  Setting maximum subset size to ", alt_p, ".",
@@ -124,14 +125,14 @@ beset_lm <- function(form, train_data, test_data = NULL, k=c(5,10), seed = 42)
   }
   y <- mf[,1]
   response <- names(mf)[1]
-  for(n in 1:length(k))
+  set.seed(seed)
+  for(n in 1:n_repeats)
   {
-    set.seed(seed)
-    folds <- caret::createFolds(y, k = k[n], list = FALSE)
-    train_R2 <- matrix(nrow = k[n], ncol = p)
-    cv_R2 <- matrix(nrow = k[n], ncol = p)
-    test_R2 <- matrix(nrow = k[n], ncol = p)
-    for (i in 1:k[n])
+    folds <- caret::createFolds(y, k = n_folds, list = FALSE)
+    train_R2 <- matrix(nrow = n_folds, ncol = p)
+    cv_R2 <- matrix(nrow = n_folds, ncol = p)
+    test_R2 <- matrix(nrow = n_folds, ncol = p)
+    for (i in 1:n_folds)
     {
       if(p > 1){
         best_fit <- leaps::regsubsets(form, data = mf[folds != i,], nvmax = p)
@@ -160,7 +161,7 @@ beset_lm <- function(form, train_data, test_data = NULL, k=c(5,10), seed = 42)
     R2_cv_SE <- apply(cv_R2, 2, function(x) sqrt(var(x)/length(x)))
     R2_test <- apply(test_R2, 2, mean)
     R2_test_SE <- apply(test_R2, 2, function(x) sqrt(var(x)/length(x)))
-    temp <- data.frame(k_folds = rep(k[n], p),
+    temp <- data.frame(k_folds = rep(n_folds, p),
                        n_preds = 1:p,
                        R2_train = R2_train,
                        R2_train_SE = R2_train_SE,
@@ -168,10 +169,10 @@ beset_lm <- function(form, train_data, test_data = NULL, k=c(5,10), seed = 42)
                        R2_cv_SE = R2_cv_SE,
                        R2_test = R2_test,
                        R2_test_SE = R2_test_SE)
-    if(n == 1) R2 <- temp
-    else R2 <- rbind(R2, temp)
+    if(n == 1) R2 <- temp else R2 <- rbind(R2, temp)
   }
-
+  R2 <- group_by(R2, n_preds) %>%
+    summarize_each(funs(mean))
   max_R2 <- max(R2$R2_cv)
   if(max_R2 <= 0){
     best_model <- lm(paste(response, "~ 1"), data = mf)

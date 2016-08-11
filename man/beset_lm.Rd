@@ -4,7 +4,8 @@
 \alias{beset_lm}
 \title{Best Subset Selection for Least-Squares Regression}
 \usage{
-beset_lm(form, train_data, test_data = NULL, k = c(5, 10), seed = 42)
+beset_lm(form, train_data, test_data = NULL, n_folds = 5, n_repeats = 5,
+  seed = 42)
 }
 \arguments{
 \item{form}{A model \code{\link[stats]{formula}}.}
@@ -15,11 +16,11 @@ beset_lm(form, train_data, test_data = NULL, k = c(5, 10), seed = 42)
 \item{test_data}{Optional \code{\link[base]{data.frame}} with the variables
 in \code{form} and the data to be used in model testing.}
 
-\item{k}{Single integer or integer vector of number of \code{k} folds to use
-for cross-validation. By default, both 5 and 10 folds will be performed.}
-
 \item{seed}{An integer used to seed the random number generator when
 assigning observations to folds.}
+
+\item{k}{Single integer or integer vector of number of \code{k} folds to use
+for cross-validation. By default, both 5 and 10 folds will be performed.}
 }
 \value{
 A list with the following three components:
