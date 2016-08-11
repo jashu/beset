@@ -31,7 +31,7 @@ plot.beset_lm <- function(object, SE = TRUE, title = ""){
   data$R2_test_lower <- with(data, R2_test - R2_test_SE)
   data$R2_test_upper <- with(data, R2_test + R2_test_SE)
   ymin <- min(0, data$R2_cv_lower, data$R2_test_lower, na.rm = T)
-  ymax <- max(data$R2_cv_upper, data$R2_test_upper, data$R2_train_upper,
+  ymax <- max(data$R2_cv_upper, data$R2_test_upper, data$R2_train_upper, 1,
               na.rm = T)
   xmax <- max(data$n_preds)
   color_legend <- c("Train" = "grey", "CV" = "red", "Test" = "blue")
@@ -43,7 +43,6 @@ plot.beset_lm <- function(object, SE = TRUE, title = ""){
     scale_x_continuous(breaks = 1:xmax) +
     scale_y_continuous(limits = c(ymin, ymax)) +
     scale_color_manual(name = "", values = color_legend) +
-    facet_wrap(~ k_folds) +
     geom_line(aes(x = n_preds, y = R2_train, color = "Train")) +
     geom_line(aes(x = n_preds, y = R2_cv, color = "CV"))
   if(SE){
