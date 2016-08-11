@@ -101,8 +101,8 @@
 #'
 #' @export
 
-beset_lm <- function(form, train_data, test_data = NULL, n_folds = 5,
-                     n_repeats = 5, seed = 42)
+beset_lm <- function(form, train_data, test_data = NULL, n_folds = 10,
+                     n_repeats = 10, seed = 42)
 {
   mf <- model.frame(form, data = train_data)
   colinear_vars <- caret::findLinearCombos(mf[,2:ncol(mf)])

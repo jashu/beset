@@ -4,7 +4,7 @@
 \alias{beset_lm}
 \title{Best Subset Selection for Least-Squares Regression}
 \usage{
-beset_lm(form, train_data, test_data = NULL, n_folds = 5, n_repeats = 5,
+beset_lm(form, train_data, test_data = NULL, n_folds = 10, n_repeats = 10,
   seed = 42)
 }
 \arguments{
