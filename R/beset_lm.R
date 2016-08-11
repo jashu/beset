@@ -1,7 +1,7 @@
 #' Best Subset Selection for Least-Squares Regression
 #'
-#' \code{beset_lm} performs best subset selection using cross-validation to find
-#'  the optimal number of linear regression parameters.
+#' \code{beset_lm} performs best subset selection using repeated
+#' cross-validation to find the optimal number of linear regression parameters.
 #'
 #' \code{beset_lm} performs best subset selection, using
 #' \code{\link[leaps]{regsubsets}} to fit a separate least-squares regression
@@ -56,8 +56,11 @@
 #' @param test_data Optional \code{\link[base]{data.frame}} with the variables
 #' in \code{form} and the data to be used in model testing.
 #'
-#' @param k Single integer or integer vector of number of \code{k} folds to use
-#' for cross-validation. By default, both 5 and 10 folds will be performed.
+#' @param n_folds Integer indicating the number of folds to use for
+#' cross-validation.
+#'
+#' @param n_repeats Integer indicating the number of times cross-validation
+#' should be repeated.
 #'
 #' @param seed An integer used to seed the random number generator when
 #' assigning observations to folds.
