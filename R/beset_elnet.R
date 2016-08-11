@@ -1,7 +1,7 @@
 #' Beset GLM with Elasticnet Regularization
 #'
 #' \code{beset_elnet} is a wrapper to \code{\link[glmnet]{glmnet}} for fitting
-#'  generalized linear modesl via penalized maximum likelihood, providing
+#'  generalized linear models via penalized maximum likelihood, providing
 #'  automated data preprocessing and selection of both the elasticnet penalty
 #'  and regularization parameter through cross-validation.
 #'
@@ -36,25 +36,26 @@
 #'
 #' @export
 
-beset_elnet <- function(form, train_data, standardize = TRUE,
-                        method = c("best", "1SE"),
-                        max_features = 1000, alpha = c(.05, .5, .95),
-                        n_folds = 5, n_repeats = 5, seed = 42, n_cores = NULL){
-  #===================================================================
-  # Register parallel backend
-  #-------------------------------------------------------------------
-  if(is.null(n_cores)) n_cores <- parallel::detectCores() %/% 2
-  doParallel::registerDoParallel(cores = n_cores)
+beset_elnet <- function(form, train_data, alpha = c(.05, .5, .95),
+                        standardize = TRUE, method = c("min", "1SE"),
+                        n_folds = 5, n_repeats = 5,
+                        seed = 42, n_cores = NULL){
+
   #==================================================================
   # ETL x and y from formula and data frame
   #------------------------------------------------------------------
   if("data.frame" %in% class(train_data)){
     mf <- model.frame(form, data = train_data)
-    x <- as.matrix(mf[,2:ncol(mf)])
-    y <- mf[,1]
-  } else {
-    x <- train_data[, 2:ncol(train_data)]
-    y <- train_data[, 1]
+    x <- as.matrix(mf[, 2:ncol(mf)])
+    y <- mf[, 1]
+  } else if("matrix" %in% class(train_data)) {
+    vars <- all.vars(form)
+    y <- train_data[, vars[1]]
+    if(vars[2] == "."){
+      x <- train_data[, colnames(train_data) != vars[1]]
+    } else{
+      x <- train_data[, vars[2:length(vars)]]
+    }
   }
   if(any(is.na(y))){
     warning("Cases missing response will be deleted.", immediate. = TRUE)
@@ -64,40 +65,20 @@ beset_elnet <- function(form, train_data, standardize = TRUE,
   if(standardize){
     x <- apply(x, 2, scale)
   }
+  return(fit_elnet(x, y, family, alpha, standardize, method, n_folds, n_repeats,
+                   seed, n_cores))
 
-  #==================================================================
-  # For very high-dimensional data, implement recursively
-  #------------------------------------------------------------------
-  while(ncol(x) > max_features){
-    n_features <- ncol(x)
-    vars_to_keep <- NULL
-    for(start in seq(1, n_features, max_features)){
-      ptm <- proc.time()
-      end <- min(start + max_features - 1, n_features)
-      temp <- cbind(y, x[, start:end])
-      colnames(temp)[1] <- all.vars(form)[1]
-      temp_model <- beset_elnet(form, train_data = temp,
-                                max_features = max_features,
-                                standardize = FALSE, method = "best")
-      temp_summary <- summary(temp_model)
-      vars_to_keep <- c(vars_to_keep, temp_summary$var_imp$variable[
-        abs(temp_summary$var_imp$best) > 0])
-      elapsed_time <- (proc.time() - ptm)[3]
-      runs_remain <- (n_features - end) / max_features
-      time_remain <- elapsed_time * runs_remain
-      hrs_remain <- time_remain %/% (60 * 60)
-      time_remain <- time_remain %% (60 * 60)
-      min_remain <- time_remain %/% 60
-      message(paste(end, "vars screened;",
-                    length(vars_to_keep), "vars selected."))
-      message(paste("Estimated time remaining:",
-                    hrs_remain, "hours,",
-                    min_remain, "minutes."))
-      save(vars_to_keep, file = ".temp.RData")
-    }
-    x <- x[, vars_to_keep]
-    if(ncol(x) > max_features) max_features <- 2 * max_features
-  }
+}
+#' @export
+fit_elnet <- function(x, y, family = "gaussian", alpha = c(.05, .5, .95),
+                      standardize = TRUE, method = c("best", "1SE"),
+                      n_folds = 5, n_repeats = 5, seed = 42, n_cores = NULL){
+
+  #===================================================================
+  # Register parallel backend
+  #-------------------------------------------------------------------
+  if(is.null(n_cores)) n_cores <- parallel::detectCores() %/% 2
+  doParallel::registerDoParallel(cores = n_cores)
 
   #==================================================================
   # Assign cross-validation folds
@@ -110,10 +91,7 @@ beset_elnet <- function(form, train_data, standardize = TRUE,
   #======================================================================
   # Train glmnet
   #----------------------------------------------------------------------
-  family <- "gaussian"
-  if(dplyr::n_distinct(y) == 2){
-    family <- "binomial"
-  }
+  if(dplyr::n_distinct(y) == 2) family <- "binomial"
   results <- data.frame()
   pb <- txtProgressBar(min = 0, max = length(alpha) * n_repeats, style = 3)
   i <- 1
@@ -121,7 +99,7 @@ beset_elnet <- function(form, train_data, standardize = TRUE,
     for(r in 1:n_repeats){
       temp <- glmnet::cv.glmnet(x, y, foldid = folds[, r], parallel = TRUE,
                         alpha = alpha[a], family = family, standardize = FALSE)
-      temp <- cbind(alpha = alpha[a], as.data.frame(temp[1:2]))
+      temp <- cbind(alpha = alpha[a], as.data.frame(temp[1:5]))
       results <- rbind(results, temp)
       setTxtProgressBar(pb, i)
       i <- i + 1
@@ -134,11 +112,11 @@ beset_elnet <- function(form, train_data, standardize = TRUE,
   results <- dplyr::mutate(results, lambda = round(lambda, 3))
   results <- dplyr::group_by(results, alpha, lambda)
   results <- dplyr::summarise(results, cve = mean(cvm),
-                              cve_se = sqrt(var(cvm) / length(cvm)))
+                              cve_se = mean(cvsd),
+                              cve_lo = mean(cvlo),
+                              cve_hi = mean(cvup))
   results <- na.omit(results)
   results <- dplyr::ungroup(results)
-  results <- dplyr::mutate(results, cve_lo = cve - cve_se,
-                           cve_hi = cve + cve_se)
   best_result <- dplyr::filter(results, cve == min(cve))
   best_results <- dplyr::filter(results, cve < best_result$cve_hi)
   best_result_1SE <- dplyr::filter(best_results, alpha == max(alpha))
@@ -158,7 +136,7 @@ beset_elnet <- function(form, train_data, standardize = TRUE,
                                  standardize = FALSE)
   }
   if("1SE" %in% method){
-    if(best_alpha == best_alpha_1SE){
+    if(!is.null(best_model) && best_alpha == best_alpha_1SE){
       best_model_1SE <- best_model
       } else {
         best_model_1SE <- glmnet::glmnet(x, y, family = family,
@@ -175,3 +153,46 @@ beset_elnet <- function(form, train_data, standardize = TRUE,
                  best_model_1SE = best_model_1SE),
             class = "beset_elnet")
 }
+
+#' @export
+rec_elnet <- function(x, y, ..., n_vars = NULL, threshold = NULL, seed = 42){
+  n_observed <- nrow(x)
+  n_features <- ncol(x)
+  snp_name <- colnames(x)
+  if(is.null(n_vars)) n_vars <- ceiling(sqrt(n_features))
+  if(is.null(threshold)) threshold <- 1 / n_observed
+  n_samples <- n_vars * 10
+  betas <- matrix(NA, nrow = n_samples, ncol = n_features)
+  intercepts <- vector(mode = "numeric", length = n_samples)
+  set.seed(seed, kind = "default")
+  pb <- txtProgressBar(min = 0, max = n_samples, style = 3)
+  for(i in 1:n_samples){
+    importance <- apply(betas, 2, mean, na.rm = T)
+    importance[is.nan(importance)] <- 1
+    importance <- abs(importance)
+    importance[importance < threshold] <- 0
+    rows_in_train <- sample.int(nrow(x), replace = TRUE)
+    cols_in_train <- sample.int(n_features, n_vars, prob = importance)
+    temp_x <- x[rows_in_train, cols_in_train]
+    temp_y <- y[rows_in_train]
+    temp_pf <- 1 / importance[cols_in_train]
+    temp_mod <- gcdnet::cv.gcdnet(temp_x, temp_y, lambda2 = 1,
+                                  pf = temp_pf, ...)
+    betas[i, cols_in_train] <- as(coef(temp_mod), "matrix")[-1,]
+    intercepts[i] <- as(coef(temp_mod), "matrix")[1,]
+    setTxtProgressBar(pb, i)
+  }
+  importance <- apply(betas, 2, mean, na.rm = T)
+  importance[is.nan(importance)] <- 0
+  importance <- abs(importance)
+  importance[importance < threshold] <- 0
+  structure(
+    list(
+      cv_gcdnet = gcdnet::cv.gcdnet(x[, importance > 0], y, lambda2 = 1,
+                                    pf = 1 / importance[importance > 0], ...),
+      b0_bag = intercepts,
+      beta_bag = as(betas, "dgCMatrix")),
+    class = "rr_elnet"
+  )
+}
+

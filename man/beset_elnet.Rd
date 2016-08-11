@@ -4,8 +4,8 @@
 \alias{beset_elnet}
 \title{Beset GLM with Elasticnet Regularization}
 \usage{
-beset_elnet(form, train_data, standardize = TRUE, method = c("best", "1SE"),
-  max_features = 1000, alpha = c(0.05, 0.5, 0.95), n_folds = 5,
+beset_elnet(form, train_data, alpha = c(0.05, 0.5, 0.95),
+  standardize = TRUE, method = c("min", "1SE"), n_folds = 5,
   n_repeats = 5, seed = 42, n_cores = NULL)
 }
 \arguments{
@@ -38,7 +38,7 @@ https://stat.ethz.ch/R-manual/R-devel/library/parallel/doc/parallel.pdf}{
 }
 \description{
 \code{beset_elnet} is a wrapper to \code{\link[glmnet]{glmnet}} for fitting
- generalized linear modesl via penalized maximum likelihood, providing
+ generalized linear models via penalized maximum likelihood, providing
  automated data preprocessing and selection of both the elasticnet penalty
  and regularization parameter through cross-validation.
 }
