@@ -4,37 +4,5 @@
 \name{beset}
 \alias{beset}
 \alias{beset-package}
-\title{beset: Best Subset Mining and Exploration}
-\description{
-\code{beset} is a portmanteau of BEst subSET, which is the common thread
-underlying the functions in this package: to explore large multivariate data
-sets and extract useful features from spaces where many, if not most, of the
-features are expected to be redundant or irrelevant.
-}
-\details{
-\code{beset} has three main objectives:
-\enumerate{
- \item{to bring together predictive modeling methods from other packages
- that perform variable selection either explicitly (e.g., best subset
- selection) or implicitly (e.g., lasso regression) as a part of model
- fitting.}
- \item{to automate the search for more parsimonious feature spaces to be used
- in complex models, e.g., gradient boosting, when weak predictors can be
- safely eliminated without increasing prediction error.}
- \item{to provide robust significance testing to control for false
- discoveries when exploring a large number of univariate or bivariate
- statistics based on multiple related measurements, e.g., brain imaging
- data.}
- }
-}
-\section{H2O}{
-
- Note that \code{beset} functions that involve machine learning depend on
- \href{www.h2o.ai}{H2O}, the first use of which requires a bit of extra work.
- First, if you do not have a Java Development Kit (JDK) installed, download
- the appropriate JDK for your OS from here:
-  \url{http://www.oracle.com/technetwork/java/javase/downloads/}. Next,
-  follow these instructions to set up H2O for use with R:
-  \url{http://www.h2o.ai/download/h2o/r}.
-}
+\title{beset: Best Subset Predictive Modeling}
 
