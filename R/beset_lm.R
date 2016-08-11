@@ -175,7 +175,7 @@ beset_lm <- function(form, train_data, test_data = NULL, n_folds = 10,
     if(n == 1) R2 <- temp else R2 <- rbind(R2, temp)
   }
   R2 <- dplyr::group_by(R2, n_preds)
-  R2 <- dplyr::summarize_each(R2, funs(mean))
+  R2 <- dplyr::summarize_each(R2, dplyr::funs(mean))
   max_R2 <- max(R2$R2_cv)
   if(max_R2 <= 0){
     best_model <- lm(paste(response, "~ 1"), data = mf)
