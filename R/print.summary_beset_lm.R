@@ -1,6 +1,7 @@
 #' @export
 
 print.summary_beset_lm <- function(object){
+
   cat(paste("\n=======================================================",
             "\nBest Model:\n",
             object$form,
@@ -15,8 +16,9 @@ print.summary_beset_lm <- function(object){
   } else {
     cat("\n\nIntercept-only model: no reliable predictors.")
   }
+
   cat(paste("\n=======================================================",
-            "\nMost Parsimonious Model (within 1 SE of Best Model):\n",
+            "\nBest Parsimonious Model (within 1 SE of Best Model):\n",
             object$form_1SE,
             "\n\nCoefficients:\n"))
   coefs <- round(object$coef_1SE, 3)
