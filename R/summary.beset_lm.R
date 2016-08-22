@@ -47,5 +47,8 @@ summary.beset_lm <- function(object){
                         cv_R2_1SE = cv_R2_1SE,
                         test_R2_1SE = test_R2_1SE),
                    class = "summary_beset_lm")
-  return(ans)
+  ans
 }
+
+#' @export
+summary.beset_glm <- function(object) summary.beset_lm(object)
