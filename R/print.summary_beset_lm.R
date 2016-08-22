@@ -35,5 +35,6 @@ print.summary_beset_lm <- function(object){
 }
 
 #' @export
-
-print.beset_lm <- function(object) summary(object)
+print.beset_lm <- function(object) print(summary(object))
+#' @export
+print.beset_glm <- function(object) print(summary(object))
