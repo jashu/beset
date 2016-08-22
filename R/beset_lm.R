@@ -105,29 +105,46 @@ beset_lm <- function(form, train_data, test_data = NULL, n_folds = 10,
                      n_repeats = 10, seed = 42)
 {
   mf <- model.frame(form, data = train_data)
-  colinear_vars <- caret::findLinearCombos(mf[,2:ncol(mf)])
-  if(!is.null(colinear_vars$remove)){
-    stop(paste(length(colinear_vars$remove), " linear dependencies found. ",
-                  "Consider removing the following predictors:\n\t",
-                  paste0(names(mf)[colinear_vars$remove], collapse = "\n\t"),
-               sep = ""),
-            immediate. = TRUE)
-    mf <- mf[, -colinear_vars$remove]
-  }
   p <- ncol(mf) - 1
   if(p > 20){
-    stop(paste("`beset_lm` does not allow more than 20 predictors.",
-               "Use `beset_elnet` instead."))
+    stop(paste("`beset_glm` does not allow more than 20 predictors."))
   }
-  alt_p <- nrow(mf) - 1 - nrow(mf) %/% n_folds
+  n <- nrow(mf)
+  alt_p <- n - 1 - n %/% n_folds
   if(p > alt_p){
     warning(paste("You have more predictors than your sample size will support",
                   ".\n  Setting maximum subset size to ", alt_p, ".",
                   sep = ""), immediate. = TRUE)
     p <- alt_p
   }
+  mm <- model.matrix(form, data = train_data)
+  colinear_vars <- caret::findLinearCombos(mm[, 2:ncol(mm)])
+  if(!is.null(colinear_vars$remove)){
+    factor_idx <- which(sapply(mf, class) == "factor")
+    factor_exp <- sapply(mf[, factor_idx], function(x) length(levels(x))) - 1
+    mf_to_mm <- rep(1, ncol(mf))
+    mf_to_mm[factor_idx] <- factor_exp
+    mf_to_mm <- cumsum(mf_to_mm) - 1
+    to_remove <- names(mf)[mf_to_mm %in% colinear_vars$remove]
+    stop(paste(length(to_remove), " linear dependencies found. ",
+               "Consider removing the following predictors:\n\t",
+               paste0(to_remove, collapse = "\n\t"),
+               sep = ""))
+  }
+  get_se <- function(x) sqrt(var(x)/length(x))
   y <- mf[,1]
   response <- names(mf)[1]
+  train_R2 <- matrix(nrow = n_folds, ncol = p)
+  cv_R2 <- matrix(nrow = n_folds, ncol = p)
+  test_R2 <- matrix(nrow = n_folds, ncol = p)
+  R2 <- data.frame(k_folds = rep(n_folds, n_repeats * p),
+                   n_preds = rep(1:p, n_repeats),
+                   R2_train = NA_real_,
+                   R2_train_SE = NA_real_,
+                   R2_cv = NA_real_,
+                   R2_cv_SE = NA_real_,
+                   R2_test = NA_real_,
+                   R2_test_SE = NA_real_)
   set.seed(seed)
   for(n in 1:n_repeats)
   {
@@ -158,21 +175,14 @@ beset_lm <- function(form, train_data, test_data = NULL, n_folds = 10,
         if(!is.null(test_data)) test_R2[i,j] <- predict_R2(best_lm, test_data)
       }
     }
-    R2_train <- apply(train_R2, 2, mean)
-    R2_train_SE <- apply(train_R2, 2, function(x) sqrt(var(x)/length(x)))
-    R2_cv <- apply(cv_R2, 2, mean)
-    R2_cv_SE <- apply(cv_R2, 2, function(x) sqrt(var(x)/length(x)))
-    R2_test <- apply(test_R2, 2, mean)
-    R2_test_SE <- apply(test_R2, 2, function(x) sqrt(var(x)/length(x)))
-    temp <- data.frame(k_folds = rep(n_folds, p),
-                       n_preds = 1:p,
-                       R2_train = R2_train,
-                       R2_train_SE = R2_train_SE,
-                       R2_cv = R2_cv,
-                       R2_cv_SE = R2_cv_SE,
-                       R2_test = R2_test,
-                       R2_test_SE = R2_test_SE)
-    if(n == 1) R2 <- temp else R2 <- rbind(R2, temp)
+    begin <- n*p-p+1
+    end <- n*p
+    R2$R2_train[begin:end] <- apply(train_R2, 2, mean)
+    R2$R2_train_SE[begin:end] <- apply(train_R2, 2, get_se)
+    R2$R2_cv[begin:end] <- apply(cv_R2, 2, mean)
+    R2$R2_cv_SE[begin:end] <- apply(cv_R2, 2, get_se)
+    R2$R2_test[begin:end] <- apply(test_R2, 2, mean)
+    R2$R2_test_SE[begin:end] <- apply(test_R2, 2, get_se)
   }
   R2 <- dplyr::group_by(R2, n_preds)
   R2 <- dplyr::summarize_each(R2, dplyr::funs(mean))
@@ -192,7 +202,7 @@ beset_lm <- function(form, train_data, test_data = NULL, n_folds = 10,
   if(min_R2 <= 0){
     best_model_1SE <- lm(paste(response, "~ 1"), data = mf)
   } else if(p == 1){
-    best_model_1SE <- lm(form, data = mf)
+    best_model_1SE <- best_model
   } else {
     temp <- R2[R2$R2_cv > min_R2,]
     n_pred <- min(temp$n_preds)
