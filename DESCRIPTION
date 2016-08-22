@@ -11,7 +11,8 @@ Description: Provides a friendly user interface, summary, and plotting methods
 Depends:
   R (>= 3.2),
   stats,
-  methods
+  methods,
+  utils
 Imports:
   pROC,
   caret,
@@ -21,7 +22,8 @@ Imports:
   glmnet,
   leaps,
   parallel,
-  doParallel
+  doParallel,
+  pscl
 License: GPL-3
 LazyData: TRUE
 RoxygenNote: 5.0.1
