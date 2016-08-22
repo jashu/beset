@@ -21,7 +21,6 @@
 #' @import ggplot2
 #'
 #' @export
-
 plot.beset_lm <- function(object, SE = TRUE, title = ""){
   data <- object$R2
   data$R2_train_lower <- with(data, R2_train - R2_train_SE)
@@ -63,3 +62,8 @@ plot.beset_lm <- function(object, SE = TRUE, title = ""){
   p
 }
 
+#' @export
+plot.beset_glm <- function(object, SE = TRUE, title = ""){
+  class(object) <- "beset_lm"
+  plot(object, SE, title)
+}
