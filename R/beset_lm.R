@@ -101,11 +101,14 @@
 #'
 #' @export
 
-beset_lm <- function(form, train_data, test_data = NULL, n_folds = 10,
-                     n_repeats = 10, seed = 42)
+beset_lm <- function(form, train_data, test_data = NULL, p_max = 10,
+                     n_folds = 10, n_repeats = 10, seed = 42)
 {
   mf <- model.frame(form, data = train_data)
-  p <- ncol(mf) - 1
+  n_drop <- nrow(train_data) - nrow(mf)
+  if(n_drop > 0) warning(paste("Dropping", n_drop, "rows with missing data."),
+                         immediate. = TRUE)
+  p <- min(ncol(mf) - 1, p_max)
   if(p > 20){
     stop(paste("`beset_glm` does not allow more than 20 predictors."))
   }
