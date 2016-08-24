@@ -100,12 +100,17 @@
 #'
 #' @export
 
-beset_glm <- function(form, train_data, test_data = NULL, family = "gaussian",
-                      ..., n_folds = 10, n_repeats = 10, seed = 42){
-  if(family == "gaussian") return(beset_lm(form, train_data, test_data,
+beset_glm <- function(form, train_data, test_data = NULL,
+                      family = "gaussian", ..., p_max = 10,
+                      n_folds = 10, n_repeats = 10,
+                      n_cores = NULL, seed = 42){
+  if(family == "gaussian") return(beset_lm(form, train_data, test_data, p_max,
                                            n_folds, n_repeats, seed))
   mf <- model.frame(form, data = train_data)
-  p <- ncol(mf) - 1
+  n_drop <- nrow(train_data) - nrow(mf)
+  if(n_drop > 0) warning(paste("Dropping", n_drop, "rows with missing data."),
+                         immediate. = TRUE)
+  p <- min(ncol(mf) - 1, p_max)
   if(p > 20){
     stop(paste("`beset_glm` does not allow more than 20 predictors."))
   }
@@ -134,54 +139,65 @@ beset_glm <- function(form, train_data, test_data = NULL, family = "gaussian",
   get_se <- function(x) sqrt(var(x)/length(x))
   y <- mf[,1]
   response <- names(mf)[1]
-  train_R2 <- matrix(nrow = n_folds, ncol = p)
-  cv_R2 <- matrix(nrow = n_folds, ncol = p)
-  test_R2 <- matrix(nrow = n_folds, ncol = p)
-  R2 <- data.frame(k_folds = rep(n_folds, n_repeats * p),
-                   n_preds = rep(1:p, n_repeats),
-                   R2_train = NA_real_,
-                   R2_train_SE = NA_real_,
-                   R2_cv = NA_real_,
-                   R2_cv_SE = NA_real_,
-                   R2_test = NA_real_,
-                   R2_test_SE = NA_real_)
+  R2 <- expand.grid(n_repeats = 1:n_repeats,
+                    n_preds = 1:p,
+                    R2_train = NA_real_,
+                    R2_train_SE = NA_real_,
+                    R2_cv = NA_real_,
+                    R2_cv_SE = NA_real_,
+                    R2_test = NA_real_,
+                    R2_test_SE = NA_real_)
   all_subsets <- as.list(1:p)
-  for(i in 1:p) all_subsets[[i]] <- combn(2:ncol(mf), i, simplify = FALSE)
-  pb <- txtProgressBar(min = 0, max = p * n_folds * n_repeats, style = 3)
+  all_subsets <- lapply(all_subsets, function(x)
+    combn(2:ncol(mf), x, simplify = FALSE))
+  search_list <- as.list(1:(n_folds * p))
+  search_grid <- expand.grid(folds = 1:n_folds, n_pred = 1:p)
+  search_list <- lapply(search_list, function(x) as.list(search_grid[x,]))
+  pb <- txtProgressBar(min = 0, max = n_repeats, style = 3)
   counter <- 1
   set.seed(seed)
   for(n in 1:n_repeats){
     folds <- caret::createFolds(y, k = n_folds, list = FALSE)
-    for (i in 1:n_folds){
-      for (j in 1:p){
-        all_fits <- lapply(all_subsets[[p]],
-                    function(col_idx) glm(paste(response, ".", sep = "~"),
-                                          data = mf[folds != i, c(1, col_idx)],
-                                          family = family, ...))
-        best_fit <- all_fits[[which.min(sapply(all_fits, deviance))]]
-        train_R2[i,j] <- 1 - best_fit$deviance / best_fit$null.deviance
-        cv_R2[i,j] <- predict_R2(best_fit, mf[folds == i,])
-        if(!is.null(test_data)) test_R2[i,j] <- predict_R2(best_fit, test_data)
-        setTxtProgressBar(pb, counter)
-        counter <- counter + 1
-      }
+    all_fits <- lapply(search_list, function(search_param){
+      lapply(all_subsets[[search_param$n_pred]], function(col_id){
+        glm(paste(response, ".", sep = "~"),
+            data = mf[folds != search_param$folds, c(1, col_id)],
+            family = family)
+        })
+      })
+    best_fits <- lapply(all_fits, function(x){
+      x[[which.min(sapply(x, deviance))]]
+    })
+
+    idx <- R2$n_repeats == n
+
+    train_R2 <- matrix(sapply(best_fits, function(x)
+      1 - x$deviance / x$null.deviance), nrow = n_folds, ncol = p)
+    R2$R2_train[idx] <- apply(train_R2, 2, mean)
+    R2$R2_train_SE[idx] <- apply(train_R2, 2, get_se)
+
+    cv_R2 <- matrix(mapply(function(fit, fold)
+      predict_R2(fit, mf[folds == fold,]),
+      fit = best_fits, fold = search_grid$folds), nrow = n_folds, ncol = p)
+    R2$R2_cv[idx] <- apply(cv_R2, 2, mean)
+    R2$R2_cv_SE[idx] <- apply(cv_R2, 2, get_se)
+
+    if(!is.null(test_data)){
+      test_R2 <- matrix(sapply(best_fits, function(x)
+        predict_R2(x, test_data)), nrow = n_folds, ncol = p)
+      R2$R2_test[idx] <- apply(test_R2, 2, mean)
+      R2$R2_test_SE[idx] <- apply(test_R2, 2, get_se)
     }
-    begin <- n*p-p+1
-    end <- n*p
-    R2$R2_train[begin:end] <- apply(train_R2, 2, mean)
-    R2$R2_train_SE[begin:end] <- apply(train_R2, 2, get_se)
-    R2$R2_cv[begin:end] <- apply(cv_R2, 2, mean)
-    R2$R2_cv_SE[begin:end] <- apply(cv_R2, 2, get_se)
-    R2$R2_test[begin:end] <- apply(test_R2, 2, mean)
-    R2$R2_test_SE[begin:end] <- apply(test_R2, 2, get_se)
+
+    setTxtProgressBar(pb, counter)
+    counter <- counter + 1
   }
   R2 <- dplyr::group_by(R2, n_preds)
-  R2 <- dplyr::summarize_each(R2, dplyr::funs(mean))
+  R2 <- dplyr::summarize_each(R2, dplyr::funs(mean(., na.rm = T)))
   max_R2 <- max(R2$R2_cv)
   if(max_R2 <= 0){
     best_model <- glm(paste(response, "~ 1"), data = mf, family = family, ...)
-  } else if(p == 1){
-    best_model <- glm(form, data = mf, family = family, ...)
+    best_model_1SE <- best_model
   } else {
     n_pred <- R2$n_preds[R2$R2_cv == max_R2]
     all_fits <- lapply(all_subsets[[n_pred]],
@@ -189,23 +205,20 @@ beset_glm <- function(form, train_data, test_data = NULL, family = "gaussian",
                                       data = mf[, c(1, col_idx)],
                                       family = family, ...))
     best_model <- all_fits[[which.min(sapply(all_fits, deviance))]]
+    min_R2 <- max_R2 - R2$R2_cv_SE[R2$R2_cv == max_R2]
+    if(min_R2 <= 0){
+      best_model_1SE <- glm(paste(response, "~ 1"), data = mf,
+                            family = family, ...)
+    } else {
+      temp <- R2[R2$R2_cv > min_R2,]
+      n_pred <- min(temp$n_preds)
+      all_fits <- lapply(all_subsets[[n_pred]],
+                         function(col_idx) glm(paste(response, ".", sep = "~"),
+                                               data = mf[, c(1, col_idx)],
+                                               family = family, ...))
+      best_model_1SE <- all_fits[[which.min(sapply(all_fits, deviance))]]
+    }
   }
-  min_R2 <- max_R2 - R2$R2_cv_SE[R2$R2_cv == max_R2]
-  if(min_R2 <= 0){
-    best_model_1SE <- glm(paste(response, "~ 1"), data = mf,
-                          family = family, ...)
-  } else if(p == 1){
-    best_model_1SE <- best_model
-  } else {
-    temp <- R2[R2$R2_cv > min_R2,]
-    n_pred <- min(temp$n_preds)
-    all_fits <- lapply(all_subsets[[n_pred]],
-                function(col_idx) glm(paste(response, ".", sep = "~"),
-                                      data = mf[, c(1, col_idx)],
-                                      family = family, ...))
-    best_model_1SE <- all_fits[[which.min(sapply(all_fits, deviance))]]
-  }
-
   structure(list(R2 = R2, best_model = best_model,
                  best_model_1SE = best_model_1SE),
             class = "beset_glm")
