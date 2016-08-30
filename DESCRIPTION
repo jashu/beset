@@ -1,8 +1,8 @@
 Package: beset
 Type: Package
 Title: Best Subset Predictive Modeling
-Version: 0.0.0.9100
-Date: 2016-08-30
+Version: 0.0.0.9000
+Date: 2016-08-11
 Authors@R: person("Jason", "Shumake", email = "shumake@utexas.edu",
   role = c("aut","cre"))
 Description: Provides a friendly user interface, summary, and plotting methods
@@ -17,13 +17,10 @@ Imports:
   pROC,
   caret,
   dplyr,
-  foreach,
   gcdnet,
   ggplot2,
   glmnet,
-  grid,
-  gridExtra,
-  MASS,
+  leaps,
   parallel,
   doParallel,
   pscl
