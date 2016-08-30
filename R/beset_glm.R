@@ -55,16 +55,33 @@
 #' @param test_data Optional \code{\link[base]{data.frame}} with the variables
 #' in \code{form} and the data to be used in model testing.
 #'
+#' @param family Character string naming the error distribution to be used in
+#' the model. Available families are listed under 'Details'.
+#'
+#' @param link Optional character string naming the link function to be used in
+#' the model. Available links and their defaults differ by \code{family} and are
+#' listed under 'Details'.
+#'
+#' @param ... Additional arguments to be passed to \code{\link[stats]{glm}}
+#'
+#' @param p_max Maximum number of predictors to attempt to fit.
+#'
 #' @param n_folds Integer indicating the number of folds to use for
 #' cross-validation.
 #'
 #' @param n_repeats Integer indicating the number of times cross-validation
 #' should be repeated.
 #'
+#' @param n_cores Optional integer value indicating the number of workers to run
+#' in parallel during subset search and cross-validation. By default, this will
+#' be set to equal half of the detectable cores on your machine. You may wish to
+#' change this depending on your hardware and OS.
+#' See \code{\link[parallel]{parallel-package}} for more information.
+#'
 #' @param seed An integer used to seed the random number generator when
 #' assigning observations to folds.
 #'
-#' @return A list with the following three components:
+#' @return A "beset_glm" object with the following components:
 #' \enumerate{
 #'  \item\describe{
 #'    \item{best_model}{an object of class \code{\link[stats]{glm}} corresponding
@@ -77,51 +94,130 @@
 #'    parameters within one standard error of the smallest cross-validation
 #'    error (largest cross-validation R-squared)}
 #'    }
-#'  \item \code{\link[base]{data.frame}} with the following columns:
-#'    \describe{
-#'    \item{k_folds}{the number of k-folds used}
-#'    \item{n_preds}{the number of predictors in model}
-#'    \item{R2_train}{the mean in-fold (training) R-squared for each size of
-#'      best model}
-#'    \item{R2_train_SE}{the standard error of the mean in-fold (training)
-#'      R-squared for each size of best model}
-#'    \item{R2_cv}{the mean out-of-fold (test) R-squared for each size of best
-#'      model}
-#'    \item{R2_cv_SE}{the standard error of the mean out-of-fold (test)
-#'      R-squared for each size of best model}
-#'    \item{R2_test}{if \code{test_data} is provided, the mean R-squared when
-#'      the model fit to each subsample of the training data is applied to the
-#'      independent test set}
-#'    \item{R2_test_SE}{if \code{test_data} is provided, the standard error of
-#'      the mean R-squared when the model fit to each subsample of the training
-#'      data is applied to the independent test set}
+#'  \item\describe{
+#'    \item{all_subsets}{a data frame containing fit statistics for every
+#'      possible combination of predictors:
+#'      \describe{
+#'      \item{n_pred}{the number of predictors in model}
+#'      \item{form}{formula for model}
+#'      \item{train_R2}{Proportion of variance or deviance in the
+#'        \code{train_data} explained by each size of best model}
+#'      \item{test_R2}{if \code{test_data} is provided, the R-squared when
+#'        the model fit to \code{train_data} is applied to the \code{test_data}}
+#'       }
 #'    }
 #'  }
+#'  \item\describe{
+#'    \item{best_subsets}{a data frame containing cross-validation statistics
+#'      for the best model for each \code{n_pred} listed in \code{all_subsets}:
+#'      \describe{
+#'      \item{n_pred}{the number of predictors in model}
+#'      \item{form}{formula for best model of \code{n_pred}}
+#'      \item{train_R2}{Proportion of variance or deviance in the
+#'        \code{train_data} explained by each size of best model}
+#'      \item{test_R2}{if \code{test_data} is provided, the R-squared when
+#'        the model fit to \code{train_data} is applied to the \code{test_data}}
+#'      \item{cv_R2}{the mean cross-validation R-squared for each size of best
+#'        model, i.e., on average, how well models fit to \code{n-1} folds
+#'        explain the left-out fold}
+#'      \item{cv_R2_SE}{the standard error of the cross-validation R-squared for
+#'       each size of best model}
+#'       }
+#'    }
+#'  }
+#' }
 #'
+#' @import foreach
 #' @export
-
 beset_glm <- function(form, train_data, test_data = NULL,
-                      family = "gaussian", ..., p_max = 10,
-                      n_folds = 10, n_repeats = 10,
+                      family = "gaussian", link = NULL, ...,
+                      p_max = 10, n_folds = 10, n_repeats = 10,
                       n_cores = NULL, seed = 42){
-  if(family == "gaussian") return(beset_lm(form, train_data, test_data, p_max,
-                                           n_folds, n_repeats, seed))
-  mf <- model.frame(form, data = train_data)
+  #==================================================================
+  # Check family argument and set up link function if specified
+  #------------------------------------------------------------------
+  family <- try(match.arg(family, c("binomial", "gaussian", "Gamma",
+                        "inverse.gaussian", "negbin", "poisson",
+                        "quasibinomial", "quasipoisson")), silent = TRUE)
+  if(class(family) == "try-error") stop("Invalid 'family' argument.")
+  if(!is.null(link)){
+    if(family %in% c("binomial", "quasibinomial")){
+      link <- try(match.arg(link, c("logit", "probit", "cauchit",
+                                      "log", "cloglog")), silent = TRUE)
+    } else if(family %in% c("gaussian", "Gamma")){
+      link <- try(match.arg(link, c("identity", "log", "inverse")),
+                  silent = TRUE)
+    } else if(family == "inverse.gaussian"){
+      link <- try(match.arg(link, c("1/mu^2", "inverse", "identity", "log")),
+                  silent = TRUE)
+    } else if(family %in% c("negbin", "poisson", "quasipoisson")){
+      link <- try(match.arg(link, c("log", "sqrt", "identity")),
+                  silent = TRUE)
+    }
+    if(class(link) == "try-error")
+      stop(paste("Invalid 'link' argument for", family, "family."))
+  }
+  if(family == "negbin"){
+    if(is.null(link)) link <- "log"
+  } else if(is.null(link)){
+    dist <- call(family)
+  } else {
+    dist <- call(family, link = link)
+  }
+
+  #==================================================================
+  # Create model frame and extract response name and vector
+  #------------------------------------------------------------------
+  mf <- model.frame(form, data = train_data, na.action = na.omit)
   n_drop <- nrow(train_data) - nrow(mf)
-  if(n_drop > 0) warning(paste("Dropping", n_drop, "rows with missing data."),
+  if(n_drop > 0)
+    warning(paste("Dropping", n_drop, "rows with missing data."),
                          immediate. = TRUE)
+  response <- names(mf)[1]
+  y <- mf[,1]
+  if(grepl("binomial", family)) y <- as.factor(y)
+
+  #==================================================================
+  # Check that number of predictors and cv folds is acceptable
+  #------------------------------------------------------------------
+  if(ncol(mf) > 21)
+    stop("Best subsets not recommended for use with more than 20 predictors.")
   p <- min(ncol(mf) - 1, p_max)
-  if(p > 20){
-    stop(paste("`beset_glm` does not allow more than 20 predictors."))
+  if(family == "binomial"){
+    n <- min(sum(y == levels(y)[1]), sum(y == levels(y)[2]))
+  } else {
+    n <- nrow(mf)
   }
-  n <- nrow(mf)
-  alt_p <- n - 1 - n %/% n_folds
-  if(p > alt_p){
-    warning(paste("You have more predictors than your sample size will support",
-                  ".\n  Setting maximum subset size to ", alt_p, ".",
-                  sep = ""), immediate. = TRUE)
+  alt_folds <- n / (n - p * 10)
+  alt_p <- p
+  while(!dplyr::between(alt_folds, 1, 10)){
+    alt_p <- alt_p - 1
+    alt_folds <- n / (n - alt_p * 10)
+  }
+  if(alt_p < 1){
+    if(family == "binomial"){
+      stop("Your sample size for the minority class is too small.")
+    } else {
+      stop("Your sample size is too small.")
+    }
+  }
+  if(alt_p < p){
     p <- alt_p
+    warning(paste("'p_max' argument too high for your sample size",
+                  ".\n  Reducing maximum subset size to ", p, ".",
+                  sep = ""), immediate. = TRUE)
   }
+  if(n_folds < alt_folds){
+    n_folds <- as.integer(alt_folds)
+    warning(paste("'n_folds' argument too low for your sample size ",
+                  "and choice of 'p_max'",
+                  ".\n  Increasing number of cv folds to ", n_folds, ".",
+                  sep = ""), immediate. = TRUE)
+  }
+
+  #==================================================================
+  # Screen for linear dependencies among predictors
+  #------------------------------------------------------------------
   mm <- model.matrix(form, data = train_data)
   colinear_vars <- caret::findLinearCombos(mm[, 2:ncol(mm)])
   if(!is.null(colinear_vars$remove)){
@@ -136,90 +232,269 @@ beset_glm <- function(form, train_data, test_data = NULL,
                paste0(to_remove, collapse = "\n\t"),
                sep = ""))
   }
-  get_se <- function(x) sqrt(var(x)/length(x))
-  y <- mf[,1]
-  response <- names(mf)[1]
-  R2 <- expand.grid(n_repeats = 1:n_repeats,
-                    n_preds = 1:p,
-                    R2_train = NA_real_,
-                    R2_train_SE = NA_real_,
-                    R2_cv = NA_real_,
-                    R2_cv_SE = NA_real_,
-                    R2_test = NA_real_,
-                    R2_test_SE = NA_real_)
-  all_subsets <- as.list(1:p)
-  all_subsets <- lapply(all_subsets, function(x)
-    combn(2:ncol(mf), x, simplify = FALSE))
-  search_list <- as.list(1:(n_folds * p))
-  search_grid <- expand.grid(folds = 1:n_folds, n_pred = 1:p)
-  search_list <- lapply(search_list, function(x) as.list(search_grid[x,]))
-  pb <- txtProgressBar(min = 0, max = n_repeats, style = 3)
-  counter <- 1
-  set.seed(seed)
-  for(n in 1:n_repeats){
-    folds <- caret::createFolds(y, k = n_folds, list = FALSE)
-    all_fits <- lapply(search_list, function(search_param){
-      lapply(all_subsets[[search_param$n_pred]], function(col_id){
-        glm(paste(response, ".", sep = "~"),
-            data = mf[folds != search_param$folds, c(1, col_id)],
-            family = family)
-        })
-      })
-    best_fits <- lapply(all_fits, function(x){
-      x[[which.min(sapply(x, deviance))]]
+
+  #======================================================================
+  # Make list of all possible formulas with number of predictors <= p_max
+  #----------------------------------------------------------------------
+  n_pred <- unlist(sapply(1:p, function(i) rep(i, choose(ncol(mf)-1, i))))
+  n_pred <- c(0, n_pred)
+  pred <- lapply(1:p, function(x)
+    combn(names(mf)[2:ncol(mf)], x, simplify = FALSE))
+  pred <- unlist(sapply(pred, function(vars){
+    sapply(vars, function(x) paste0(x, collapse = " + "))
+    }))
+  pred <- c("1", pred)
+  form_list <- paste(response, "~", pred)
+
+  #======================================================================
+  # Obtain R^2 for every model; use parallel computing if possible
+  #----------------------------------------------------------------------
+  if(is.null(n_cores)) n_cores <- parallel::detectCores() %/% 2
+  cl <- parallel::makeCluster(n_cores)
+  parallel::clusterExport(cl, c("mf", "dist", "link", "test_data",
+                                "glm_nb", "predict_R2"),
+                          envir=environment())
+  if(family == "negbin"){
+    catch <- parallel::clusterEvalQ(cl, library(MASS))
+    R2 <- parallel::parSapplyLB(cl, form_list, function(form){
+      fit <- glm_nb(form, mf, link = link, ...)
+      train_R2 <- predict_R2(fit, mf)
+      test_R2 <- NA_real_
+      if(!is.null(test_data)) test_R2 <- predict_R2(fit, test_data)
+      c(train_R2, test_R2)
     })
+  } else {
+    R2 <- parallel::parSapplyLB(cl, form_list, function(form){
+      fit <- glm(form, eval(dist), mf, ...)
+      train_R2 <- predict_R2(fit, mf)
+      test_R2 <- NA_real_
+      if(!is.null(test_data)) test_R2 <- predict_R2(fit, test_data)
+      c(train_R2, test_R2)
+    })
+  }
+  parallel::stopCluster(cl)
+  R2[1,1] <- 0
+  all_subsets <- dplyr::data_frame(n_pred = n_pred,
+                                   form = form_list,
+                                   train_R2 = R2[1,],
+                                   test_R2 = R2[2,])
+  all_subsets <- dplyr::arrange(all_subsets, n_pred, dplyr::desc(train_R2))
 
-    idx <- R2$n_repeats == n
+  #======================================================================
+  # Obtain model with best R^2 for each number of parameters
+  #----------------------------------------------------------------------
+  best_subsets <- dplyr::group_by(all_subsets, n_pred)
+  best_subsets <- dplyr::filter(best_subsets, train_R2 == max(train_R2))
 
-    train_R2 <- matrix(sapply(best_fits, function(x)
-      1 - x$deviance / x$null.deviance), nrow = n_folds, ncol = p)
-    R2$R2_train[idx] <- apply(train_R2, 2, mean)
-    R2$R2_train_SE[idx] <- apply(train_R2, 2, get_se)
+  #======================================================================
+  # Perform cross-validation on best models
+  #----------------------------------------------------------------------
+  search_grid <- expand.grid(fold = 1:n_folds, n_pred = 0:p)
+  search_grid <- dplyr::left_join(search_grid, best_subsets, by = "n_pred")
+  seed_seq <- seq.int(from = seed, length.out = n_repeats)
+  doParallel::registerDoParallel()
+  R2 <- foreach(seed = seed_seq, .combine = rbind, .packages = "MASS") %dopar% {
+    set.seed(seed)
+    folds <- caret::createFolds(y, k = n_folds, list = FALSE)
+    fits <- mapply(function(fold, form){
+      if(family == "negbin"){
+        fit <- glm_nb(form, mf[folds != fold,], link = link, ...)
+        } else {
+          fit <- glm(form, eval(dist), mf[folds != fold,], ...)
+        }
+      }, fold = search_grid$fold, form = search_grid$form, SIMPLIFY = FALSE)
 
     cv_R2 <- matrix(mapply(function(fit, fold)
       predict_R2(fit, mf[folds == fold,]),
-      fit = best_fits, fold = search_grid$folds), nrow = n_folds, ncol = p)
-    R2$R2_cv[idx] <- apply(cv_R2, 2, mean)
-    R2$R2_cv_SE[idx] <- apply(cv_R2, 2, get_se)
+      fit = fits, fold = search_grid$fold), nrow = n_folds, ncol = p + 1)
+    R2_cv <- apply(cv_R2, 2, mean, na.rm = T)
+    R2_cv_SE <- apply(cv_R2, 2, function(x) sqrt(var(x)/length(x)))
 
-    if(!is.null(test_data)){
-      test_R2 <- matrix(sapply(best_fits, function(x)
-        predict_R2(x, test_data)), nrow = n_folds, ncol = p)
-      R2$R2_test[idx] <- apply(test_R2, 2, mean)
-      R2$R2_test_SE[idx] <- apply(test_R2, 2, get_se)
-    }
-
-    setTxtProgressBar(pb, counter)
-    counter <- counter + 1
+    data.frame(n_pred = 0:p,
+               cv_R2 = R2_cv,
+               cv_R2_SE = R2_cv_SE)
   }
-  R2 <- dplyr::group_by(R2, n_preds)
-  R2 <- dplyr::summarize_each(R2, dplyr::funs(mean(., na.rm = T)))
-  max_R2 <- max(R2$R2_cv)
-  if(max_R2 <= 0){
-    best_model <- glm(paste(response, "~ 1"), data = mf, family = family, ...)
-    best_model_1SE <- best_model
-  } else {
-    n_pred <- R2$n_preds[R2$R2_cv == max_R2]
-    all_fits <- lapply(all_subsets[[n_pred]],
-                function(col_idx) glm(paste(response, ".", sep = "~"),
-                                      data = mf[, c(1, col_idx)],
-                                      family = family, ...))
-    best_model <- all_fits[[which.min(sapply(all_fits, deviance))]]
-    min_R2 <- max_R2 - R2$R2_cv_SE[R2$R2_cv == max_R2]
-    if(min_R2 <= 0){
-      best_model_1SE <- glm(paste(response, "~ 1"), data = mf,
-                            family = family, ...)
+  #======================================================================
+  # Derive cross-validation statistics
+  #----------------------------------------------------------------------
+  R2 <- dplyr::group_by(R2, n_pred)
+  mean_R2 <- dplyr::summarize_each(R2, dplyr::funs(mean))
+  # if there are more repeats than folds in each repeat,
+  # report standard deviation of the mean R2 across repeats (empirical SEM);
+  # otherwise report mean theoretical SEM based on averaging R2 across folds.
+  if(n_repeats >= n_folds){
+    se_R2 <- dplyr::summarize(R2, cv_R2_SE = sd(cv_R2))
+    mean_R2$cv_R2_SE <- se_R2$cv_R2_SE
+  }
+  #======================================================================
+  # Fit best model and 1SE best model to full data set
+  #----------------------------------------------------------------------
+  best_subsets <- dplyr::left_join(best_subsets, mean_R2, by = "n_pred")
+  best_subset <- which.max(best_subsets$cv_R2)
+  best_form <- best_subsets$form[best_subset]
+  min_R2 <- max(best_subsets$cv_R2) - best_subsets$cv_R2_SE[best_subset]
+  best_subsets_1SE <- best_subsets[best_subsets$cv_R2 > min_R2,]
+  best_form_1SE <- best_subsets_1SE$form[which.min(best_subsets_1SE$n_pred)]
+  if(family == "negbin"){
+    best_model <- glm_nb(best_form, mf, link = link, ...)
+    if(best_form == best_form_1SE){
+      best_model_1SE <- best_model
     } else {
-      temp <- R2[R2$R2_cv > min_R2,]
-      n_pred <- min(temp$n_preds)
-      all_fits <- lapply(all_subsets[[n_pred]],
-                         function(col_idx) glm(paste(response, ".", sep = "~"),
-                                               data = mf[, c(1, col_idx)],
-                                               family = family, ...))
-      best_model_1SE <- all_fits[[which.min(sapply(all_fits, deviance))]]
+      best_model_1SE <- glm_nb(best_form_1SE, mf, link = link, ...)
+    }
+  } else{
+    best_model <- glm(best_form, eval(dist), mf, ...)
+    if(best_form == best_form_1SE){
+      best_model_1SE <- best_model
+    } else {
+      best_model_1SE <- glm(best_form_1SE, eval(dist), mf, ...)
     }
   }
-  structure(list(R2 = R2, best_model = best_model,
-                 best_model_1SE = best_model_1SE),
+
+  #======================================================================
+  # Construct beset_glm object
+  #----------------------------------------------------------------------
+  structure(list(all_subsets = all_subsets, best_subsets = best_subsets,
+                 best_model = best_model, best_model_1SE = best_model_1SE),
             class = "beset_glm")
 }
+
+#' @export
+beset_lm <- function(form, train_data, test_data = NULL,
+                     p_max = 10, n_folds = 10, n_repeats = 10,
+                     n_cores = NULL, seed = 42){
+  beset_glm(form, train_data, test_data = test_data, p_max = p_max,
+            n_folds = n_folds, n_repeats = n_repeats, n_cores = n_cores,
+            seed = seed)
+}
+
+glm_nb <- function (formula, data, weights, subset, na.action, start = NULL,
+                    etastart, mustart, control = glm.control(...),
+                    method = "glm.fit", model = TRUE, x = FALSE, y = TRUE,
+                    contrasts = NULL, ..., init.theta, link = log){
+  loglik <- function(n, th, mu, y, w){
+    sum(w * (lgamma(th + y) - lgamma(th) - lgamma(y + 1) + th * log(th) + y *
+               log(mu + (y == 0)) - (th + y) * log(th + mu)))
+  }
+  fam0 <- if (missing(init.theta))
+    do.call("poisson", list(link = link))
+  else do.call("negative.binomial", list(theta = init.theta, link = link))
+  mf <- Call <- match.call()
+  m <- match(c("formula", "data", "subset", "weights", "na.action",
+               "etastart", "mustart", "offset"), names(mf), 0)
+  mf <- mf[c(1, m)]
+  mf$drop.unused.levels <- TRUE
+  mf[[1L]] <- quote(stats::model.frame)
+  mf <- eval.parent(mf)
+  Terms <- attr(mf, "terms")
+  if (method == "model.frame")
+    return(mf)
+  Y <- model.response(mf, "numeric")
+  X <- if (!is.empty.model(Terms))
+    model.matrix(Terms, mf, contrasts)
+  else matrix(nrow = NROW(Y), ncol = 0)
+  w <- model.weights(mf)
+  if (!length(w))
+    w <- rep(1, nrow(mf))
+  else if (any(w < 0))
+    stop("negative weights not allowed")
+  offset <- model.offset(mf)
+  mustart <- model.extract(mf, "mustart")
+  etastart <- model.extract(mf, "etastart")
+  n <- length(Y)
+  if (!missing(method)) {
+    if (!exists(method, mode = "function"))
+      stop(gettextf("unimplemented method: %s", sQuote(method)),
+           domain = NA)
+    glm.fitter <- get(method)
+  }
+  else {
+    method <- "glm.fit"
+    glm.fitter <- stats::glm.fit
+  }
+  if (control$trace > 1)
+    message("Initial fit:")
+  fit <- glm.fitter(x = X, y = Y, w = w, start = start, etastart = etastart,
+                    mustart = mustart, offset = offset, family = fam0,
+                    control = list(maxit = control$maxit,
+                                   epsilon = control$epsilon,
+                                   trace = control$trace > 1),
+                    intercept = attr(Terms, "intercept") > 0)
+  class(fit) <- c("glm", "lm")
+  mu <- fit$fitted.values
+  th <- as.vector(theta.ml(Y, mu, sum(w), w, limit = control$maxit,
+                           trace = control$trace > 2))
+  if (control$trace > 1)
+    message(gettextf("Initial value for 'theta': %f", signif(th)),
+            domain = NA)
+  fam <- do.call("negative.binomial", list(theta = th, link = link))
+  iter <- 0
+  d1 <- sqrt(2 * max(1, fit$df.residual))
+  d2 <- del <- 1
+  g <- fam$linkfun
+  Lm <- loglik(n, th, mu, Y, w)
+  Lm0 <- Lm + 2 * d1
+  while ((iter <- iter + 1) <= control$maxit &&
+         (abs(Lm0 - Lm)/d1 + abs(del)/d2) > control$epsilon) {
+    eta <- g(mu)
+    fit <- glm.fitter(x = X, y = Y, w = w, etastart = eta, offset = offset,
+                      family = fam, control = list(maxit = control$maxit,
+                                                   epsilon = control$epsilon,
+                                                   trace = control$trace > 1),
+                      intercept = attr(Terms, "intercept") > 0)
+    t0 <- th
+    th <- theta.ml(Y, mu, sum(w), w, limit = control$maxit,
+                   trace = control$trace > 2)
+    fam <- do.call("negative.binomial", list(theta = th, link = link))
+    mu <- fit$fitted.values
+    del <- t0 - th
+    Lm0 <- Lm
+    Lm <- loglik(n, th, mu, Y, w)
+    if (control$trace) {
+      Ls <- loglik(n, th, Y, Y, w)
+      Dev <- 2 * (Ls - Lm)
+      message(sprintf("Theta(%d) = %f, 2(Ls - Lm) = %f",
+                      iter, signif(th), signif(Dev)), domain = NA)
+    }
+  }
+  if (!is.null(attr(th, "warn")))
+    fit$th.warn <- attr(th, "warn")
+  if (iter > control$maxit) {
+    warning("alternation limit reached")
+    fit$th.warn <- gettext("alternation limit reached")
+  }
+  if (length(offset) && attr(Terms, "intercept")) {
+    null.deviance <- if (length(Terms))
+      glm.fitter(X[, "(Intercept)", drop = FALSE], Y, w, offset = offset,
+                 family = fam, control = list(maxit = control$maxit,
+                                              epsilon = control$epsilon,
+                                              trace = control$trace > 1),
+                 intercept = TRUE)$deviance
+    else fit$deviance
+    fit$null.deviance <- null.deviance
+  }
+  class(fit) <- c("negbin", "glm", "lm")
+  fit$terms <- Terms
+  fit$formula <- as.vector(attr(Terms, "formula"))
+  Call$init.theta <- signif(as.vector(th), 10)
+  Call$link <- link
+  fit$call <- Call
+  if (model)
+    fit$model <- mf
+  fit$na.action <- attr(mf, "na.action")
+  if (x)
+    fit$x <- X
+  if (!y)
+    fit$y <- NULL
+  fit$theta <- as.vector(th)
+  fit$SE.theta <- attr(th, "SE")
+  fit$twologlik <- as.vector(2 * Lm)
+  fit$aic <- -fit$twologlik + 2 * fit$rank + 2
+  fit$contrasts <- attr(X, "contrasts")
+  fit$xlevels <- .getXlevels(Terms, mf)
+  fit$method <- method
+  fit$control <- control
+  fit$offset <- offset
+  fit
+}
+

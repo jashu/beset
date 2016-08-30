@@ -4,8 +4,9 @@
 \alias{beset_glm}
 \title{Best Subset Selection for Generalized Linear Models}
 \usage{
-beset_glm(form, train_data, test_data = NULL, family = "gaussian", ...,
-  p_max = 10, n_folds = 10, n_repeats = 10, n_cores = NULL, seed = 42)
+beset_glm(form, train_data, test_data = NULL, family = "gaussian",
+  link = NULL, ..., p_max = 10, n_folds = 10, n_repeats = 10,
+  n_cores = NULL, seed = 42)
 }
 \arguments{
 \item{form}{A model \code{\link[stats]{formula}}.}
@@ -16,11 +17,28 @@ beset_glm(form, train_data, test_data = NULL, family = "gaussian", ...,
 \item{test_data}{Optional \code{\link[base]{data.frame}} with the variables
 in \code{form} and the data to be used in model testing.}
 
+\item{family}{Character string naming the error distribution to be used in
+the model. Available families are listed under 'Details'.}
+
+\item{link}{Optional character string naming the link function to be used in
+the model. Available links and their defaults differ by \code{family} and are
+listed under 'Details'.}
+
+\item{...}{Additional arguments to be passed to \code{\link[stats]{glm}}}
+
+\item{p_max}{Maximum number of predictors to attempt to fit.}
+
 \item{n_folds}{Integer indicating the number of folds to use for
 cross-validation.}
 
 \item{n_repeats}{Integer indicating the number of times cross-validation
 should be repeated.}
+
+\item{n_cores}{Optional integer value indicating the number of workers to run
+in parallel during subset search and cross-validation. By default, this will
+be set to equal half of the detectable cores on your machine. You may wish to
+change this depending on your hardware and OS.
+See \code{\link[parallel]{parallel-package}} for more information.}
 
 \item{seed}{An integer used to seed the random number generator when
 assigning observations to folds.}
@@ -39,26 +57,38 @@ A list with the following three components:
    parameters within one standard error of the smallest cross-validation
    error (largest cross-validation R-squared)}
    }
- \item \code{\link[base]{data.frame}} with the following columns:
-   \describe{
-   \item{k_folds}{the number of k-folds used}
-   \item{n_preds}{the number of predictors in model}
-   \item{R2_train}{the mean in-fold (training) R-squared for each size of
-     best model}
-   \item{R2_train_SE}{the standard error of the mean in-fold (training)
-     R-squared for each size of best model}
-   \item{R2_cv}{the mean out-of-fold (test) R-squared for each size of best
-     model}
-   \item{R2_cv_SE}{the standard error of the mean out-of-fold (test)
-     R-squared for each size of best model}
-   \item{R2_test}{if \code{test_data} is provided, the mean R-squared when
-     the model fit to each subsample of the training data is applied to the
-     independent test set}
-   \item{R2_test_SE}{if \code{test_data} is provided, the standard error of
-     the mean R-squared when the model fit to each subsample of the training
-     data is applied to the independent test set}
+ \item\describe{
+   \item{all_subsets}{a data frame containing fit statistics for every
+     possible combination of predictors:
+     \describe{
+     \item{n_pred}{the number of predictors in model}
+     \item{form}{formula for model}
+     \item{train_R2}{Proportion of variance or deviance in the
+       \code{train_data} explained by each size of best model}
+     \item{test_R2}{if \code{test_data} is provided, the R-squared when
+       the model fit to \code{train_data} is applied to the \code{test_data}}
+      }
    }
  }
+ \item\describe{
+   \item{best_subsets}{a data frame containing cross-validation statistics
+     for the best model for each \code{n_pred} listed in \code{all_subsets}:
+     \describe{
+     \item{n_pred}{the number of predictors in model}
+     \item{form}{formula for best model of \code{n_pred}}
+     \item{train_R2}{Proportion of variance or deviance in the
+       \code{train_data} explained by each size of best model}
+     \item{test_R2}{if \code{test_data} is provided, the R-squared when
+       the model fit to \code{train_data} is applied to the \code{test_data}}
+     \item{cv_R2}{the mean cross-validation R-squared for each size of best
+       model, i.e., on average, how well models fit to \code{n-1} folds
+       explain the left-out fold}
+     \item{cv_R2_SE}{the standard error of the cross-validation R-squared for
+      each size of best model}
+      }
+   }
+ }
+}
 }
 \description{
 \code{beset_glm} performs best subset selection using repeated
