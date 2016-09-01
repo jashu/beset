@@ -23,45 +23,36 @@
 #' @export
 plot.beset_zeroinfl <- function(object, SE = TRUE, title = ""){
   data <- object$best_subsets
-  if(any(is.na(data$test_R2))) data <- dplyr::select(data, -test_R2)
-  data <- tidyr::gather(data, type, R2, train_R2:cv_R2)
-  data$type <- factor(gsub("_R2", "", data$type))
+  if(any(is.na(data$test_CE))) data <- dplyr::select(data, -test_CE)
+  data <- tidyr::gather(data, type, CE, train_CE:cv_CE)
+  data$type <- factor(gsub("_CE", "", data$type))
   data$n_zero_pred <- factor(data$n_zero_pred)
-  data$cv_R2_lower <- NA
-  data$cv_R2_upper <- NA
-  data$cv_R2_lower[data$type == "cv"] <-
-    with(data[data$type == "cv",], R2 - cv_R2_SE)
-  data$cv_R2_upper[data$type == "cv"] <-
-    with(data[data$type == "cv",], R2 + cv_R2_SE)
-  ymin <- min(0, data$cv_R2_lower, data$R2, na.rm = T)
-  ymax <- max(1, data$cv_R2_upper, data$R2, na.rm = T)
+  data$cv_CE_lower <- NA
+  data$cv_CE_upper <- NA
+  data$cv_CE_lower[data$type == "cv"] <-
+    with(data[data$type == "cv",], CE - cv_CE_SE)
+  data$cv_CE_upper[data$type == "cv"] <-
+    with(data[data$type == "cv",], CE + cv_CE_SE)
   xmax <- max(data$n_count_pred)
   p <- ggplot(data = data,
               aes(x = n_count_pred,
-                  y = R2,
+                  y = CE,
                   color = type)) +
-    theme_bw() +
+    facet_wrap(~ n_zero_pred) +
     ggtitle(title) +
-    ylab(expression(R^{2})) +
+    xlab("Number of Predictors in Count Model") +
+    ylab("Cross-Entropy Error") +
     scale_x_continuous(breaks = 0:xmax) +
-    scale_y_continuous(limits = c(ymin, ymax)) +
     geom_line() +
+    theme_bw() +
     theme(legend.title = element_blank())
-  if(object$search == "identical"){
-    p <- p +  xlab("Number of Predictors")
-    footnote <- paste("Count model and zero-inflation model constrained",
-                      "to use same predictors.")
-  } else {
-   p <- p + xlab("Number of Predictors in Count Model") +
-     facet_wrap(~ n_zero_pred)
-   footnote <- paste("Numbers at top of each panel indicate",
-                     "number of predictors in zero-inflation model.")
-  }
   if(SE){
     p <- p + geom_errorbar(data = data[data$type == "cv",],
-                           aes(x = n_count_pred, ymin = cv_R2_lower,
-                               ymax = cv_R2_upper), width = 0.2)
+                           aes(x = n_count_pred, ymin = cv_CE_lower,
+                               ymax = cv_CE_upper), width = 0.2)
   }
+  footnote <- paste("Numbers at top of each panel indicate",
+                     "number of predictors in zero-inflation model.")
   grid::grid.newpage()
   g <- gridExtra::arrangeGrob(p, bottom = grid::textGrob(
     footnote, x = 0.5,  just = "centre",

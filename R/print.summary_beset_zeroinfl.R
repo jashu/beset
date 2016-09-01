@@ -11,45 +11,64 @@ print.summary_beset_zeroinfl <- function(object,
   x <- object$best
   if (!x$converged) {
     cat("model did not converge\n")
-  }
-  else {
-    cat(paste("Count model coefficients (", x$dist, " with log link):\n",
+  } else {
+    cat("Pearson residuals:\n")
+    print(structure(quantile(x$residuals), names = c("Min",
+                                                     "1Q", "Median", "3Q", "Max")), digits = digits, ...)
+    cat(paste("\nCount model coefficients (", x$dist, " with log link):\n",
               sep = ""))
-    print.default(format(x$coefficients$count, digits = digits),
-                  print.gap = 2, quote = FALSE)
-    if (x$dist == "negbin")
-      cat(paste("Theta =", round(x$theta, digits), "\n"))
+    printCoefmat(x$coefficients$count, digits = digits, signif.legend = FALSE)
     cat(paste("\nZero-inflation model coefficients (binomial with ",
               x$link, " link):\n", sep = ""))
-    print.default(format(x$coefficients$zero, digits = digits),
-                  print.gap = 2, quote = FALSE)
+    printCoefmat(x$coefficients$zero, digits = digits, signif.legend = FALSE)
+    if (getOption("show.signif.stars") & any(rbind(x$coefficients$count,
+                                                   x$coefficients$zero)[, 4] < 0.1))
+      cat("---\nSignif. codes: ", "0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1",
+          "\n")
+    if (x$dist == "negbin")
+      cat(paste("\nTheta =", round(x$theta, digits), "\n")) else cat("\n")
+    cat(paste("Number of iterations in", x$method, "optimization:",
+              tail(na.omit(x$optim$count), 1), "\n"))
+    cat("Log-likelihood:", formatC(x$loglik, digits = digits),
+        "on", x$n - x$df.residual, "Df\n")
+    cat("Cross-validation error:", round(object$best_cve, 2),
+        "(cross entropy)\n")
   }
-  cat(paste("\n\nTraining R-squared:", round(object$train_R2,2),
-              "\nCross-validation R-squared:", round(object$cv_R2,2),
-              "\nTest R-squared:", round(object$test_R2,2)))
   cat(paste("\n=======================================================",
             "\nBest Parsimonious Model (within 1 SE of Best Model):\n",
             object$best_form_1SE,
             "\n\n"))
-  x <- object$best_1SE
-  if (!x$converged) {
-    cat("model did not converge\n")
+  if(identical(object$best, object$best_1SE)){
+    cat("identical to Best Model (see above)")
+  } else {
+    x <- object$best_1SE
+    if (!x$converged) {
+      cat("model did not converge\n")
+    }
+    else {
+      cat("Pearson residuals:\n")
+      print(structure(quantile(x$residuals), names = c("Min",
+                                                       "1Q", "Median", "3Q", "Max")), digits = digits, ...)
+      cat(paste("\nCount model coefficients (", x$dist, " with log link):\n",
+                sep = ""))
+      printCoefmat(x$coefficients$count, digits = digits, signif.legend = FALSE)
+      cat(paste("\nZero-inflation model coefficients (binomial with ",
+                x$link, " link):\n", sep = ""))
+      printCoefmat(x$coefficients$zero, digits = digits, signif.legend = FALSE)
+      if (getOption("show.signif.stars") & any(rbind(x$coefficients$count,
+                                                     x$coefficients$zero)[, 4] < 0.1))
+        cat("---\nSignif. codes: ", "0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1",
+            "\n")
+      if (x$dist == "negbin")
+        cat(paste("\nTheta =", round(x$theta, digits), "\n")) else cat("\n")
+      cat(paste("Number of iterations in", x$method, "optimization:",
+                tail(na.omit(x$optim$count), 1), "\n"))
+      cat("Log-likelihood:", formatC(x$loglik, digits = digits),
+          "on", x$n - x$df.residual, "Df\n")
+      cat("Cross-validation error:", round(object$best_cve_1SE, 2),
+          "(cross entropy)\n")
+    }
   }
-  else {
-    cat(paste("Count model coefficients (", x$dist, " with log link):\n",
-              sep = ""))
-    print.default(format(x$coefficients$count, digits = digits),
-                  print.gap = 2, quote = FALSE)
-    if (x$dist == "negbin")
-      cat(paste("Theta =", round(x$theta, digits), "\n"))
-    cat(paste("\nZero-inflation model coefficients (binomial with ",
-              x$link, " link):\n", sep = ""))
-    print.default(format(x$coefficients$zero, digits = digits),
-                  print.gap = 2, quote = FALSE)
-  }
-    cat(paste("\n\nTraining R-squared:", round(object$train_R2_1SE,2),
-              "\nCross-validation R-squared:", round(object$cv_R2_1SE,2),
-              "\nTest R-squared:", round(object$test_R2_1SE,2)))
   cat("\n=======================================================")
 }
 

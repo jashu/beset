@@ -9,27 +9,18 @@
 
 summary.beset_glm <- function(object){
   data <- object$best_subsets
-  n_pred <- length(all.vars(object$best_model$terms)) - 1
-  form <- data$form[data$n_pred == n_pred]
-  coef <- summary(object$best_model)$coefficients
-  train_R2 <- data$train_R2[data$n_pred == n_pred]
-  cv_R2 <- data$cv_R2[data$n_pred == n_pred]
-  test_R2 <- data$test_R2[data$n_pred == n_pred]
-  n_pred <- length(all.vars(object$best_model_1SE$terms)) - 1
-  form_1SE <- data$form[data$n_pred == n_pred]
-  coef_1SE <- summary(object$best_model_1SE)$coefficients
-  train_R2_1SE<- data$train_R2[data$n_pred == n_pred]
-  cv_R2_1SE <- data$cv_R2[data$n_pred == n_pred]
-  test_R2_1SE <- data$test_R2[data$n_pred == n_pred]
-  structure(list(form = form,
-                 coef = coef,
-                 train_R2 = train_R2,
-                 cv_R2 = cv_R2,
-                 test_R2 = test_R2,
-                 form_1SE = form_1SE,
-                 coef_1SE = coef_1SE,
-                 train_R2_1SE = train_R2_1SE,
-                 cv_R2_1SE = cv_R2_1SE,
-                 test_R2_1SE = test_R2_1SE),
+  best <- summary(object$best_model)
+  form <- as.character(terms(best))
+  form <- paste0(form[2], " ", form[1], " ", form[3])
+  best_form <- form
+  best_cve <- data$cv_CE[data$form == best_form]
+  best_1SE <- summary(object$best_model_1SE)
+  form <- as.character(terms(best_1SE))
+  form <- paste0(form[2], " ", form[1], " ", form[3])
+  best_form_1SE <- form
+  best_cve_1SE <- data$cv_CE[data$form == best_form_1SE]
+  structure(list(best = best, best_1SE = best_1SE,
+                 best_form = best_form, best_form_1SE = best_form_1SE,
+                 best_cve = best_cve, best_cve_1SE = best_cve_1SE),
             class = "summary_beset_glm")
 }
