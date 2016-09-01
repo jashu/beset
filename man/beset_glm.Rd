@@ -44,7 +44,7 @@ See \code{\link[parallel]{parallel-package}} for more information.}
 assigning observations to folds.}
 }
 \value{
-A list with the following three components:
+A "beset_glm" object with the following components:
 \enumerate{
  \item\describe{
    \item{best_model}{an object of class \code{\link[stats]{glm}} corresponding
@@ -63,9 +63,9 @@ A list with the following three components:
      \describe{
      \item{n_pred}{the number of predictors in model}
      \item{form}{formula for model}
-     \item{train_R2}{Proportion of variance or deviance in the
+     \item{train_CE}{Proportion of variance or deviance in the
        \code{train_data} explained by each size of best model}
-     \item{test_R2}{if \code{test_data} is provided, the R-squared when
+     \item{test_CE}{if \code{test_data} is provided, the R-squared when
        the model fit to \code{train_data} is applied to the \code{test_data}}
       }
    }
@@ -76,14 +76,14 @@ A list with the following three components:
      \describe{
      \item{n_pred}{the number of predictors in model}
      \item{form}{formula for best model of \code{n_pred}}
-     \item{train_R2}{Proportion of variance or deviance in the
+     \item{train_CE}{Proportion of variance or deviance in the
        \code{train_data} explained by each size of best model}
-     \item{test_R2}{if \code{test_data} is provided, the R-squared when
+     \item{test_CE}{if \code{test_data} is provided, the R-squared when
        the model fit to \code{train_data} is applied to the \code{test_data}}
-     \item{cv_R2}{the mean cross-validation R-squared for each size of best
+     \item{cv_CE}{the mean cross-validation R-squared for each size of best
        model, i.e., on average, how well models fit to \code{n-1} folds
        explain the left-out fold}
-     \item{cv_R2_SE}{the standard error of the cross-validation R-squared for
+     \item{cv_CE_SE}{the standard error of the cross-validation R-squared for
       each size of best model}
       }
    }
@@ -139,6 +139,6 @@ number generator as one of its arguments.
 }
 \seealso{
 \code{\link[caret]{createFolds}}, \code{\link{beset_lm}},
-\code{\link[base]{set.seed}}, \code{\link{predict_R2}}
+\code{\link[base]{set.seed}}, \code{\link{cross_entropy}}
 }
 

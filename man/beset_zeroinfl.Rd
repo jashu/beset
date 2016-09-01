@@ -2,13 +2,21 @@
 % Please edit documentation in R/beset_zeroinfl.R
 \name{beset_zeroinfl}
 \alias{beset_zeroinfl}
-\title{Best Subset Selection for Generalized Linear Models}
+\title{Best Subset Selection for Zero-inflated Count Data Regression}
 \usage{
 beset_zeroinfl(form, train_data, test_data = NULL, family = "poisson",
-  link = "logit", ..., search = "stagewise", p_max = 10, n_folds = 10,
+  link = "logit", ..., p_count_max = 10, p_zero_max = 10, n_folds = 10,
   n_repeats = 10, n_cores = NULL, seed = 42)
 }
 \arguments{
+\item{form}{A model \code{\link[stats]{formula}}.}
+
+\item{train_data}{A \code{\link[base]{data.frame}} with the variables in
+\code{form} and the data to be used in model training.}
+
+\item{test_data}{Optional \code{\link[base]{data.frame}} with the variables
+in \code{form} and the data to be used in model testing.}
+
 \item{family}{Character string naming the count model family. Options are
 \code{"poisson"} (default), \code{"negbin"}, or \code{"geometric"}. (Note a
 log link is always used with the count model).}
@@ -20,42 +28,81 @@ is always used with the zero-inflation model).}
 
 \item{...}{Optional named arguments accepted by \code{\link[pscl]{zeroinfl}}.}
 
-\item{search}{Character string naming the search strategy to use. Options are
-\code{"stagewise"} (default), \code{"identical"}, or \code{"exhasutive"}. See
-'Details' for explanation.}
+\item{n_folds}{Integer indicating the number of folds to use for
+cross-validation.}
+
+\item{n_repeats}{Integer indicating the number of times cross-validation
+should be repeated.}
+
+\item{n_cores}{Optional integer value indicating the number of workers to run
+in parallel during subset search and cross-validation. By default, this will
+be set to equal half of the detectable cores on your machine. You may wish to
+change this depending on your hardware and OS.
+See \code{\link[parallel]{parallel-package}} for more information.}
+
+\item{seed}{An integer used to seed the random number generator when
+assigning observations to folds.}
 }
 \value{
-A list with the following three components:
+A "beset_zeroinfl" object with the following components:
 \enumerate{
  \item\describe{
-   \item{best_model}{an object of class \code{"zeroinfl"} corresponding
-   to the best model with the number of parameters with the smallest
-   cross-validation error (largest cross-validation R-squared)}
+   \item{best_model}{an object of class \code{\link[pscl]{zeroinfl}}
+   corresponding to the best model with the number of parameters with the
+   smallest cross-validation error (largest cross-validation R-squared)}
    }
  \item\describe{
-   \item{best_model_1SE}{an object of class \code{"zeroinfl"}
+   \item{best_model_1SE}{an object of class \code{\link[pscl]{zeroinfl}}
    corresponding to the best model with the smallest number of
    parameters within one standard error of the smallest cross-validation
    error (largest cross-validation R-squared)}
    }
- \item\describe{} \code{\link[base]{data.frame}} with the following columns:
-   \describe{
-   \item{k_folds}{the number of k-folds used}
-   \item{n_preds}{the number of predictors in model}
-   \item{R2_train}{the mean in-fold (training) R-squared for each size of
-     best model}
-   \item{R2_train_SE}{the standard error of the mean in-fold (training)
-     R-squared for each size of best model}
-   \item{R2_cv}{the mean out-of-fold (test) R-squared for each size of best
-     model}
-   \item{R2_cv_SE}{the standard error of the mean out-of-fold (test)
-     R-squared for each size of best model}
-   \item{R2_test}{if \code{test_data} is provided, the mean R-squared when
-     the model fit to each subsample of the training data is applied to the
-     independent test set}
-   \item{R2_test_SE}{if \code{test_data} is provided, the standard error of
-     the mean R-squared when the model fit to each subsample of the training
-     data is applied to the independent test set}
+ \item\describe{
+   \item{all_count_subsets}{a data frame containing fit statistics for every
+     possible combination of predictors:
+     \describe{
+     \item{n_count_pred}{the number of predictors in model}
+     \item{form}{formula for model}
+     \item{train_CE}{Proportion of variance or deviance in the
+       \code{train_data} explained by each size of best model}
+     \item{test_CE}{if \code{test_data} is provided, the R-squared when
+       the model fit to \code{train_data} is applied to the \code{test_data}}
+      }
+   }
+ }
+  \item\describe{
+   \item{all_zero_subsets}{a data frame containing fit statistics for every
+     possible combination of predictors:
+     \describe{
+     \item{n_zero_pred}{the number of predictors in model}
+     \item{form}{formula for model}
+     \item{train_CE}{Proportion of variance or deviance in the
+       \code{train_data} explained by each size of best model}
+     \item{test_CE}{if \code{test_data} is provided, the R-squared when
+       the model fit to \code{train_data} is applied to the \code{test_data}}
+      }
+   }
+ }
+ \item\describe{
+   \item{best_subsets}{a data frame containing cross-validation statistics
+     for the best model for each combination of \code{n_count_pred} and
+       \code{n_zero_pred}:
+     \describe{
+     \item{n_count_pred}{the number of predictors in model}
+     \item{n_zero_pred}{the number of predictors in model}
+     \item{form}{formula for best model of \code{n_count_pred} and
+       \code{n_zero_pred}}
+     \item{train_CE}{Proportion of variance or deviance in the
+       \code{train_data} explained by each size of best model}
+     \item{test_CE}{if \code{test_data} is provided, the R-squared when
+       the model fit to \code{train_data} is applied to the \code{test_data}}
+     \item{cv_CE}{the mean cross-validation R-squared for each size of best
+       model, i.e., on average, how well models fit to \code{n-1} folds
+       explain the left-out fold}
+     \item{cv_CE_SE}{the standard error of the cross-validation R-squared for
+      each size of best model}
+      }
+     }
    }
  }
 }
@@ -114,6 +161,6 @@ the random number generator as one of its arguments.
 \seealso{
 \code{\link[caret]{createFolds}}, \code{\link{beset_lm}},
 \code{\link[pscl]{zeroinfl}}, \code{\link[base]{set.seed}},
-\code{\link{predict_R2}}
+\code{\link{cross_entropy}}
 }
 

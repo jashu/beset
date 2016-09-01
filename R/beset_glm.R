@@ -45,7 +45,7 @@
 #' }
 #'
 #' @seealso \code{\link[caret]{createFolds}}, \code{\link{beset_lm}},
-#' \code{\link[base]{set.seed}}, \code{\link{predict_R2}}
+#' \code{\link[base]{set.seed}}, \code{\link{cross_entropy}}
 #'
 #' @param form A model \code{\link[stats]{formula}}.
 #'
@@ -100,9 +100,9 @@
 #'      \describe{
 #'      \item{n_pred}{the number of predictors in model}
 #'      \item{form}{formula for model}
-#'      \item{train_R2}{Proportion of variance or deviance in the
+#'      \item{train_CE}{Proportion of variance or deviance in the
 #'        \code{train_data} explained by each size of best model}
-#'      \item{test_R2}{if \code{test_data} is provided, the R-squared when
+#'      \item{test_CE}{if \code{test_data} is provided, the R-squared when
 #'        the model fit to \code{train_data} is applied to the \code{test_data}}
 #'       }
 #'    }
@@ -113,14 +113,14 @@
 #'      \describe{
 #'      \item{n_pred}{the number of predictors in model}
 #'      \item{form}{formula for best model of \code{n_pred}}
-#'      \item{train_R2}{Proportion of variance or deviance in the
+#'      \item{train_CE}{Proportion of variance or deviance in the
 #'        \code{train_data} explained by each size of best model}
-#'      \item{test_R2}{if \code{test_data} is provided, the R-squared when
+#'      \item{test_CE}{if \code{test_data} is provided, the R-squared when
 #'        the model fit to \code{train_data} is applied to the \code{test_data}}
-#'      \item{cv_R2}{the mean cross-validation R-squared for each size of best
+#'      \item{cv_CE}{the mean cross-validation R-squared for each size of best
 #'        model, i.e., on average, how well models fit to \code{n-1} folds
 #'        explain the left-out fold}
-#'      \item{cv_R2_SE}{the standard error of the cross-validation R-squared for
+#'      \item{cv_CE_SE}{the standard error of the cross-validation R-squared for
 #'       each size of best model}
 #'       }
 #'    }
@@ -163,6 +163,24 @@ beset_glm <- function(form, train_data, test_data = NULL,
     dist <- call(family)
   } else {
     dist <- call(family, link = link)
+  }
+
+  #==================================================================
+  # Screen for linear dependencies among predictors
+  #------------------------------------------------------------------
+  mm <- model.matrix(form, data = train_data)
+  colinear_vars <- caret::findLinearCombos(mm[, 2:ncol(mm)])
+  if(!is.null(colinear_vars$remove)){
+    factor_idx <- which(sapply(mf, class) == "factor")
+    factor_exp <- sapply(mf[, factor_idx], function(x) length(levels(x))) - 1
+    mf_to_mm <- rep(1, ncol(mf))
+    mf_to_mm[factor_idx] <- factor_exp
+    mf_to_mm <- cumsum(mf_to_mm) - 1
+    to_remove <- names(mf)[mf_to_mm %in% colinear_vars$remove]
+    stop(paste(length(to_remove), " linear dependencies found. ",
+               "Consider removing the following predictors:\n\t",
+               paste0(to_remove, collapse = "\n\t"),
+               sep = ""))
   }
 
   #==================================================================
@@ -215,24 +233,6 @@ beset_glm <- function(form, train_data, test_data = NULL,
                   sep = ""), immediate. = TRUE)
   }
 
-  #==================================================================
-  # Screen for linear dependencies among predictors
-  #------------------------------------------------------------------
-  mm <- model.matrix(form, data = train_data)
-  colinear_vars <- caret::findLinearCombos(mm[, 2:ncol(mm)])
-  if(!is.null(colinear_vars$remove)){
-    factor_idx <- which(sapply(mf, class) == "factor")
-    factor_exp <- sapply(mf[, factor_idx], function(x) length(levels(x))) - 1
-    mf_to_mm <- rep(1, ncol(mf))
-    mf_to_mm[factor_idx] <- factor_exp
-    mf_to_mm <- cumsum(mf_to_mm) - 1
-    to_remove <- names(mf)[mf_to_mm %in% colinear_vars$remove]
-    stop(paste(length(to_remove), " linear dependencies found. ",
-               "Consider removing the following predictors:\n\t",
-               paste0(to_remove, collapse = "\n\t"),
-               sep = ""))
-  }
-
   #======================================================================
   # Make list of all possible formulas with number of predictors <= p_max
   #----------------------------------------------------------------------
@@ -247,44 +247,43 @@ beset_glm <- function(form, train_data, test_data = NULL,
   form_list <- paste(response, "~", pred)
 
   #======================================================================
-  # Obtain R^2 for every model; use parallel computing if possible
+  # Obtain cross entropy for every model
   #----------------------------------------------------------------------
   if(is.null(n_cores)) n_cores <- parallel::detectCores() %/% 2
   cl <- parallel::makeCluster(n_cores)
   parallel::clusterExport(cl, c("mf", "dist", "link", "test_data",
-                                "glm_nb", "predict_R2"),
+                                "glm_nb", "cross_entropy"),
                           envir=environment())
   if(family == "negbin"){
     catch <- parallel::clusterEvalQ(cl, library(MASS))
-    R2 <- parallel::parSapplyLB(cl, form_list, function(form){
+    CE <- parallel::parSapplyLB(cl, form_list, function(form){
       fit <- glm_nb(form, mf, link = link, ...)
-      train_R2 <- predict_R2(fit, mf)
-      test_R2 <- NA_real_
-      if(!is.null(test_data)) test_R2 <- predict_R2(fit, test_data)
-      c(train_R2, test_R2)
+      train_CE <- cross_entropy(fit, mf)
+      test_CE <- NA_real_
+      if(!is.null(test_data)) test_CE <- cross_entropy(fit, test_data)
+      c(train_CE, test_CE)
     })
   } else {
-    R2 <- parallel::parSapplyLB(cl, form_list, function(form){
+    CE <- parallel::parSapplyLB(cl, form_list, function(form){
       fit <- glm(form, eval(dist), mf, ...)
-      train_R2 <- predict_R2(fit, mf)
-      test_R2 <- NA_real_
-      if(!is.null(test_data)) test_R2 <- predict_R2(fit, test_data)
-      c(train_R2, test_R2)
+      train_CE <- cross_entropy(fit, mf)
+      test_CE <- NA_real_
+      if(!is.null(test_data)) test_CE <- cross_entropy(fit, test_data)
+      c(train_CE, test_CE)
     })
   }
   parallel::stopCluster(cl)
-  R2[1,1] <- 0
   all_subsets <- dplyr::data_frame(n_pred = n_pred,
                                    form = form_list,
-                                   train_R2 = R2[1,],
-                                   test_R2 = R2[2,])
-  all_subsets <- dplyr::arrange(all_subsets, n_pred, dplyr::desc(train_R2))
+                                   train_CE = CE[1,],
+                                   test_CE = CE[2,])
+  all_subsets <- dplyr::arrange(all_subsets, n_pred, dplyr::desc(train_CE))
 
   #======================================================================
   # Obtain model with best R^2 for each number of parameters
   #----------------------------------------------------------------------
   best_subsets <- dplyr::group_by(all_subsets, n_pred)
-  best_subsets <- dplyr::filter(best_subsets, train_R2 == max(train_R2))
+  best_subsets <- dplyr::filter(best_subsets, train_CE == min(train_CE))
 
   #======================================================================
   # Perform cross-validation on best models
@@ -293,7 +292,7 @@ beset_glm <- function(form, train_data, test_data = NULL,
   search_grid <- dplyr::left_join(search_grid, best_subsets, by = "n_pred")
   seed_seq <- seq.int(from = seed, length.out = n_repeats)
   doParallel::registerDoParallel()
-  R2 <- foreach(seed = seed_seq, .combine = rbind, .packages = "MASS") %dopar% {
+  CE <- foreach(seed = seed_seq, .combine = rbind, .packages = "MASS") %dopar% {
     set.seed(seed)
     folds <- caret::createFolds(y, k = n_folds, list = FALSE)
     fits <- mapply(function(fold, form){
@@ -304,36 +303,30 @@ beset_glm <- function(form, train_data, test_data = NULL,
         }
       }, fold = search_grid$fold, form = search_grid$form, SIMPLIFY = FALSE)
 
-    cv_R2 <- matrix(mapply(function(fit, fold)
-      predict_R2(fit, mf[folds == fold,]),
+    cv_CE <- matrix(mapply(function(fit, fold)
+      cross_entropy(fit, mf[folds == fold,]),
       fit = fits, fold = search_grid$fold), nrow = n_folds, ncol = p + 1)
-    R2_cv <- apply(cv_R2, 2, mean, na.rm = T)
-    R2_cv_SE <- apply(cv_R2, 2, function(x) sqrt(var(x)/length(x)))
+    CE_cv <- apply(cv_CE, 2, mean, na.rm = T)
+    CE_cv_SE <- apply(cv_CE, 2, function(x) sqrt(var(x)/length(x)))
 
     data.frame(n_pred = 0:p,
-               cv_R2 = R2_cv,
-               cv_R2_SE = R2_cv_SE)
+               cv_CE = CE_cv,
+               cv_CE_SE = CE_cv_SE)
   }
   #======================================================================
   # Derive cross-validation statistics
   #----------------------------------------------------------------------
-  R2 <- dplyr::group_by(R2, n_pred)
-  mean_R2 <- dplyr::summarize_each(R2, dplyr::funs(mean))
-  # if there are more repeats than folds in each repeat,
-  # report standard deviation of the mean R2 across repeats (empirical SEM);
-  # otherwise report mean theoretical SEM based on averaging R2 across folds.
-  if(n_repeats >= n_folds){
-    se_R2 <- dplyr::summarize(R2, cv_R2_SE = sd(cv_R2))
-    mean_R2$cv_R2_SE <- se_R2$cv_R2_SE
-  }
+  CE <- dplyr::group_by(CE, n_pred)
+  mean_CE <- dplyr::summarize_each(CE, dplyr::funs(mean))
+
   #======================================================================
   # Fit best model and 1SE best model to full data set
   #----------------------------------------------------------------------
-  best_subsets <- dplyr::left_join(best_subsets, mean_R2, by = "n_pred")
-  best_subset <- which.max(best_subsets$cv_R2)
+  best_subsets <- dplyr::left_join(best_subsets, mean_CE, by = "n_pred")
+  best_subset <- which.min(best_subsets$cv_CE)
   best_form <- best_subsets$form[best_subset]
-  min_R2 <- max(best_subsets$cv_R2) - best_subsets$cv_R2_SE[best_subset]
-  best_subsets_1SE <- best_subsets[best_subsets$cv_R2 > min_R2,]
+  max_CE <- min(best_subsets$cv_CE) + best_subsets$cv_CE_SE[best_subset]
+  best_subsets_1SE <- best_subsets[best_subsets$cv_CE < max_CE,]
   best_form_1SE <- best_subsets_1SE$form[which.min(best_subsets_1SE$n_pred)]
   if(family == "negbin"){
     best_model <- glm_nb(best_form, mf, link = link, ...)
