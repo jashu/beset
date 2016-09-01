@@ -2,7 +2,7 @@ Package: beset
 Type: Package
 Title: Best Subset Predictive Modeling
 Version: 0.0.0.9100
-Date: 2016-08-30
+Date: 2016-09-01
 Authors@R: person("Jason", "Shumake", email = "shumake@utexas.edu",
   role = c("aut","cre"))
 Description: Provides a friendly user interface, summary, and plotting methods
@@ -26,7 +26,8 @@ Imports:
   MASS,
   parallel,
   doParallel,
-  pscl
+  pscl,
+  VGAM
 License: GPL-3
 LazyData: TRUE
 RoxygenNote: 5.0.1
