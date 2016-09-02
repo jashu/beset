@@ -1,30 +1,47 @@
 #' Best Subset Selection for Generalized Linear Models
 #'
 #' \code{beset_glm} performs best subset selection using repeated
-#' cross-validation to find the optimal number of predictors.
+#' cross-validation to find the optimal number of predictors for several
+#' families of generalized linear models.
 #'
 #' \code{beset_glm} performs best subset selection for generalized linear
 #' models, fitting a separate model for each possible combination of predictors,
 #' i.e., all models that contain exactly 1 predictor, all models that contain
 #' exactly 2 predictors, and so forth. For each number of predictors,
-#' \code{beset_glm} picks the model with the smallest deviance. This results in
-#' a best fit for every possible number of predictors. \code{beset_glm} then
-#' uses \code{k}-fold cross-validation to select the "best of the best": the
-#' best model with the number of predictors that minimizes prediction error,
-#' i.e., how well the best models trained using \eqn{k - 1} folds predict the
-#' out-of-fold sample. \code{beset_glm} uses \code{\link[caret]{createFolds}} to
-#' randomly assign observations to \code{k} folds within levels of the outcome
-#' when the outcome is a factor or within subgroups based on percentiles when
-#' the outcome is numeric. This insures that the folds will be matched in terms
-#' of the outcome's frequency distribution. \code{beset_glm} also insures the
-#' reproducibility of your analysis by requiring a \code{seed} to the random
-#' number generator as one of its arguments.
+#' \code{beset_glm} picks the model with the minimum cross-entropy (estimated
+#' as the negative log of the expected probability of obtaining the observed
+#' data given the model). This results in a best fit for every possible number
+#' of predictors. \code{beset_glm} then uses \code{k}-fold cross-validation to
+#' select the "best of the best": the best model with the number of predictors
+#' that minimizes prediction cross-entropy, i.e., how well the best models
+#' trained using \eqn{k - 1} folds predict the left-out fold. \code{beset_glm}
+#' uses \code{\link[caret]{createFolds}} to randomly assign observations to
+#' \code{k} folds within levels of the outcome when the outcome is a factor or
+#' within subgroups based on percentiles when the outcome is numeric. This
+#' insures that the folds will be matched in terms of the outcome's frequency
+#' distribution. \code{beset_glm} also insures the reproducibility of your
+#' analysis by requiring a \code{seed} to the random number generator as one of
+#' its arguments.
+#'
+#' @section List of available families and link functions:
+#' \describe{
+#'  \item{\code{"gaussian"}}{The Gaussian family accepts the links
+#'    \code{"identity"} (default), \code{"log"}, and \code{"inverse"}.}
+#'  \item{\code{"binomial"}}{The binomial family accepts the links
+#'    \code{"logit"} (default), \code{"probit"}, \code{"cauchit"}, \code{"log"}, and
+#'    \code{"cloglog"} (complementary log-log).}
+#'  \item{\code{"poisson"}}{The Poisson family accepts the links \code{"log"}
+#'    (default), \code{"sqrt"}, and \code{"identity"}.}
+#'  \item{\code{"negbin"}}{The negative binomial family accepts the links
+#'    \code{"log"} (default), \code{"sqrt"}, and \code{"identity"}.}
+#'  }
 #'
 #' @section Warnings:
 #' \enumerate{
 #'  \item \code{beset_glm} handles missing data by performing listwise deletion.
-#'   No other options for handling missing data are provided. The user is
-#'   encouraged to deal with missing values prior to running this function.
+#'   No other options for handling missing data are provided at this time. The
+#'   user is encouraged to deal with missing values prior to running this
+#'   function.
 #'  \item \code{beset_glm} is intended for use with additive models only.
 #'    While there is no prohibition against the inclusion of interaction or
 #'    polynomial terms, this practice is strongly discouraged. At best, this
@@ -44,8 +61,8 @@
 #'    works with a more restricted set of distributions.
 #' }
 #'
-#' @seealso \code{\link[caret]{createFolds}}, \code{\link{beset_lm}},
-#' \code{\link[base]{set.seed}}, \code{\link{cross_entropy}}
+#' @seealso \code{\link[caret]{createFolds}}, \code{\link[stats]{glm}},
+#' \code{\link[base]{set.seed}}, \code{\link[MASS]{glm.nb}}
 #'
 #' @param form A model \code{\link[stats]{formula}}.
 #'
@@ -56,11 +73,12 @@
 #' in \code{form} and the data to be used in model testing.
 #'
 #' @param family Character string naming the error distribution to be used in
-#' the model. Available families are listed under 'Details'.
+#' the model. Available families are listed under 'List of available families
+#' and link functions'.
 #'
 #' @param link Optional character string naming the link function to be used in
 #' the model. Available links and their defaults differ by \code{family} and are
-#' listed under 'Details'.
+#' listed under 'List of available families and link functions'.
 #'
 #' @param ... Additional arguments to be passed to \code{\link[stats]{glm}}
 #'
@@ -74,7 +92,7 @@
 #'
 #' @param n_cores Optional integer value indicating the number of workers to run
 #' in parallel during subset search and cross-validation. By default, this will
-#' be set to equal half of the detectable cores on your machine. You may wish to
+#' be set to equal half the detectable cores on your machine. You may wish to
 #' change this depending on your hardware and OS.
 #' See \code{\link[parallel]{parallel-package}} for more information.
 #'
@@ -100,28 +118,22 @@
 #'      \describe{
 #'      \item{n_pred}{the number of predictors in model}
 #'      \item{form}{formula for model}
-#'      \item{train_CE}{Proportion of variance or deviance in the
-#'        \code{train_data} explained by each size of best model}
-#'      \item{test_CE}{if \code{test_data} is provided, the R-squared when
-#'        the model fit to \code{train_data} is applied to the \code{test_data}}
+#'      \item{train_CE}{Cross entropy between model predictions and
+#'        \code{train_data}}
+#'      \item{test_CE}{if \code{test_data} is provided, the cross entropy
+#'        between the model fit to \code{train_data} and the \code{test_data}}
 #'       }
 #'    }
 #'  }
 #'  \item\describe{
 #'    \item{best_subsets}{a data frame containing cross-validation statistics
-#'      for the best model for each \code{n_pred} listed in \code{all_subsets}:
+#'      for the best model for each \code{n_pred} listed in \code{all_subsets}.
+#'      In addition to the columns found in \code{all_subsets}, contains the
+#'      following:
 #'      \describe{
-#'      \item{n_pred}{the number of predictors in model}
-#'      \item{form}{formula for best model of \code{n_pred}}
-#'      \item{train_CE}{Proportion of variance or deviance in the
-#'        \code{train_data} explained by each size of best model}
-#'      \item{test_CE}{if \code{test_data} is provided, the R-squared when
-#'        the model fit to \code{train_data} is applied to the \code{test_data}}
-#'      \item{cv_CE}{the mean cross-validation R-squared for each size of best
-#'        model, i.e., on average, how well models fit to \code{n-1} folds
-#'        explain the left-out fold}
-#'      \item{cv_CE_SE}{the standard error of the cross-validation R-squared for
-#'       each size of best model}
+#'      \item{cv_CE}{the mean cross entropy between the predictions of models
+#'        fit to \code{n-1} folds and the left-out fold}
+#'      \item{cv_CE_SE}{the standard error of the mean cross entropy}
 #'       }
 #'    }
 #'  }
@@ -136,21 +148,18 @@ beset_glm <- function(form, train_data, test_data = NULL,
   #==================================================================
   # Check family argument and set up link function if specified
   #------------------------------------------------------------------
-  family <- try(match.arg(family, c("binomial", "gaussian", "Gamma",
-                        "inverse.gaussian", "negbin", "poisson",
-                        "quasibinomial", "quasipoisson")), silent = TRUE)
+  family <- try(match.arg(family,
+                          c("binomial", "gaussian", "poisson", "negbin")),
+                silent = TRUE)
   if(class(family) == "try-error") stop("Invalid 'family' argument.")
   if(!is.null(link)){
-    if(family %in% c("binomial", "quasibinomial")){
+    if(family == "binomial"){
       link <- try(match.arg(link, c("logit", "probit", "cauchit",
                                       "log", "cloglog")), silent = TRUE)
-    } else if(family %in% c("gaussian", "Gamma")){
+    } else if(family == "gaussian"){
       link <- try(match.arg(link, c("identity", "log", "inverse")),
                   silent = TRUE)
-    } else if(family == "inverse.gaussian"){
-      link <- try(match.arg(link, c("1/mu^2", "inverse", "identity", "log")),
-                  silent = TRUE)
-    } else if(family %in% c("negbin", "poisson", "quasipoisson")){
+    } else if(family %in% c("negbin", "poisson")){
       link <- try(match.arg(link, c("log", "sqrt", "identity")),
                   silent = TRUE)
     }
