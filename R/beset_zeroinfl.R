@@ -302,9 +302,7 @@ beset_zeroinfl <- function(form, train_data, test_data = NULL,
     fit <- try(suppressWarnings(zeroinfl(formula(form),
                                          data = mf,
                                          dist = family,
-                                         link = link,
-                                         ...
-                                         )), silent = TRUE)
+                                         link = link, ...)), silent = TRUE)
     train_CE <- NA_real_
     test_CE <- NA_real_
     if(class(fit) == "zeroinfl"){
@@ -328,9 +326,7 @@ beset_zeroinfl <- function(form, train_data, test_data = NULL,
     fit <- try(suppressWarnings(zeroinfl(formula(form),
                                          data = mf,
                                          dist = family,
-                                         link = link,
-                                         ...
-                                         )), silent = TRUE)
+                                         link = link, ...)), silent = TRUE)
     train_CE <- NA_real_
     test_CE <- NA_real_
     if(class(fit) == "zeroinfl"){
@@ -399,9 +395,7 @@ beset_zeroinfl <- function(form, train_data, test_data = NULL,
     folds[y > 0] <- caret::createFolds(y[y > 0], k = n_folds, list = FALSE)
     fits <- mapply(function(fold, form){
       try(suppressWarnings(zeroinfl(formula(form),
-          data = mf[folds != fold,], dist = family, link = link
-          #, ...
-          )),
+          data = mf[folds != fold,], dist = family, link = link, ...)),
           silent = TRUE)
       }, fold = search_grid$fold, form = search_grid$form, SIMPLIFY = FALSE)
 
@@ -435,12 +429,13 @@ beset_zeroinfl <- function(form, train_data, test_data = NULL,
 
   best <- which.min(best_subsets$cv_CE)
   best_form <- best_subsets$form[best]
-  max_CE <- min(best_subsets$cv_CE) + best_subsets$cv_CE_SE[best]
+  max_CE <- min(best_subsets$cv_CE, na.rm = T) + best_subsets$cv_CE_SE[best]
   best_subsets_1SE <- best_subsets[best_subsets$cv_CE < max_CE,]
   best_subsets_1SE$total_pred <- with(best_subsets_1SE,
                                       n_count_pred + n_zero_pred)
   best_subsets_1SE <- dplyr::group_by(best_subsets_1SE, total_pred)
-  best_subsets_1SE <- dplyr::filter(best_subsets_1SE, cv_CE == min(cv_CE))
+  best_subsets_1SE <- dplyr::filter(best_subsets_1SE,
+                                    cv_CE == min(cv_CE, na.rm = T))
   best_form_1SE <- best_subsets_1SE$form[which.min(best_subsets_1SE$total_pred)]
 
   best_model <- pscl::zeroinfl(formula(best_form), mf, dist = family,
