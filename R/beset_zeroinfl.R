@@ -287,7 +287,7 @@ beset_zeroinfl <- function(form, train_data, test_data = NULL,
   zero_pred <- unlist(sapply(zero_pred, function(vars){
     sapply(vars, function(x) paste0(x, collapse = " + "))}))
   zero_pred <- c("1", zero_pred)
-  zero_form_list <- paste(response, "~", zero_pred, "| 1")
+  zero_form_list <- paste(response, "~", "1 |", zero_pred)
 
   #==================================================================
   # Obtain best subsets for zero vs. non-zero predictors
@@ -303,7 +303,8 @@ beset_zeroinfl <- function(form, train_data, test_data = NULL,
                                          data = mf,
                                          dist = family,
                                          link = link,
-                                         ...)), silent = TRUE)
+                                         ...
+                                         )), silent = TRUE)
     train_CE <- NA_real_
     test_CE <- NA_real_
     if(class(fit) == "zeroinfl"){
@@ -328,7 +329,8 @@ beset_zeroinfl <- function(form, train_data, test_data = NULL,
                                          data = mf,
                                          dist = family,
                                          link = link,
-                                         ...)), silent = TRUE)
+                                         ...
+                                         )), silent = TRUE)
     train_CE <- NA_real_
     test_CE <- NA_real_
     if(class(fit) == "zeroinfl"){
@@ -364,7 +366,9 @@ beset_zeroinfl <- function(form, train_data, test_data = NULL,
     fit <- try(suppressWarnings(zeroinfl(formula(form),
                                          data = mf,
                                          dist = family,
-                                         link = link, ...)), silent = TRUE)
+                                         link = link
+                                         , ...
+                                         )), silent = TRUE)
     train_CE <- NA_real_
     test_CE <- NA_real_
     if(class(fit) == "zeroinfl"){
@@ -381,7 +385,7 @@ beset_zeroinfl <- function(form, train_data, test_data = NULL,
   # Perform cross-validation on best models
   #----------------------------------------------------------------------
   search_grid <- expand.grid(fold = 1:n_folds,
-                             form = best_subsets$form,
+                             form = with(best_subsets, form[!is.na(train_CE)]),
                              stringsAsFactors = FALSE)
   seed_seq <- seq.int(from = seed, length.out = n_repeats)
   doParallel::registerDoParallel()
@@ -395,7 +399,9 @@ beset_zeroinfl <- function(form, train_data, test_data = NULL,
     folds[y > 0] <- caret::createFolds(y[y > 0], k = n_folds, list = FALSE)
     fits <- mapply(function(fold, form){
       try(suppressWarnings(zeroinfl(formula(form),
-          data = mf[folds != fold,], dist = family, link = link, ...)),
+          data = mf[folds != fold,], dist = family, link = link
+          #, ...
+          )),
           silent = TRUE)
       }, fold = search_grid$fold, form = search_grid$form, SIMPLIFY = FALSE)
 
