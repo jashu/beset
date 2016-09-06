@@ -305,7 +305,9 @@ beset_zeroinfl <- function(form, train_data, test_data = NULL,
     fit <- try(suppressWarnings(zeroinfl(formula(form),
                                          data = mf,
                                          dist = family,
-                                         link = link, ...)), silent = TRUE)
+                                         link = link,
+                                         ...
+                                         )), silent = TRUE)
     train_CE <- NA_real_
     test_CE <- NA_real_
     if(class(fit) == "zeroinfl"){
@@ -329,7 +331,9 @@ beset_zeroinfl <- function(form, train_data, test_data = NULL,
     fit <- try(suppressWarnings(zeroinfl(formula(form),
                                          data = mf,
                                          dist = family,
-                                         link = link, ...)), silent = TRUE)
+                                         link = link,
+                                         ...
+                                         )), silent = TRUE)
     train_CE <- NA_real_
     test_CE <- NA_real_
     if(class(fit) == "zeroinfl"){
@@ -365,8 +369,8 @@ beset_zeroinfl <- function(form, train_data, test_data = NULL,
     fit <- try(suppressWarnings(zeroinfl(formula(form),
                                          data = mf,
                                          dist = family,
-                                         link = link
-                                         , ...
+                                         link = link,
+                                          ...
                                          )), silent = TRUE)
     train_CE <- NA_real_
     test_CE <- NA_real_
@@ -398,7 +402,9 @@ beset_zeroinfl <- function(form, train_data, test_data = NULL,
     folds[y > 0] <- caret::createFolds(y[y > 0], k = n_folds, list = FALSE)
     fits <- mapply(function(fold, form){
       try(suppressWarnings(zeroinfl(formula(form),
-          data = mf[folds != fold,], dist = family, link = link, ...)),
+          data = mf[folds != fold,], dist = family, link = link,
+          ...
+          )),
           silent = TRUE)
       }, fold = search_grid$fold, form = search_grid$form, SIMPLIFY = FALSE)
 
@@ -409,15 +415,15 @@ beset_zeroinfl <- function(form, train_data, test_data = NULL,
     cv_CE <- matrix(mapply(function(fit, fold)
         .cross_entropy(fit, mf[folds == fold,]),
         fit = fits, fold = search_grid$fold),
-        nrow = n_folds, ncol = nrow(search_grid))
+        nrow = n_folds, ncol = nrow(search_grid) / n_folds)
     CE_cv <- apply(cv_CE, 2, mean, na.rm = T)
     CE_cv_SE <- apply(cv_CE, 2, function(x) sqrt(var(x, na.rm = T)/length(x)))
 
-    data.frame(form = search_grid$form,
-               cv_CE = CE_cv,
-               cv_CE_SE = CE_cv_SE,
+    data.frame(form = unique(search_grid$form),
+               cv_CE = CE_cv, cv_CE_SE = CE_cv_SE,
                stringsAsFactors = FALSE)
   }
+
   #======================================================================
   # Derive cross-validation statistics
   #----------------------------------------------------------------------
