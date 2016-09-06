@@ -196,6 +196,9 @@ beset_glm <- function(form, train_data, test_data = NULL,
   # Create model frame and extract response name and vector
   #------------------------------------------------------------------
   mf <- model.frame(form, data = train_data, na.action = na.omit)
+  if(!is.null(test_data)){
+    test_data <- model.frame(form, data = test_data, na.action = na.omit)
+  }
   n_drop <- nrow(train_data) - nrow(mf)
   if(n_drop > 0)
     warning(paste("Dropping", n_drop, "rows with missing data."),

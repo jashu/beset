@@ -208,6 +208,9 @@ beset_zeroinfl <- function(form, train_data, test_data = NULL,
   y <- mf[,1]
   if(min(y) != 0)
     stop("Observed lower bound does not equal 0.")
+  if(!is.null(test_data)){
+    test_data <- model.frame(form, data = test_data, na.action = na.omit)
+  }
 
   #==================================================================
   # Check that number of predictors and cv folds is acceptable
