@@ -286,7 +286,7 @@ beset_glm <- function(form, train_data, test_data = NULL,
                                    form = form_list,
                                    train_CE = CE[1,],
                                    test_CE = CE[2,])
-  all_subsets <- dplyr::arrange(all_subsets, n_pred, dplyr::desc(train_CE))
+  all_subsets <- dplyr::arrange(all_subsets, n_pred, train_CE)
 
   #======================================================================
   # Obtain model with best R^2 for each number of parameters
