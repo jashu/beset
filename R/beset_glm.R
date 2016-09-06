@@ -47,7 +47,7 @@
 #'    polynomial terms, this practice is strongly discouraged. At best, this
 #'    will result in an inefficient search because \code{beset_glm} performs an
 #'    exhaustive search over all possible variable subsets, including subsets
-#'    that are hierarchically incomplete, i.e. subsets that contain an
+#'    that are hierarchically incomplete, i.e., subsets that contain an
 #'    interaction term but are missing one or more of the subterms that comprise
 #'    it. At worst, it may return one of these hierarchically incomplete models
 #'    as the best model, an undesirable result if one cares about
@@ -102,15 +102,15 @@
 #' @return A "beset_glm" object with the following components:
 #' \enumerate{
 #'  \item\describe{
-#'    \item{best_model}{an object of class \code{\link[stats]{glm}} corresponding
-#'    to the best model with the number of parameters with the smallest
-#'    cross-validation error (largest cross-validation R-squared)}
+#'    \item{best_model}{an object of class \code{\link[stats]{glm}}
+#'    corresponding to the best model with the number of parameters with the
+#'    smallest cross-validation error}
 #'    }
 #'  \item\describe{
 #'    \item{best_model_1SE}{an object of class \code{\link[stats]{glm}}
 #'    corresponding to the best model with the smallest number of
 #'    parameters within one standard error of the smallest cross-validation
-#'    error (largest cross-validation R-squared)}
+#'    error}
 #'    }
 #'  \item\describe{
 #'    \item{all_subsets}{a data frame containing fit statistics for every

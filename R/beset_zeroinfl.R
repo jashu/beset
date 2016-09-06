@@ -6,52 +6,72 @@
 #'
 #' \code{beset_zeroinfl} performs best subset selection for zero-inflated
 #' count models, fitting both a count model (e.g., negative binomial regression)
-#' and zero-inflation model (e.g., logistic regression) for every possible
-#' combination of predictors. For models with the same number of parameters,
-#' e.g., \code{m} predictors of the count process + \code{n} predictors of the
-#' zero-inflation process, \code{beset_zeroinfl} picks the model with the
-#' maximum log-likelihood. This results in a best fit for every \code{m * n}
-#' possible number of predictors. \code{beset_zeroinfl} then uses \code{k}-fold
-#' cross-validation to select the "best of the best": the best model with the
-#' \code{m * n} number of predictors that minimizes prediction error, i.e., how
-#' well the best models trained using \eqn{k - 1} folds predict the out-of-fold
-#' sample.
+#' and zero-inflation model (e.g., logistic regression). Given that there are
+#' two models involved, the search for the best combinations of predictors is
+#' not completely exhaustive, which would require fitting \emph{(2^p)^2} models,
+#' e.g., 10 predictors have over 1 million possible combinations. Instead, best
+#' subset selection is first performed separately for each of the two models,
+#' using only an intercept term for the other model. This narrows the search to
+#' \eqn{p^2} models: the best models for each possible number of predictors of
+#' the count process (using a constant to predict the zero process) crossed
+#' with the best models for each possible number of predictors of the zero
+#' process (using a constant to predict the count process). Thus, for every
+#' \eqn{m} in \eqn{0, 1, ... p} best predictors of the count process and every
+#' \eqn{n} in \eqn{0, 1, ... p} best predictors of the zero-inflation process,
+#' \code{beset_zeroinfl} uses \eqn{k}-fold cross-validation to select the model
+#' with the \eqn{m * n} number of predictors that minimizes prediction error,
+#' i.e., how well the best models trained using \eqn{k - 1} folds predict the
+#' out-of-fold sample.
 #'
-#' \code{beset_zeroinfl} uses \code{\link[caret]{createFolds}} to randomly
-#' assign observations to \code{k} folds within subgroups based on percentiles
-#' of the outcome is numeric. This insures that the folds will be matched in
-#' terms of the outcome's frequency distribution. \code{beset_zeroinfl} also
-#' insures the reproducibility of your analysis by requiring a \code{seed} to
-#' the random number generator as one of its arguments.
+#' When randomly assigning observations to cross-validation folds, responses
+#' with zero values are first allocated to equalize (as much as possible) the
+#' incidence of zero observations across folds. The remaining non-zero values
+#' are then randomly allocated within subgroups based on percentiles to insure
+#' that the folds will also be balanced in terms of the count distribution.
+#' \code{beset_zeroinfl} enforces the "one in ten rule" for each component of
+#' the model with respect to the sample size expected for \eqn{k - 1} folds,
+#' i.e., there must be a minimum of 10 observations of zero across \eqn{k - 1}
+#' folds for every predictor in the zero-inflation model, and there must be
+#' a minimum of 10 observations of non-zero counts across \eqn{k - 1} folds for
+#' every predictor in the count model. \code{beset_zeroinfl} will screen for
+#' this and, if possible, alter your settings for \code{p_zero_max} and/or
+#' \code{p_count_max} to insure an adequate training sample size for all model
+#' fits. If this happens, a warning message will be issued informing you of
+#' the new settings.
 #'
 #' @section Warnings:
 #' \enumerate{
 #'  \item \code{beset_zeroinfl} handles missing data by performing listwise
 #'    deletion. No other options for handling missing data are provided at this
 #'    time. The user is encouraged to deal with missing values prior to running
-#'    this function.
+#'    this function. A warning message will be issued indicating how much
+#'    data are being deleted.
 #'  \item \code{beset_zeroinfl} is intended for use with additive models only.
 #'    While there is no prohibition against the inclusion of interaction or
 #'    polynomial terms, this practice is strongly discouraged. At best, this
 #'    will result in an inefficient search because \code{beset_zeroinfl}
 #'    performs an exhaustive search over all possible variable subsets,
-#'    including subsets that are hierarchically incomplete, i.e. subsets that
+#'    including subsets that are hierarchically incomplete, i.e., subsets that
 #'    contain an interaction term but are missing one or more of the subterms
 #'    that comprise it. At worst, it may return one of these hierarchically
 #'    incomplete models as the best model, an undesirable result if one cares
-#'    about interpretability. If one wishes the model search to include
-#'    interaction and/or non-linear effects, the
-#'    \href{https://cran.r-project.org/web/packages/earth/index.html}{MARS}
-#'    technique is recommended instead. \item \code{beset_zeroinfl} is best
-#'    suited for searching over a small number of predictors (less than 10). For
-#'    a large number of predictors (more than 20), \code{\link{beset_elnet}} is
-#'    recommended instead. However, note that \code{\link{beset_elnet}} only
-#'    works with a more restricted set of distributions.
+#'    about interpretability.
+#'    \item Given the complexity of searching for predictors across two models,
+#'    \code{beset_zeroinfl} limits the size of the model dataframe to a maximum
+#'    of 10 predictors.
 #' }
 #'
 #' @seealso \code{\link[caret]{createFolds}}, \code{\link{beset_lm}},
 #' \code{\link[pscl]{zeroinfl}}, \code{\link[base]{set.seed}},
 #' \code{\link{cross_entropy}}
+#'
+#' @param form A model \code{\link[stats]{formula}}.
+#'
+#' @param train_data A \code{\link[base]{data.frame}} with the variables in
+#' \code{form} and the data to be used in model training.
+#'
+#' @param test_data Optional \code{\link[base]{data.frame}} with the variables
+#' in \code{form} and the data to be used in model testing.
 #'
 #' @param family Character string naming the count model family. Options are
 #' \code{"poisson"} (default), \code{"negbin"}, or \code{"geometric"}. (Note a
@@ -64,72 +84,83 @@
 #'
 #' @param ... Optional named arguments accepted by \code{\link[pscl]{zeroinfl}}.
 #'
-#' @inheritParams beset_glm
+#' @param p_count_max Maximum number of predictors allowed in count model. Must
+#'  be between 1 and 10.
+#'
+#' @param p_zero_max Maximum number of predictors allowed in zero model. Must be
+#'  between 1 and 10.
+#'
+#' @param n_folds Integer indicating the number of folds to use for
+#' cross-validation.
+#'
+#' @param n_repeats Integer indicating the number of times cross-validation
+#' should be repeated.
+#'
+#' @param n_cores Optional integer value indicating the number of workers to run
+#' in parallel during subset search and cross-validation. By default, this will
+#' be set to equal half the detectable cores on your machine. You may wish to
+#' change this depending on your hardware and OS.
+#' See \code{\link[parallel]{parallel-package}} for more information.
+#'
+#' @param seed An integer used to seed the random number generator when
+#' assigning observations to folds.
 #'
 #' @return A "beset_zeroinfl" object with the following components:
 #' \enumerate{
 #'  \item\describe{
 #'    \item{best_model}{an object of class \code{\link[pscl]{zeroinfl}}
 #'    corresponding to the best model with the number of parameters with the
-#'    smallest cross-validation error (largest cross-validation R-squared)}
+#'    smallest cross-validation error}
 #'    }
 #'  \item\describe{
 #'    \item{best_model_1SE}{an object of class \code{\link[pscl]{zeroinfl}}
 #'    corresponding to the best model with the smallest number of
 #'    parameters within one standard error of the smallest cross-validation
-#'    error (largest cross-validation R-squared)}
+#'    error}
 #'    }
 #'  \item\describe{
 #'    \item{all_count_subsets}{a data frame containing fit statistics for every
-#'      possible combination of predictors:
+#'      possible combination of predictors of count data:
 #'      \describe{
-#'      \item{n_count_pred}{the number of predictors in model}
+#'      \item{n_count_pred}{the number of count predictors in model}
 #'      \item{form}{formula for model}
-#'      \item{train_CE}{Proportion of variance or deviance in the
-#'        \code{train_data} explained by each size of best model}
-#'      \item{test_CE}{if \code{test_data} is provided, the R-squared when
-#'        the model fit to \code{train_data} is applied to the \code{test_data}}
+#'      \item{train_CE}{Cross entropy between model predictions and
+#'        \code{train_data}}
+#'      \item{test_CE}{if \code{test_data} is provided, the cross entropy
+#'        between the model fit to \code{train_data} and the \code{test_data}}
 #'       }
 #'    }
 #'  }
-#'   \item\describe{
+#'  \item\describe{
 #'    \item{all_zero_subsets}{a data frame containing fit statistics for every
-#'      possible combination of predictors:
+#'      possible combination of predictors of zeroes vs. non-zeroes:
 #'      \describe{
-#'      \item{n_zero_pred}{the number of predictors in model}
+#'      \item{n_zero_pred}{the number of zero predictors in model}
 #'      \item{form}{formula for model}
-#'      \item{train_CE}{Proportion of variance or deviance in the
-#'        \code{train_data} explained by each size of best model}
-#'      \item{test_CE}{if \code{test_data} is provided, the R-squared when
-#'        the model fit to \code{train_data} is applied to the \code{test_data}}
+#'      \item{train_CE}{Cross entropy between model predictions and
+#'        \code{train_data}}
+#'      \item{test_CE}{if \code{test_data} is provided, the cross entropy
+#'        between the model fit to \code{train_data} and the \code{test_data}}
 #'       }
 #'    }
 #'  }
 #'  \item\describe{
 #'    \item{best_subsets}{a data frame containing cross-validation statistics
-#'      for the best model for each combination of \code{n_count_pred} and
-#'        \code{n_zero_pred}:
+#'      for the best model for each \code{n_count_pred} and \code{n_zero_pred}
+#'      listed in \code{all_count_subsets} and \code{all_zero_subsets}.
+#'      In addition to the columns found in \code{all_count_subsets} and
+#'      \code{all_zero_subsets}, contains the following:
 #'      \describe{
-#'      \item{n_count_pred}{the number of predictors in model}
-#'      \item{n_zero_pred}{the number of predictors in model}
-#'      \item{form}{formula for best model of \code{n_count_pred} and
-#'        \code{n_zero_pred}}
-#'      \item{train_CE}{Proportion of variance or deviance in the
-#'        \code{train_data} explained by each size of best model}
-#'      \item{test_CE}{if \code{test_data} is provided, the R-squared when
-#'        the model fit to \code{train_data} is applied to the \code{test_data}}
-#'      \item{cv_CE}{the mean cross-validation R-squared for each size of best
-#'        model, i.e., on average, how well models fit to \code{n-1} folds
-#'        explain the left-out fold}
-#'      \item{cv_CE_SE}{the standard error of the cross-validation R-squared for
-#'       each size of best model}
+#'      \item{cv_CE}{the mean cross entropy between the predictions of models
+#'        fit to \code{n-1} folds and the left-out fold}
+#'      \item{cv_CE_SE}{the standard error of the mean cross entropy}
 #'       }
-#'      }
 #'    }
 #'  }
+#' }
 #'
+#' @import foreach
 #' @export
-
 beset_zeroinfl <- function(form, train_data, test_data = NULL,
                            family = "poisson", link = "logit", ...,
                            p_count_max = 10, p_zero_max = 10,
