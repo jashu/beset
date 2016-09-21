@@ -175,6 +175,21 @@ beset_glm <- function(form, train_data, test_data = NULL,
   }
 
   #==================================================================
+  # Create model frame and extract response name and vector
+  #------------------------------------------------------------------
+  mf <- model.frame(form, data = train_data, na.action = na.omit)
+  if(!is.null(test_data)){
+    test_data <- model.frame(form, data = test_data, na.action = na.omit)
+  }
+  n_drop <- nrow(train_data) - nrow(mf)
+  if(n_drop > 0)
+    warning(paste("Dropping", n_drop, "rows with missing data."),
+                         immediate. = TRUE)
+  response <- names(mf)[1]
+  y <- mf[,1]
+  if(grepl("binomial", family)) y <- as.factor(y)
+
+  #==================================================================
   # Screen for linear dependencies among predictors
   #------------------------------------------------------------------
   mm <- model.matrix(form, data = train_data)
@@ -191,21 +206,6 @@ beset_glm <- function(form, train_data, test_data = NULL,
                paste0(to_remove, collapse = "\n\t"),
                sep = ""))
   }
-
-  #==================================================================
-  # Create model frame and extract response name and vector
-  #------------------------------------------------------------------
-  mf <- model.frame(form, data = train_data, na.action = na.omit)
-  if(!is.null(test_data)){
-    test_data <- model.frame(form, data = test_data, na.action = na.omit)
-  }
-  n_drop <- nrow(train_data) - nrow(mf)
-  if(n_drop > 0)
-    warning(paste("Dropping", n_drop, "rows with missing data."),
-                         immediate. = TRUE)
-  response <- names(mf)[1]
-  y <- mf[,1]
-  if(grepl("binomial", family)) y <- as.factor(y)
 
   #==================================================================
   # Check that number of predictors and cv folds is acceptable
@@ -427,7 +427,7 @@ glm_nb <- function (formula, data, weights, subset, na.action, start = NULL,
                     intercept = attr(Terms, "intercept") > 0)
   class(fit) <- c("glm", "lm")
   mu <- fit$fitted.values
-  th <- as.vector(theta.ml(Y, mu, sum(w), w, limit = control$maxit,
+  th <- as.vector(MASS::theta.ml(Y, mu, sum(w), w, limit = control$maxit,
                            trace = control$trace > 2))
   if (control$trace > 1)
     message(gettextf("Initial value for 'theta': %f", signif(th)),
@@ -448,7 +448,7 @@ glm_nb <- function (formula, data, weights, subset, na.action, start = NULL,
                                                    trace = control$trace > 1),
                       intercept = attr(Terms, "intercept") > 0)
     t0 <- th
-    th <- theta.ml(Y, mu, sum(w), w, limit = control$maxit,
+    th <- MASS::theta.ml(Y, mu, sum(w), w, limit = control$maxit,
                    trace = control$trace > 2)
     fam <- do.call("negative.binomial", list(theta = th, link = link))
     mu <- fit$fitted.values
