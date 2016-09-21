@@ -15,9 +15,11 @@ Depends:
   utils
 Imports:
   pROC,
+  car,
   caret,
   dplyr,
   foreach,
+  iterators,
   gcdnet,
   ggplot2,
   glmnet,
