@@ -263,11 +263,11 @@ beset_glm <- function(form, train_data, test_data = NULL,
   #----------------------------------------------------------------------
   if(is.null(n_cores)) n_cores <- parallel::detectCores() %/% 2
   cl <- parallel::makeCluster(n_cores)
-  parallel::clusterExport(cl, c("mf", "dist", "link", "test_data",
-                                "glm_nb", "cross_entropy"),
+  negative.binomial <- MASS::negative.binomial
+  parallel::clusterExport(cl, c("mf", "dist", "link", "test_data", "glm_nb",
+                                "cross_entropy", "negative.binomial"),
                           envir=environment())
   if(family == "negbin"){
-    catch <- parallel::clusterEvalQ(cl, library(MASS))
     CE <- parallel::parSapplyLB(cl, form_list, function(form){
       fit <- glm_nb(form, mf, link = link, ...)
       train_CE <- cross_entropy(fit, mf)
@@ -304,7 +304,8 @@ beset_glm <- function(form, train_data, test_data = NULL,
   search_grid <- dplyr::left_join(search_grid, best_subsets, by = "n_pred")
   seed_seq <- seq.int(from = seed, length.out = n_repeats)
   doParallel::registerDoParallel()
-  CE <- foreach(seed = seed_seq, .combine = rbind, .packages = "MASS") %dopar% {
+  CE <- foreach(seed = seed_seq, .combine = rbind,
+                .export = "negative.binomial") %dopar% {
     set.seed(seed)
     folds <- caret::createFolds(y, k = n_folds, list = FALSE)
     fits <- mapply(function(fold, form){
