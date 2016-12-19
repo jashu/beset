@@ -52,7 +52,7 @@ partition <- function(data, y, p = .75, seed = 42){
   if(length(unique(response)) == 2 && !is.factor(response)){
     response <- binary_to_factor(response)
   }
-  set.seed(seed)
+  set.seed(seed, kind = "default")
   inTrain <- caret::createDataPartition(y = response, p = p, list = F)
   test <- data[-inTrain,]
   train <- data[inTrain,]
