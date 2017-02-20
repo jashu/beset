@@ -14,13 +14,6 @@ summary.beset_glm <- function(object){
   form <- paste0(form[2], " ", form[1], " ", form[3])
   best_form <- form
   best_cve <- data$cv_CE[data$form == best_form]
-  best_1SE <- summary(object$best_model_1SE)
-  form <- as.character(terms(best_1SE))
-  form <- paste0(form[2], " ", form[1], " ", form[3])
-  best_form_1SE <- form
-  best_cve_1SE <- data$cv_CE[data$form == best_form_1SE]
-  structure(list(best = best, best_1SE = best_1SE,
-                 best_form = best_form, best_form_1SE = best_form_1SE,
-                 best_cve = best_cve, best_cve_1SE = best_cve_1SE),
+  structure(list(best = best, best_form = best_form, best_cve = best_cve),
             class = "summary_beset_glm")
 }
