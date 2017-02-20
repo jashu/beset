@@ -6,7 +6,7 @@
 \usage{
 beset_glm(form, train_data, test_data = NULL, family = "gaussian",
   link = NULL, ..., p_max = 10, n_folds = 10, n_repeats = 10,
-  n_cores = NULL, seed = 42)
+  oneSE = TRUE, n_cores = NULL, seed = 42)
 }
 \arguments{
 \item{form}{A model \code{\link[stats]{formula}}.}
@@ -49,14 +49,7 @@ A "beset_glm" object with the following components:
 \enumerate{
  \item\describe{
    \item{best_model}{an object of class \code{\link[stats]{glm}}
-   corresponding to the best model with the number of parameters with the
-   smallest cross-validation error}
-   }
- \item\describe{
-   \item{best_model_1SE}{an object of class \code{\link[stats]{glm}}
-   corresponding to the best model with the smallest number of
-   parameters within one standard error of the smallest cross-validation
-   error}
+   corresponding to the best model}
    }
  \item\describe{
    \item{all_subsets}{a data frame containing fit statistics for every
@@ -95,21 +88,22 @@ families of generalized linear models.
 models, fitting a separate model for each possible combination of predictors,
 i.e., all models that contain exactly 1 predictor, all models that contain
 exactly 2 predictors, and so forth. For each number of predictors,
-\code{beset_glm} picks the model with the minimum cross-entropy (estimated
-as the negative log of the expected probability of obtaining the observed
-data given the model). This results in a best fit for every possible number
-of predictors. \code{beset_glm} then uses \code{k}-fold cross-validation to
-select the "best of the best": the best model with the number of predictors
-that minimizes prediction cross-entropy, i.e., how well the best models
-trained using \eqn{k - 1} folds predict the left-out fold. \code{beset_glm}
-uses \code{\link[caret]{createFolds}} to randomly assign observations to
-\code{k} folds within levels of the outcome when the outcome is a factor or
-within subgroups based on percentiles when the outcome is numeric. This
-insures that the folds will be matched in terms of the outcome's frequency
-distribution. \code{beset_glm} also insures the reproducibility of your
-analysis by requiring a \code{seed} to the random number generator as one of
-its arguments.
+\code{beset_glm} picks the model with the maximum likelihood and then
+estimates how well this model predicts new data using \code{k}-fold
+cross-validation, i.e., how well a model trained using \eqn{k - 1} folds
+predicts the left-out fold.
 }
+\section{Cross-validation details}{
+
+\code{beset_glm} uses \code{\link[caret]{createFolds}} to randomly assign
+observations to \code{k} folds within levels of the outcome when the outcome
+is a factor or within subgroups based on percentiles when the outcome is
+numeric. This insures that the folds will be matched in terms of the
+outcome's frequency distribution. \code{beset_glm} also insures the
+reproducibility of your analysis by requiring a \code{seed} to the random
+number generator as one of its arguments.
+}
+
 \section{List of available families and link functions}{
 
 \describe{
