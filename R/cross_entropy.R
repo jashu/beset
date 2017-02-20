@@ -1,5 +1,38 @@
-
-
+#' Cross Entropy
+#'
+#' Calculate mean cross entropy to measure how well a generalized linear model
+#' predicts test data.
+#'
+#' \code{cross_entropy} uses a generalized linear model (GLM) previously fit to
+#' a training set to predict responses for a test set. It then computes the
+#' cross entropy between each predicted response \eqn{ŷ} and the corresponding
+#' observed response \eqn{y} as the negative log of the probability density
+#' function for \eqn{ŷ} (predicted by the GLM) evaluated at \eqn{y}, and returns
+#' the average cross entropy over all test examples.
+#'
+#' Note that cross entropy simply parameterizes prediction error in terms of
+#' relative likelihood; if applied to the training set instead of the test set,
+#' the value returned by \code{cross_entropy} equals the negative log-likelihood
+#' of the model divided by the number of observations. (For logistic regression,
+#' this is also known as "log-loss".) Given that GLMs minimize the negative
+#' log-likelihood, \code{cross_entropy} defines a unified loss function for both
+#' fitting and cross-validating GLMs.
+#'
+#' @section Supported Probability Distributions:
+#' Currently the following "families" are supported: Gaussian, binomial,
+#' Poisson, negative binomial, zero-inflated Poisson, and zero-inflated negative
+#' binomial.
+#'
+#' @param object A model object of class "glm", "negbin", or "zeroinfl".
+#'
+#' @param test_data A data frame containing new data for the response and all
+#' predictors that were used to fit the model \code{object}.
+#'
+#' @return A number giving the cross entropy error between model predictions and
+#' actual observations.
+#'
+#' @seealso \code{\link{beset_glm}}, \code{\link{beset_zeroinfl}}
+#'
 #' @export
 cross_entropy <- function(object, test_data = NULL){
   model_type <- class(object)[1]
