@@ -1,7 +1,15 @@
 
 
 #' @export
-cross_entropy <- function(object, test_data){
+cross_entropy <- function(object, test_data = NULL){
+  model_type <- class(object)[1]
+  if(!model_type %in% c("glm", "negbin", "zeroinfl"))
+    stop(paste(model_type, "class not supported"))
+  if(model_type == "glm"){
+    if(!object$family$family %in% c("gaussian", "binomial", "poisson"))
+      stop(paste(object$family$family, "family not supported"))
+  }
+  if(is.null(test_data)) test_data <- object$model
   y_obs <- unlist(test_data[, names(object$model)[1]])
   y_bar <- mean(y_obs, na.rm = TRUE)
   y_hat <- predict(object, test_data, type="response")
