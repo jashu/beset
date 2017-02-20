@@ -6,30 +6,32 @@ Date: 2016-09-01
 Authors@R: person("Jason", "Shumake", email = "shumake@utexas.edu",
   role = c("aut","cre"))
 Description: Provides a friendly user interface, summary, and plotting methods
-             for cross-validating model fits using either best subset or elastic
-             net regression.
+    for cross-validating model fits using either best subset or elastic
+    net regression.
 Depends:
-  R (>= 3.2),
-  stats,
-  methods,
-  utils
+    R (>= 3.2),
+    stats,
+    methods,
+    utils
 Imports:
-  pROC,
-  car,
-  caret,
-  dplyr,
-  foreach,
-  iterators,
-  gcdnet,
-  ggplot2,
-  glmnet,
-  grid,
-  gridExtra,
-  MASS,
-  parallel,
-  doParallel,
-  pscl,
-  VGAM
+    pROC,
+    car,
+    caret,
+    dplyr,
+    foreach,
+    iterators,
+    gcdnet,
+    ggplot2,
+    glmnet,
+    grid,
+    gridExtra,
+    MASS,
+    parallel,
+    doParallel,
+    pscl,
+    VGAM
 License: GPL-3
 LazyData: TRUE
 RoxygenNote: 5.0.1
+Suggests:
+    testthat
