@@ -8,20 +8,19 @@
 #' models, fitting a separate model for each possible combination of predictors,
 #' i.e., all models that contain exactly 1 predictor, all models that contain
 #' exactly 2 predictors, and so forth. For each number of predictors,
-#' \code{beset_glm} picks the model with the minimum cross-entropy (estimated
-#' as the negative log of the expected probability of obtaining the observed
-#' data given the model). This results in a best fit for every possible number
-#' of predictors. \code{beset_glm} then uses \code{k}-fold cross-validation to
-#' select the "best of the best": the best model with the number of predictors
-#' that minimizes prediction cross-entropy, i.e., how well the best models
-#' trained using \eqn{k - 1} folds predict the left-out fold. \code{beset_glm}
-#' uses \code{\link[caret]{createFolds}} to randomly assign observations to
-#' \code{k} folds within levels of the outcome when the outcome is a factor or
-#' within subgroups based on percentiles when the outcome is numeric. This
-#' insures that the folds will be matched in terms of the outcome's frequency
-#' distribution. \code{beset_glm} also insures the reproducibility of your
-#' analysis by requiring a \code{seed} to the random number generator as one of
-#' its arguments.
+#' \code{beset_glm} picks the model with the maximum likelihood and then
+#' estimates how well this model predicts new data using \code{k}-fold
+#' cross-validation, i.e., how well a model trained using \eqn{k - 1} folds
+#' predicts the left-out fold.
+#'
+#' @section Cross-validation details:
+#' \code{beset_glm} uses \code{\link[caret]{createFolds}} to randomly assign
+#' observations to \code{k} folds within levels of the outcome when the outcome
+#' is a factor or within subgroups based on percentiles when the outcome is
+#' numeric. This insures that the folds will be matched in terms of the
+#' outcome's frequency distribution. \code{beset_glm} also insures the
+#' reproducibility of your analysis by requiring a \code{seed} to the random
+#' number generator as one of its arguments.
 #'
 #' @section List of available families and link functions:
 #' \describe{
@@ -103,14 +102,7 @@
 #' \enumerate{
 #'  \item\describe{
 #'    \item{best_model}{an object of class \code{\link[stats]{glm}}
-#'    corresponding to the best model with the number of parameters with the
-#'    smallest cross-validation error}
-#'    }
-#'  \item\describe{
-#'    \item{best_model_1SE}{an object of class \code{\link[stats]{glm}}
-#'    corresponding to the best model with the smallest number of
-#'    parameters within one standard error of the smallest cross-validation
-#'    error}
+#'    corresponding to the best model}
 #'    }
 #'  \item\describe{
 #'    \item{all_subsets}{a data frame containing fit statistics for every
@@ -143,7 +135,7 @@
 #' @export
 beset_glm <- function(form, train_data, test_data = NULL,
                       family = "gaussian", link = NULL, ...,
-                      p_max = 10, n_folds = 10, n_repeats = 10,
+                      p_max = 10, n_folds = 10, n_repeats = 10, oneSE = TRUE,
                       n_cores = NULL, seed = 42){
   #==================================================================
   # Check family argument and set up link function if specified
@@ -248,8 +240,6 @@ beset_glm <- function(form, train_data, test_data = NULL,
   #======================================================================
   # Make list of all possible formulas with number of predictors <= p_max
   #----------------------------------------------------------------------
-  n_pred <- unlist(sapply(1:p, function(i) rep(i, choose(ncol(mf)-1, i))))
-  n_pred <- c(0, n_pred)
   pred <- lapply(1:p, function(x)
     combn(names(mf)[2:ncol(mf)], x, simplify = FALSE))
   pred <- unlist(sapply(pred, function(vars){
@@ -257,6 +247,20 @@ beset_glm <- function(form, train_data, test_data = NULL,
     }))
   pred <- c("1", pred)
   form_list <- paste(response, "~", pred)
+
+  #======================================================================
+  # Determine number of predictors for each model in list
+  #----------------------------------------------------------------------
+  n_pred <- sapply(pred[-1], function(x){
+    x <- unlist(strsplit(x, split = " + ", fixed = TRUE))
+    sum(sapply(x, function(y){
+      if(is.factor(mf[,y]))
+        length(levels(mf[,y])) - 1
+      else
+        1
+    }))
+  })
+  n_pred <- c(intercept = 0, n_pred)
 
   #======================================================================
   # Obtain cross entropy for every model
@@ -292,7 +296,7 @@ beset_glm <- function(form, train_data, test_data = NULL,
   all_subsets <- dplyr::arrange(all_subsets, n_pred, train_CE)
 
   #======================================================================
-  # Obtain model with best R^2 for each number of parameters
+  # Obtain model with best cross entropy for each number of parameters
   #----------------------------------------------------------------------
   best_subsets <- dplyr::group_by(all_subsets, n_pred)
   best_subsets <- dplyr::filter(best_subsets, train_CE == min(train_CE))
@@ -333,36 +337,27 @@ beset_glm <- function(form, train_data, test_data = NULL,
   mean_CE <- dplyr::summarize_each(CE, dplyr::funs(mean))
 
   #======================================================================
-  # Fit best model and 1SE best model to full data set
+  # Fit best model to full data set
   #----------------------------------------------------------------------
-  best_subsets <- dplyr::left_join(best_subsets, mean_CE, by = "n_pred")
+  best_subsets <- dplyr::right_join(best_subsets, mean_CE, by = "n_pred")
   best_subset <- which.min(best_subsets$cv_CE)
   best_form <- best_subsets$form[best_subset]
-  max_CE <- min(best_subsets$cv_CE) + best_subsets$cv_CE_SE[best_subset]
-  best_subsets_1SE <- best_subsets[best_subsets$cv_CE < max_CE,]
-  best_form_1SE <- best_subsets_1SE$form[which.min(best_subsets_1SE$n_pred)]
+  if(oneSE){
+    max_CE <- min(best_subsets$cv_CE) + best_subsets$cv_CE_SE[best_subset]
+    best_subsets_1SE <- best_subsets[best_subsets$cv_CE < max_CE,]
+    best_form <- best_subsets_1SE$form[which.min(best_subsets_1SE$n_pred)]
+  }
   if(family == "negbin"){
     best_model <- glm_nb(best_form, mf, link = link, ...)
-    if(best_form == best_form_1SE){
-      best_model_1SE <- best_model
-    } else {
-      best_model_1SE <- glm_nb(best_form_1SE, mf, link = link, ...)
-    }
   } else{
     best_model <- glm(best_form, eval(dist), mf, ...)
-    if(best_form == best_form_1SE){
-      best_model_1SE <- best_model
-    } else {
-      best_model_1SE <- glm(best_form_1SE, eval(dist), mf, ...)
-    }
   }
 
   #======================================================================
   # Construct beset_glm object
   #----------------------------------------------------------------------
   structure(list(all_subsets = all_subsets, best_subsets = best_subsets,
-                 best_model = best_model, best_model_1SE = best_model_1SE),
-            class = "beset_glm")
+                 best_model = best_model), class = "beset_glm")
 }
 
 #' @export
@@ -378,6 +373,7 @@ glm_nb <- function (formula, data, weights, subset, na.action, start = NULL,
                     etastart, mustart, control = glm.control(...),
                     method = "glm.fit", model = TRUE, x = FALSE, y = TRUE,
                     contrasts = NULL, ..., init.theta, link = log){
+  negative.binomial <- MASS::negative.binomial
   loglik <- function(n, th, mu, y, w){
     sum(w * (lgamma(th + y) - lgamma(th) - lgamma(y + 1) + th * log(th) + y *
                log(mu + (y == 0)) - (th + y) * log(th + mu)))
