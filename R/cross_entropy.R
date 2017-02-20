@@ -50,9 +50,13 @@ cross_entropy <- function(object, test_data = NULL){
     if(object$dist == "poisson") family <- "zip" else family <- "zinb"
   } else family <- object$family$family
   if(grepl("Negative Binomial", family)) family <- "negbin"
+  if(family == "gaussian"){
+    n <- nrow(object$model)
+    sd <- sigma(object) * sqrt((n-dim(model.matrix(object))[2])/n)
+  }
   log_prob <- switch(family,
                  gaussian = dnorm(y_obs, mean = y_hat,
-                                  sd = sigma(object), log = TRUE),
+                                  sd = sd, log = TRUE),
                  binomial = y_obs * log(y_hat) + (1 - y_obs) * log(1 - y_hat),
                  poisson = dpois(y_obs, lambda = y_hat, log = TRUE),
                  negbin = dnbinom(y_obs, mu = y_hat, size=object$theta,
