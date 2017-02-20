@@ -46,7 +46,7 @@ cross_entropy <- function(object, test_data = NULL){
   y_obs <- unlist(test_data[, names(object$model)[1]])
   if(is.factor(y_obs)) y_obs <- as.integer(y_obs) - 1
   y_hat <- predict(object, test_data, type="response")
-  if(class(object) == "zeroinfl"){
+  if(class(object)[1] == "zeroinfl"){
     if(object$dist == "poisson") family <- "zip" else family <- "zinb"
   } else family <- object$family$family
   if(grepl("Negative Binomial", family)) family <- "negbin"
