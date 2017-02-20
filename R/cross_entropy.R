@@ -44,7 +44,6 @@ cross_entropy <- function(object, test_data = NULL){
   }
   if(is.null(test_data)) test_data <- object$model
   y_obs <- unlist(test_data[, names(object$model)[1]])
-  y_bar <- mean(y_obs, na.rm = TRUE)
   y_hat <- predict(object, test_data, type="response")
   if(class(object) == "zeroinfl"){
     if(object$dist == "poisson") family <- "zip" else family <- "zinb"
