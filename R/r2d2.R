@@ -1,7 +1,10 @@
-#' Proportion of variance and deviance explained
+#' R-squared as Deviance Explained
 #'
-#' Returns the fraction of variance explained and the fraction of deviance
-#' explained by a fitted model object.
+#' \code{r2d2} calculates an R-squared defined as the proportionate reduction in
+#' uncertainty, measured by Kullback-Leibler divergence, due to the fitted
+#' model. This corresponds to the fraction of deviance explained, which, for
+#' linear models with normally distributed residuals, is equivalent to the
+#' traditional R-squared.
 #'
 #' For standard linear regression models fit with \code{\link[stats]{lm}}, the
 #' familiar coefficient of determination, R-squared, can be obtained with
@@ -14,31 +17,28 @@
 #' of uncertainty explained by the model does not generally hold for exponential
 #' family regression models.
 #'
-#' Cameron and Windmeijer (1997) proposed an R-squared measure for GLMs based on
-#' Kullback-Leibler (KL) divergence (\eqn{entropy -  cross-entropy}), which they
-#' termed \eqn{R_{KL}^2}, that restores all of the desirable properties of
-#' R-squared, including its interpretation as the fraction of uncertainty
-#' explained. Owing to an equivalence between KL-divergence and deviance, others
-#' have referred to as \eqn{R_D^2} (Martin & Hall, 2016), \eqn{D^2}
-#' (\code{\link[modEvA]{Dsquared}}), or \code{dev.ratio}
-#' (\code{\link[glmnet]{glmnet}}). (\code{r2d2} adopts the latter terminology,
-#' and the \code{\link{summary.beset_glm}} and
-#' \code{\link{summary.beset_zeroinfl}} methods refer to this measure as
-#' "Deviance Explained".
+#' Cameron and Windmeijer (1997) proposed an R-squared measure (termed
+#' \eqn{R_{KL}^2}) for GLMs based on Kullback-Leibler (KL) divergence
+#' (\eqn{entropy -  cross-entropy}), which restores all of the desirable
+#' properties of R-squared, including its interpretation as the fraction of
+#' uncertainty explained. Owing to an equivalence between KL-divergence and
+#' deviance, others have referred to this metric as \eqn{R_D^2} (Martin & Hall,
+#' 2016), \eqn{D^2} (\code{\link[modEvA]{Dsquared}}), or \code{dev.ratio}
+#' (\code{\link[glmnet]{glmnet}}). It is defined as \eqn{1-dev/nulldev},
+#' where \eqn{dev} is the deviance: \eqn{2*(loglik_sat - loglik_fit)}, where
+#' \eqn{loglik_sat} is the log-likelihood for the saturated model (a model
+#' witha free parameter per observation) and \eqn{loglik_fit} is the
+#' log-likelihood for the fitted model; and where \eqn{nulldev} is the null
+#' deviance: \eqn{2*(loglik_sat - loglik_null)}, where \eqn{loglik_null} is the
+#' log-likelihood for the intercept-only model. Following the reasoning of
+#' Martin & Hall (2016), the saturated and null models for ZI regression are
+#' taken to be the equivalent saturated and null models for the corresponding
+#' non-ZI regression: e.g., the saturated model for ZI-Poisson regression is the
+#' same as the saturated model for Poisson regression.
 #'
-#' The \code{dev_ratio} is defined to be \eqn{1-dev/nulldev}, where \eqn{dev} is
-#' the deviance: \eqn{2*(loglik_sat - loglik_fit)}, where \eqn{loglik_sat} is
-#' the log-likelihood for the saturated model (a model witha free parameter per
-#' observation) and \eqn{loglik_fit} is the log-likelihood for the fitted model;
-#' and where \eqn{nulldev} is the null deviance:
-#' \eqn{2*(loglik_sat - loglik_null)}, where \eqn{loglik_null} is the
-#' log-likelihood for the intercept-only model.
+#' @return R-squared statistic based on the deviance ratio.
 #'
-#' @return \code{r2d2} returns a list with both variance explained (named
-#' \code{"r_squared"}) and deviance explained (named \code{"dev_ratio"}) for
-#' GLMs and zero-inflated models. For GLMs with a normal error distribution, the
-#' two are equivalent. For all other GLMs, the deviance explained provides
-#' the more meaningful measure of model fit.
+#' @seealso \code{\link{prediction_metrics}}, \code{\link{deviance.zeroinfl}}
 #'
 #' @references
 #' Colin Cameron A, Windmeijer FAG. (1997) An R-squared measure of goodness
@@ -55,23 +55,17 @@ r2d2 <- function (x, ...) {
 }
 #' @export
 r2d2.lm <- function(object){
-  r2 <- 1 - var(resid(object, type = "response")) / var(object$model[[1]])
-  structure(list(r_squared = r2, dev_ratio = r2), class = "r2d2")
+  1 - var(resid(object, type = "response")) / var(object$model[[1]])
 }
 #' @export
 r2d2.glm <- function(object){
   y <- object$model[[1]]
   if(is.factor(y)) y <- as.integer(y) - 1
-  r2 <- 1 - var(resid(object, type = "response")) / var(y)
-  d2 <- 1 - object$deviance / object$null.deviance
-  structure(list(r_squared = r2, dev_ratio = d2), class = "r2d2")
+  1 - object$deviance / object$null.deviance
 }
 #' @export
 r2d2.zeroinfl <- function(object){
-  r2 <- 1 - var(resid(object, type = "response")) / var(object$model[[1]])
-  null <- glm(object$model[[1]] ~ 1, family = "poisson")
-  d2 <- 1 - deviance(object) / deviance(null)
-  structure(list(r_squared = r2, dev_ratio = d2), class = "r2d2")
+  prediction_metrics(object)$deviance_explained
 }
 
 #' @export
