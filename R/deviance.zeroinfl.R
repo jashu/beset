@@ -24,10 +24,12 @@
 #'
 #' @export
 deviance.zeroinfl <- function(object){
-  y_hat <- y_obs <- object$model[,1]
-  loglik_sat <- sum(switch(object$dist,
-                           poisson = dpois(y_obs, lambda = y_hat, log = TRUE),
-                           negbin = dnbinom(y_obs, mu = y_hat,
-                                            size=object$theta, log = TRUE)))
+  loglik_sat <- sum(
+    switch(
+      object$dist,
+      poisson = dpois(object$y, lambda = object$y, log = TRUE),
+      negbin = dnbinom(object$y, mu = object$y, size=object$theta, log = TRUE)
+      )
+    )
   as.numeric(2 * (loglik_sat - logLik(object)))
 }
