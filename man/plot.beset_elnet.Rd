@@ -21,4 +21,3 @@ function of alpha (L1-L2 mixing parameter) and lambda (regularization
 parameter) from a cross-validated elastic net regression, as implemented by
  \code{\link{beset_elnet}}.
 }
-

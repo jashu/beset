@@ -45,4 +45,3 @@ https://stat.ethz.ch/R-manual/R-devel/library/parallel/doc/parallel.pdf}{
 \seealso{
 \code{\link[glmnet]{glmnet}}, \code{\link[caret]{train}}
 }
-

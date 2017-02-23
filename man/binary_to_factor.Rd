@@ -40,4 +40,3 @@ vice versa.
 automatic reordering of factor levels and a simpler method of specifying
 factor labels.
 }
-

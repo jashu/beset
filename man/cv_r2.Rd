@@ -25,4 +25,3 @@ assigning observations to folds.}
 Returns a cross-validated estimate of R-squared, or how well the fitted model
 object is expected to explain new data.
 }
-

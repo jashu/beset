@@ -26,4 +26,3 @@ for the training, cross-validated, and, if included, independent-test
 \eqn{R^2}, which are labeled in the legend as "Train", "CV", and "Test",
 respectively.
 }
-

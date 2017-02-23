@@ -13,4 +13,3 @@
 \code{summary.beset_lm} summarizes the output of a \code{\link{beset_lm}}
  object.
 }
-

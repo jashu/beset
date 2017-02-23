@@ -13,4 +13,3 @@
 \code{summary.beset_zeroinfl} summarizes the output of a
 \code{\link{beset_zeroinfl}} object.
 }
-

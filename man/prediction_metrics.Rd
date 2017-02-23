@@ -78,7 +78,7 @@ Currently the following "families" are supported: Gaussian, binomial,
 Poisson, negative binomial, zero-inflated Poisson, and zero-inflated negative
 binomial.
 }
+
 \seealso{
 \code{\link{beset_glm}}, \code{\link{beset_zeroinfl}}
 }
-

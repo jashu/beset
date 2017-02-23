@@ -55,4 +55,3 @@ appropriate data frame for the task at hand.
 \code{\link{binary_to_factor}}, \code{\link[base]{set.seed}},
 \code{\link{data_partition}}
 }
-

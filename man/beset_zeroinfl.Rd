@@ -168,9 +168,9 @@ the new settings.
    of 10 predictors.
 }
 }
+
 \seealso{
 \code{\link[caret]{createFolds}}, \code{\link{beset_lm}},
 \code{\link[pscl]{zeroinfl}}, \code{\link[base]{set.seed}},
 \code{\link{cross_entropy}}
 }
-

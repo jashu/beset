@@ -145,8 +145,8 @@ number generator as one of its arguments.
    works with a more restricted set of distributions.
 }
 }
+
 \seealso{
 \code{\link[caret]{createFolds}}, \code{\link[stats]{glm}},
 \code{\link[base]{set.seed}}, \code{\link[MASS]{glm.nb}}
 }
-
