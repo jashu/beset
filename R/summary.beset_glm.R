@@ -39,12 +39,12 @@ summary.beset_glm <- function(object, metric = "MCE", oneSE = TRUE){
   }
   best_model <- if(class(object$best_AIC)[1] == "negbin"){
     update(object$best_AIC, best_form, data = object$model_data)
-  } else{
+  } else {
     update(object$best_AIC, best_form,
            family = object$best_AIC$family,
            data = object$model_data)
   }
-  best <- summary(best_model)
+  best <- summary(best_model, correlation = TRUE)
   R2 <- r2d2(best_model)
   R2_cv <- do.call("cv_r2",
                    args = c(list(object = best_model), object$xval_params))
