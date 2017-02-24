@@ -14,10 +14,10 @@
 #' predicts the left-out fold.
 #'
 #' @section Cross-validation details:
-#' \code{beset_glm} uses \code{\link[caret]{createFolds}} to randomly assign
-#' observations to \code{k} folds within levels of the outcome when the outcome
-#' is a factor or within subgroups based on percentiles when the outcome is
-#' numeric. This insures that the folds will be matched in terms of the
+#' \code{beset_glm} uses \code{\link[caret]{createMultiFolds}} to randomly
+#' partition the data set into \code{n_folds} * \code{n_repeats} folds within
+#' strata (factor levels for factor outcomes percentile-based groups for numeric
+#' outcomes). This insures that the folds will be matched in terms of the
 #' outcome's frequency distribution. \code{beset_glm} also insures the
 #' reproducibility of your analysis by requiring a \code{seed} to the random
 #' number generator as one of its arguments.
