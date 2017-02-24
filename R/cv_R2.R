@@ -36,7 +36,7 @@ cv_r2 <- function(object, n_cores = 2, n_folds = 10, n_repeats = 10, seed = 42){
                                 data = object$model[x,],
                                 dist = object$dist)
     )
-    beset::prediction_metrics(model, object$model[-x,])$deviance_explained
+    beset::prediction_metrics(model, object$model[-x,])$R_squared
   })
   boot_r2 <- boot::boot(r2, function(x, i) median(x[i], na.rm = TRUE), 1000,
                         parallel = "snow", cl = cl)

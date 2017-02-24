@@ -130,14 +130,10 @@ prediction_metrics <- function(object, test_data = NULL){
       zinb = dnbinom(y, size=object$theta, mu = y, log = TRUE)
     )
   )
-  RSS <- sum((y - y_hat)^2)
-  TSS <- sum((y - y_bar)^2)
-  R_squared <- 1 - RSS/TSS
   KLd_pred <- 2 * (ll_saturated - ll_predicted)
   KLd_null <- 2 * (ll_saturated - ll_null)
-  structure(list(mean_squared_error = RSS / N,
-                 R_squared = 1 - RSS/TSS,
-                 mean_cross_entropy = -ll_predicted / N,
-                 deviance_explained = 1 - KLd_pred / KLd_null),
+  structure(list(mean_cross_entropy = -ll_predicted / N,
+                 mean_squared_error = mean((y - y_hat)^2),
+                 R_squared = 1 - KLd_pred / KLd_null),
             class = "prediction_metrics")
 }
