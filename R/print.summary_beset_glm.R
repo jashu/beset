@@ -63,7 +63,6 @@ print.summary_beset_glm <- function(
         print(correl[-1, -p, drop = FALSE], quote = FALSE)
     }
   }
-  cat("\n")
   if("summary.negbin" %in% class(x)){
     dp <- max(2 - floor(log10(x$SE.theta)), 0)
     cat("\n              Theta: ", format(round(x$theta, dp), nsmall = dp),
@@ -72,10 +71,12 @@ print.summary_beset_glm <- function(
     if (!is.null(x$th.warn))
       cat("Warning while fitting theta:", x$th.warn, "\n")
     cat("\n 2 x log-likelihood: ",
-        format(round(x$twologlik, 3), nsmall = dp), "\n\n")
+        format(round(x$twologlik, 3), nsmall = dp), "\n")
   }
-    cat("Cross-validation error:", round(object$best_cve, 2),
-        "(cross entropy)\n")
+    cat("\nTrain-sample R-squared:", round(object$R2, 2), "\n")
+    print(object$R2_cv)
+    if(!is.null(object$R2_test)) cat("\nTest-sample R-squared:",
+                              round(object$R2_test,2))
   cat("\n=======================================================")
 }
 
