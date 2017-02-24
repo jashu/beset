@@ -2,9 +2,10 @@
 #'
 #' \code{r2d2} calculates an R-squared defined as the proportionate reduction in
 #' uncertainty, measured by Kullback-Leibler divergence, due to the fitted
-#' model. This corresponds to the fraction of deviance explained, which, for
-#' linear models with normally distributed residuals, is equivalent to the
-#' traditional R-squared.
+#' model. This corresponds to the fraction of deviance explained, which is
+#' equivalent to the traditional R-squared for linear models with normally
+#' distributed residuals, but is more appropriate for exponential family
+#' regression models.
 #'
 #' For standard linear regression models fit with \code{\link[stats]{lm}}, the
 #' familiar coefficient of determination, R-squared, can be obtained with
@@ -31,12 +32,12 @@
 #' log-likelihood for the fitted model; and where \eqn{nulldev} is the null
 #' deviance: \eqn{2*(loglik_sat - loglik_null)}, where \eqn{loglik_null} is the
 #' log-likelihood for the intercept-only model. Following the reasoning of
-#' Martin & Hall (2016), the saturated and null models for ZI regression are
-#' taken to be the equivalent saturated and null models for the corresponding
-#' non-ZI regression: e.g., the saturated model for ZI-Poisson regression is the
-#' same as the saturated model for Poisson regression.
+#' Martin & Hall (2016), the saturated and null models for zero-inflated (ZI)
+#' regression are taken to be the equivalent saturated and null models for the
+#' corresponding non-ZI regression: e.g., the saturated model for ZI-Poisson
+#' regression is the same as the saturated model for Poisson regression.
 #'
-#' @return R-squared statistic based on the deviance ratio.
+#' @return R-squared statistic based on deviance ratio (\eqn{1-dev/nulldev}).
 #'
 #' @seealso \code{\link{prediction_metrics}}, \code{\link{deviance.zeroinfl}}
 #'
