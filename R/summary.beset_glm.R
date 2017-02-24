@@ -7,13 +7,48 @@
 #'
 #' @export
 
-summary.beset_glm <- function(object){
-  data <- object$best_subsets
-  best <- summary(object$best_model)
-  form <- as.character(terms(best))
-  form <- paste0(form[2], " ", form[1], " ", form[3])
-  best_form <- form
-  best_cve <- data$cv_CE[data$form == best_form]
-  structure(list(best = best, best_form = best_form, best_cve = best_cve),
-            class = "summary_beset_glm")
+summary.beset_glm <- function(object, metric = "MCE", oneSE = TRUE){
+  metric <- pmatch(metric, c("MCE", "MSE", "R2"))
+  if(is.na(metric)) stop("invalid 'metric' argument")
+  best_metric <- switch(
+    metric,
+    MCE = min(object$xval_stats$MCE, na.rm = T)[1],
+    MSE = min(object$xval_stats$MSE, na.rm = T)[1],
+    R2 = max(object$xval_stats$R2, na.rm = T)[1]
+  )
+  best_idx <- switch(
+    metric,
+    MCE = which.min(object$xval_stats$MCE),
+    MSE = which.min(object$xval_stats$MSE),
+    R2 = which.max(object$xval_stats$R2)
+  )
+  best_form <- object$xval_stats$form[best_idx]
+  if(oneSE){
+    boundary <- switch(
+      metric,
+      MCE = best_metric + object$xval_stats$MCE_SE[best_idx],
+      MSE = best_metric + object$xval_stats$MSE_SE[best_idx],
+      R2 = best_metric - object$xval_stats$R2_SE[best_idx])
+    best_1SE <- switch(
+      metric,
+      MCE = object$xval_stats[object$xval_stats$MCE < boundary,],
+      MSE = object$xval_stats[object$xval_stats$MSE < boundary,],
+      R2 = object$xval_stats[object$xval_stats$R2 > boundary,]
+    )
+    best_form <- best_1SE$form[which.min(best_1SE$n_pred)]
+  }
+  best_model <- if(class(object$best_AIC)[1] == "negbin"){
+    update(object$best_AIC, best_form, data = object$model_data)
+  } else{
+    update(object$best_AIC, best_form,
+           family = object$best_AIC$family,
+           data = object$model_data)
+  }
+  best <- summary(best_model)
+  R2 <- r2d2(best_model)
+  R2_cv <- do.call("cv_r2",
+                   args = c(list(object = best_model), object$xval_params))
+  R2_test <- object$test_stats$R2[object$test_stats$form == best_form]
+  structure(list(best = best, best_form = best_form, R2 = R2,
+                 R2_cv = R2_cv, R2_test = R2_test), class = "summary_beset_glm")
 }
