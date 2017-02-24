@@ -4,7 +4,8 @@
 \alias{summary.beset_glm}
 \title{Summary Method for the \code{beset_glm} Class}
 \usage{
-\method{summary}{beset_glm}(object, metric = "MCE", oneSE = TRUE)
+\method{summary}{beset_glm}(object, n_pred = NULL, metric = "MCE",
+  oneSE = TRUE, n_cores = 2)
 }
 \arguments{
 \item{object}{An object of class \code{\link{beset_glm}}.}
