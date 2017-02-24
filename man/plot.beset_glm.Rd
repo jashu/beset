@@ -4,15 +4,15 @@
 \alias{plot.beset_glm}
 \title{Plot Method for the \code{beset_glm} Class}
 \usage{
-\method{plot}{beset_glm}(object, SE = TRUE, title = "")
+\method{plot}{beset_glm}(object, metric = "MCE", se = TRUE, title = "")
 }
 \arguments{
 \item{object}{An object of class \code{beset_glm}.}
 
+\item{title}{Optional character vector giving plot title.}
+
 \item{SE}{Logical indicating whether or not standard-error bars should be
 plotted.}
-
-\item{title}{Optional character vector giving plot title.}
 }
 \description{
 \code{plot.beset_glm} takes the output of a \code{\link{beset_glm}} object and creates
