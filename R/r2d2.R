@@ -55,14 +55,31 @@ r2d2 <- function (x, ...) {
   UseMethod("r2d2", x)
 }
 #' @export
-r2d2.lm <- function(object){
-  1 - var(resid(object, type = "response")) / var(object$model[[1]])
+r2d2.lm <- function(object, n_cores = 2, seed = 42){
+  cl <- parallel::makeCluster(n_cores)
+  set.seed(seed)
+  r2_boot <- boot::boot(object$model, function(x, i, object){
+    fit <- update(object, data = x[i,])
+    1 - var(resid(fit, type = "response")) / var(fit$model[[1]])
+  }, 1000, object = object, parallel = "snow", cl = cl)
+  parallel::stopCluster(cl)
+  r2_CI <- boot::boot.ci(r2_boot, type = "bca")
+  structure(list(R2 = 1 - var(resid(object, type = "response")) /
+                   var(object$model[[1]]),
+                 `95% CI` = r2_CI$bca[4:5]), class = "r2d2")
 }
 #' @export
-r2d2.glm <- function(object){
-  y <- object$model[[1]]
-  if(is.factor(y)) y <- as.integer(y) - 1
-  1 - object$deviance / object$null.deviance
+r2d2.glm <- function(object, n_cores = 2, seed = 42){
+  cl <- parallel::makeCluster(n_cores)
+  set.seed(seed)
+  r2_boot <- boot::boot(object$model, function(x, i, object){
+    fit <- update(object, data = x[i,], family = object$family)
+    1 - fit$deviance / fit$null.deviance
+  }, 1000, object = object, parallel = "snow", cl = cl)
+  parallel::stopCluster(cl)
+  r2_CI <- boot::boot.ci(r2_boot, type = "bca")
+  structure(list(R2 = 1 - object$deviance / object$null.deviance,
+                 `95% CI` = r2_CI$bca[4:5]), class = "r2d2")
 }
 #' @export
 r2d2.zeroinfl <- function(object){
