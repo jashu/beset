@@ -265,7 +265,6 @@ beset_glm <- function(form, train_data, test_data = NULL,
   #======================================================================
   # Obtain cross entropy for every model
   #----------------------------------------------------------------------
-  if(is.null(n_cores)) n_cores <- parallel::detectCores() %/% 2
   cl <- parallel::makeCluster(n_cores)
   negative.binomial <- MASS::negative.binomial
   parallel::clusterExport(cl, c("mf", "dist", "link", "test_data", "glm_nb",
