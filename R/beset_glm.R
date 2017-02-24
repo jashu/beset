@@ -202,8 +202,6 @@ beset_glm <- function(form, train_data, test_data = NULL,
   #==================================================================
   # Check that number of predictors and cv folds is acceptable
   #------------------------------------------------------------------
-  if(ncol(mf) > 21)
-    stop("Best subsets not recommended for use with more than 20 predictors.")
   p <- min(ncol(mf) - 1, p_max)
   if(family == "binomial"){
     n <- min(sum(y == levels(y)[1]), sum(y == levels(y)[2]))
