@@ -178,7 +178,7 @@ beset_glm <- function(form, train_data, test_data = NULL,
   n_drop <- nrow(train_data) - nrow(mf)
   if(n_drop > 0)
     warning(paste("Dropping", n_drop, "rows with missing data."),
-                         immediate. = TRUE)
+            immediate. = TRUE)
   response <- names(mf)[1]
   y <- mf[,1]
   if(grepl("binomial", family)) y <- as.factor(y)
