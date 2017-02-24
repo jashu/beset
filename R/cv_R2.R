@@ -24,8 +24,7 @@ cv_r2 <- function(object, n_cores = 2, n_folds = 10, n_repeats = 10, seed = 42){
   set.seed(seed)
   fold_ids <- caret::createMultiFolds(y, k = n_folds, times = n_repeats)
   cl <- parallel::makeCluster(n_cores)
-  parallel::clusterExport(cl, c("object"))
-  r2 <- parallel::parSapply(cl, fold_ids, function(x){
+  r2 <- parallel::parSapply(cl, fold_ids, function(x, object){
     model <- switch(
       model_type,
       lm = lm(object$terms, data = object$model[x,]),
@@ -37,7 +36,7 @@ cv_r2 <- function(object, n_cores = 2, n_folds = 10, n_repeats = 10, seed = 42){
                                 dist = object$dist)
     )
     beset::prediction_metrics(model, object$model[-x,])$R_squared
-  })
+  }, object = object)
   boot_r2 <- boot::boot(r2, function(x, i) median(x[i], na.rm = TRUE), 1000,
                         parallel = "snow", cl = cl)
   parallel::stopCluster(cl)
