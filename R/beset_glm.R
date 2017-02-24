@@ -83,17 +83,16 @@
 #'
 #' @param p_max Maximum number of predictors to attempt to fit.
 #'
+#' @param n_cores Integer value indicating the number of workers to run
+#' in parallel during subset search and cross-validation. By default, this will
+#' be set to 2. You may wish to change this depending on your hardware and OS.
+#' See \code{\link[parallel]{parallel-package}} for more information.
+#'
 #' @param n_folds Integer indicating the number of folds to use for
 #' cross-validation.
 #'
 #' @param n_repeats Integer indicating the number of times cross-validation
 #' should be repeated.
-#'
-#' @param n_cores Optional integer value indicating the number of workers to run
-#' in parallel during subset search and cross-validation. By default, this will
-#' be set to equal half the detectable cores on your machine. You may wish to
-#' change this depending on your hardware and OS.
-#' See \code{\link[parallel]{parallel-package}} for more information.
 #'
 #' @param seed An integer used to seed the random number generator when
 #' assigning observations to folds.
@@ -101,42 +100,45 @@
 #' @return A "beset_glm" object with the following components:
 #' \enumerate{
 #'  \item\describe{
-#'    \item{best_model}{an object of class \code{\link[stats]{glm}}
-#'    corresponding to the best model}
+#'    \item{best_AIC}{an object of class \code{\link[stats]{glm}}
+#'    corresponding to the model with the lowest Akaike Information Criterion}
 #'    }
 #'  \item\describe{
-#'    \item{all_subsets}{a data frame containing fit statistics for every
+#'    \item{fit_stats}{a data frame containing fit statistics for every
 #'      possible combination of predictors:
 #'      \describe{
-#'      \item{n_pred}{the number of predictors in model}
+#'      \item{n_pred}{the total number of predictors in model; note that the
+#'      number of predictors for a factor variable corresponds to the number of
+#'      factor levels minus 1}
 #'      \item{form}{formula for model}
-#'      \item{train_CE}{Cross entropy between model predictions and
-#'        \code{train_data}}
-#'      \item{test_CE}{if \code{test_data} is provided, the cross entropy
-#'        between the model fit to \code{train_data} and the \code{test_data}}
+#'      \item{AIC}{\eqn{-2*log-likelihood + k*npar}, where \eqn{npar} represents
+#'      the number of parameters in the fitted model, and \eqn{k = 2}}
+#'      \item{MCE}{Mean cross entropy, estimated as \eqn{-log-likelihood/N},
+#'      where \eqn{N} is the number of observations}
+#'      \item{MSE}{Mean squared error}
+#'      \item{R2}{R-squared, calculates as \eqn{1 - deviance/null deviance}}
 #'       }
 #'    }
 #'  }
 #'  \item\describe{
-#'    \item{best_subsets}{a data frame containing cross-validation statistics
-#'      for the best model for each \code{n_pred} listed in \code{all_subsets}.
-#'      In addition to the columns found in \code{all_subsets}, contains the
-#'      following:
-#'      \describe{
-#'      \item{cv_CE}{the mean cross entropy between the predictions of models
-#'        fit to \code{n-1} folds and the left-out fold}
-#'      \item{cv_CE_SE}{the standard error of the mean cross entropy}
-#'       }
+#'    \item{xval_stats}{a data frame containing cross-validation statistics
+#'      for the best model for each \code{n_pred} listed in \code{fit_stats}.
+#'      Each metric is computed using \code{\link{prediction_metrics}}, with
+#'      models fit to \eqn{n-1} folds and predictions made on the left-out fold.
+#'      Each metric is followed by its standard error, estimated as the standard
+#'      deviation of 1000 bootstrap replicates of computing the median cross-
+#'      validation statistic across all folds and repetitions. The data frame
+#'      is otherwise the same as that documented for \code{fit_stats}, except
+#'      AIC is omitted.
 #'    }
 #'  }
 #' }
 #'
-#' @import foreach
 #' @export
 beset_glm <- function(form, train_data, test_data = NULL,
-                      family = "gaussian", link = NULL, ...,
-                      p_max = 10, n_folds = 10, n_repeats = 10, oneSE = TRUE,
-                      n_cores = NULL, seed = 42){
+                      family = "gaussian", link = NULL,  ...,
+                      p_max = 10, n_folds = 10, n_repeats = 10,
+                      n_cores = 2, seed = 42){
   #==================================================================
   # Check family argument and set up link function if specified
   #------------------------------------------------------------------
