@@ -263,106 +263,129 @@ beset_glm <- function(form, train_data, test_data = NULL,
   n_pred <- c(intercept = 0, n_pred)
 
   #======================================================================
-  # Obtain cross entropy for every model
+  # Obtain fit for every model
   #----------------------------------------------------------------------
   cl <- parallel::makeCluster(n_cores)
   negative.binomial <- MASS::negative.binomial
-  parallel::clusterExport(cl, c("mf", "dist", "link", "test_data", "glm_nb",
-                                "cross_entropy", "negative.binomial"),
+  parallel::clusterExport(cl, c("mf", "family", "dist", "link", "test_data",
+                                "glm_nb", "prediction_metrics", ...,
+                                "negative.binomial"),
                           envir=environment())
   if(family == "negbin"){
-    CE <- parallel::parSapplyLB(cl, form_list, function(form){
+    CE <- parallel::parLapplyLB(cl, form_list, function(form){
       fit <- glm_nb(form, mf, link = link, ...)
-      train_CE <- cross_entropy(fit, mf)
-      test_CE <- NA_real_
-      if(!is.null(test_data)) test_CE <- cross_entropy(fit, test_data)
-      c(train_CE, test_CE)
+      list(AIC = AIC(fit),
+           MCE = -logLik(fit)/nrow(mf),
+           MSE = mean(resid(fit)^2),
+           R2 = 1 - fit$deviance / fit$null.deviance)
     })
   } else {
-    CE <- parallel::parSapplyLB(cl, form_list, function(form){
+    CE <- parallel::parLapplyLB(cl, form_list, function(form){
       fit <- glm(form, eval(dist), mf, ...)
-      train_CE <- cross_entropy(fit, mf)
-      test_CE <- NA_real_
-      if(!is.null(test_data)) test_CE <- cross_entropy(fit, test_data)
-      c(train_CE, test_CE)
+      list(AIC = AIC(fit),
+           MCE = -logLik(fit)/nrow(mf),
+           MSE = mean(resid(fit)^2),
+           R2 = 1 - fit$deviance / fit$null.deviance)
     })
   }
-  parallel::stopCluster(cl)
-  all_subsets <- dplyr::data_frame(n_pred = n_pred,
-                                   form = form_list,
-                                   train_CE = CE[1,],
-                                   test_CE = CE[2,])
-  all_subsets <- dplyr::arrange(all_subsets, n_pred, train_CE)
-
+  fit_stats <- dplyr::data_frame(
+    n_pred = n_pred,
+    form = form_list,
+    AIC = sapply(CE, function(x) x$AIC),
+    MCE = sapply(CE, function(x) x$MCE),
+    MSE = sapply(CE, function(x) x$MSE),
+    R2 = sapply(CE, function(x) round(x$R2,3))
+    )
   #======================================================================
-  # Obtain model with best cross entropy for each number of parameters
+  # Store the fit for the model with the best AIC
   #----------------------------------------------------------------------
-  best_subsets <- dplyr::group_by(all_subsets, n_pred)
-  best_subsets <- dplyr::filter(best_subsets, train_CE == min(train_CE))
+  fit_stats <- dplyr::arrange(fit_stats, AIC)
+  best_AIC <- if(family == "negbin"){
+    glm_nb(fit_stats$form[1], mf, link = link, ...)
+  } else{
+    glm(fit_stats$form[1], eval(dist), mf, ...)
+  }
+  #======================================================================
+  # Obtain model with maximum likelihood for each number of parameters
+  #----------------------------------------------------------------------
+  xval_stats <- dplyr::group_by(fit_stats, n_pred)
+  xval_stats <- dplyr::filter(xval_stats, MCE == min(MCE))
+  xval_stats <- dplyr::ungroup(xval_stats)
+  xval_stats <- dplyr::select(xval_stats, n_pred, form)
+  xval_stats <- dplyr::arrange(xval_stats, n_pred)
 
   #======================================================================
   # Perform cross-validation on best models
   #----------------------------------------------------------------------
-  search_grid <- expand.grid(fold = 1:n_folds, n_pred = 0:p)
-  search_grid <- dplyr::left_join(search_grid, best_subsets, by = "n_pred")
-  seed_seq <- seq.int(from = seed, length.out = n_repeats)
-  doParallel::registerDoParallel()
-  CE <- foreach(seed = seed_seq, .combine = rbind,
-                .export = "negative.binomial") %dopar% {
-    set.seed(seed)
-    folds <- caret::createFolds(y, k = n_folds, list = FALSE)
-    fits <- mapply(function(fold, form){
-      if(family == "negbin"){
-        fit <- glm_nb(form, mf[folds != fold,], link = link, ...)
-        } else {
-          fit <- glm(form, eval(dist), mf[folds != fold,], ...)
-        }
-      }, fold = search_grid$fold, form = search_grid$form, SIMPLIFY = FALSE)
-
-    cv_CE <- matrix(mapply(function(fit, fold)
-      cross_entropy(fit, mf[folds == fold,]),
-      fit = fits, fold = search_grid$fold), nrow = n_folds, ncol = p + 1)
-    CE_cv <- apply(cv_CE, 2, mean, na.rm = T)
-    CE_cv_SE <- apply(cv_CE, 2, function(x) sqrt(var(x)/length(x)))
-
-    data.frame(n_pred = 0:p,
-               cv_CE = CE_cv,
-               cv_CE_SE = CE_cv_SE)
-  }
+  set.seed(seed)
+  fold_ids <- caret::createMultiFolds(y, k = n_folds, times = n_repeats)
+  form_list <- xval_stats$form
+  metrics <- parallel::parLapply(cl, fold_ids, function(i, form_list){
+    fits <- lapply(form_list, function(form){
+      if(family == "negbin")
+        fit <- glm_nb(form, mf[i,], link = link, ...)
+      else
+        fit <- glm(form, eval(dist), mf[i,], ...)
+    })
+    lapply(fits, prediction_metrics, test_data = mf[-i,])
+  }, form_list = form_list)
+  parallel::stopCluster(cl)
   #======================================================================
   # Derive cross-validation statistics
   #----------------------------------------------------------------------
-  CE <- dplyr::group_by(CE, n_pred)
-  mean_CE <- dplyr::summarize_each(CE, dplyr::funs(mean))
+  MCE <- sapply(metrics, function(models)
+    sapply(models, function(x) x$mean_cross_entropy))
+  xval_stats$MCE <- apply(MCE, 1, median, na.rm = T)
+  xval_stats$MCE_SE <- apply(MCE, 1, function(x){
+    MCE_boot <- boot::boot(x, function(x, i) median(x[i], na.rm = T), 1000)
+    sd(MCE_boot$t)
+  })
+  MSE <- sapply(metrics, function(models)
+    sapply(models, function(x) x$mean_squared_error))
+  xval_stats$MSE <- apply(MSE, 1, median, na.rm = T)
+  xval_stats$MSE_SE <- apply(MSE, 1, function(x){
+    MSE_boot <- boot::boot(x, function(x, i) median(x[i], na.rm = T), 1000)
+    sd(MSE_boot$t)
+  })
+  R2 <- sapply(metrics, function(models)
+    sapply(models, function(x) x$R_squared))
+  xval_stats$R2 <- apply(R2, 1, median, na.rm = T)
+  xval_stats$R2_SE <- apply(R2, 1, function(x){
+    R2_boot <- boot::boot(x, function(x, i) median(x[i], na.rm = T), 1000)
+    sd(R2_boot$t)
+  })
 
   #======================================================================
-  # Fit best model to full data set
+  # Compute prediction statistics for independent test set
   #----------------------------------------------------------------------
-  best_subsets <- dplyr::right_join(best_subsets, mean_CE, by = "n_pred")
-  best_subset <- which.min(best_subsets$cv_CE)
-  best_form <- best_subsets$form[best_subset]
-  if(oneSE){
-    max_CE <- min(best_subsets$cv_CE) + best_subsets$cv_CE_SE[best_subset]
-    best_subsets_1SE <- best_subsets[best_subsets$cv_CE < max_CE,]
-    best_form <- best_subsets_1SE$form[which.min(best_subsets_1SE$n_pred)]
+  test_stats <- NULL
+  if(!is.null(test_data)){
+    fits <- lapply(form_list, function(form){
+    if(family == "negbin")
+      glm_nb(form, mf, link = link, ...)
+    else
+      glm(form, eval(dist), mf, ...)
+    })
+  metrics <- lapply(fits, prediction_metrics, test_data = test_data)
+  test_stats <- dplyr::select(xval_stats, n_pred, form)
+  test_stats$MCE <- sapply(metrics, function(x) x$mean_cross_entropy)
+  test_stats$MSE <- sapply(metrics, function(x) x$mean_squared_error)
+  test_stats$R2 <- sapply(metrics, function(x) x$R_squared)
   }
-  if(family == "negbin"){
-    best_model <- glm_nb(best_form, mf, link = link, ...)
-  } else{
-    best_model <- glm(best_form, eval(dist), mf, ...)
-  }
-
   #======================================================================
   # Construct beset_glm object
   #----------------------------------------------------------------------
-  structure(list(all_subsets = all_subsets, best_subsets = best_subsets,
-                 best_model = best_model), class = "beset_glm")
+  structure(list(fit_stats = fit_stats, xval_stats = xval_stats,
+                 test_stats = test_stats, best_AIC = best_AIC, model_data = mf,
+                 xval_params = list(n_folds = n_folds, n_repeats = n_repeats,
+                                    seed = seed)),
+            class = "beset_glm")
 }
 
 #' @export
 beset_lm <- function(form, train_data, test_data = NULL,
                      p_max = 10, n_folds = 10, n_repeats = 10,
-                     n_cores = NULL, seed = 42){
+                     n_cores = 2, seed = 42){
   beset_glm(form, train_data, test_data = test_data, p_max = p_max,
             n_folds = n_folds, n_repeats = n_repeats, n_cores = n_cores,
             seed = seed)
