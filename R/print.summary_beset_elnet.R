@@ -60,9 +60,5 @@ print.summary_beset_elnet <- function(object){
 #' @export
 print.beset_elnet <- function(object) summary(object)
 
-#' @export
-print.cv_R2 <- function(object)
-  cat(paste("Cross-validated R-squared = ", round(object$cv_R2,2), ", 95% CI [",
-        round(object$`95% CI`[1],2), ", ", round(object$`95% CI`[2],2), "]",
-        sep = ""))
+
 

@@ -73,7 +73,9 @@ print.summary_beset_glm <- function(
     cat("\n 2 x log-likelihood: ",
         format(round(x$twologlik, 3), nsmall = dp), "\n")
   }
-    cat("\nTrain-sample R-squared:", round(object$R2, 2), "\n")
+    cat("\n")
+    print(object$R2)
+    cat("\n")
     print(object$R2_cv)
     if(!is.null(object$R2_test)) cat("\nTest-sample R-squared:",
                               round(object$R2_test,2))
@@ -83,3 +85,15 @@ print.summary_beset_glm <- function(
 
 #' @export
 print.beset_glm <- function(object) print(summary(object))
+
+#' @export
+print.cv_R2 <- function(object)
+  cat(paste("Cross-validated R-squared = ", round(object$cv_R2,2), ", 95% CI [",
+            round(object$`95% CI`[1],2), ", ", round(object$`95% CI`[2],2), "]",
+            sep = ""))
+
+#' @export
+print.r2d2 <- function(object)
+  cat(paste("Train-sample R-squared = ", round(object$R2,2), ", 95% CI [",
+            round(object$`95% CI`[1],2), ", ", round(object$`95% CI`[2],2), "]",
+            sep = ""))
