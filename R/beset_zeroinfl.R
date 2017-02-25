@@ -181,9 +181,24 @@ beset_zeroinfl <- function(form, train_data, test_data = NULL,
   if(class(link) == "try-error") stop("Invalid 'link' argument.")
 
   #==================================================================
+  # Create model frame and extract response name and vector
+  #------------------------------------------------------------------
+  mf <- model.frame(form, data = train_data, na.action = na.omit)
+  n_drop <- nrow(train_data) - nrow(mf)
+  if(n_drop > 0)
+    warning(paste("Dropping", n_drop, "rows with missing data."),
+            immediate. = TRUE)
+  response <- names(mf)[1]
+  y <- mf[,1]
+  if(min(y) != 0)
+    stop("Observed lower bound does not equal 0.")
+  if(!is.null(test_data)){
+    test_data <- model.frame(form, data = test_data, na.action = na.omit)
+  }
+  #==================================================================
   # Screen for linear dependencies among predictors
   #------------------------------------------------------------------
-  mm <- model.matrix(form, data = train_data)
+  mm <- model.matrix(form, data = mf)
   colinear_vars <- caret::findLinearCombos(mm[, 2:ncol(mm)])
   if(!is.null(colinear_vars$remove)){
     factor_idx <- which(sapply(mf, class) == "factor")
