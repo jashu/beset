@@ -7,7 +7,7 @@
 #' \code{beset_zeroinfl} performs best subset selection for zero-inflated
 #' count models, fitting both a count model (e.g., negative binomial regression)
 #' and zero-inflation model (e.g., logistic regression). Given that there are
-#' two models involved, the search for the best combinations of predictors is
+#' two models involved, the search for the best combination of predictors is
 #' not completely exhaustive, which would require fitting \emph{(2^p)^2} models,
 #' e.g., 10 predictors have over 1 million possible combinations. Instead, best
 #' subset selection is first performed separately for each of the two models,
@@ -57,13 +57,13 @@
 #'    incomplete models as the best model, an undesirable result if one cares
 #'    about interpretability.
 #'    \item Given the complexity of searching for predictors across two models,
-#'    \code{beset_zeroinfl} limits the size of the model dataframe to a maximum
+#'    \code{beset_zeroinfl} limits the size of the model data frame to a maximum
 #'    of 10 predictors.
 #' }
 #'
-#' @seealso \code{\link[caret]{createFolds}}, \code{\link{beset_lm}},
+#' @seealso \code{\link[caret]{createFolds}}, \code{\link{beset_glm}},
 #' \code{\link[pscl]{zeroinfl}}, \code{\link[base]{set.seed}},
-#' \code{\link{cross_entropy}}
+#' \code{\link{prediction_metrics}}
 #'
 #' @param form A model \code{\link[stats]{formula}}.
 #'
@@ -96,10 +96,9 @@
 #' @param n_repeats Integer indicating the number of times cross-validation
 #' should be repeated.
 #'
-#' @param n_cores Optional integer value indicating the number of workers to run
-#' in parallel during subset search and cross-validation. By default, this will
-#' be set to equal half the detectable cores on your machine. You may wish to
-#' change this depending on your hardware and OS.
+#' @param n_cores Integer value indicating the number of workers to run in
+#' parallel during subset search and cross-validation. By default, this will
+#' be set to 2. You may wish to change this depending on your hardware and OS.
 #' See \code{\link[parallel]{parallel-package}} for more information.
 #'
 #' @param seed An integer used to seed the random number generator when
@@ -107,54 +106,57 @@
 #'
 #' @return A "beset_zeroinfl" object with the following components:
 #' \enumerate{
-#'  \item\describe{
-#'    \item{best_model}{an object of class \code{\link[pscl]{zeroinfl}}
-#'    corresponding to the best model with the number of parameters with the
-#'    smallest cross-validation error}
+#' \item\describe{
+#'    \item{best_AIC}{an object of class \code{\link[pscl]{zeroinfl}}
+#'    corresponding to the model with the lowest Akaike Information Criterion}
 #'    }
 #'  \item\describe{
-#'    \item{best_model_1SE}{an object of class \code{\link[pscl]{zeroinfl}}
-#'    corresponding to the best model with the smallest number of
-#'    parameters within one standard error of the smallest cross-validation
-#'    error}
-#'    }
-#'  \item\describe{
-#'    \item{all_count_subsets}{a data frame containing fit statistics for every
+#'    \item{count_fit_stats}{a data frame containing fit statistics for every
 #'      possible combination of predictors of count data:
 #'      \describe{
-#'      \item{n_count_pred}{the number of count predictors in model}
+#'      \item{n_count_pred}{the number of count predictors in model; note that
+#'       the number of predictors for a factor variable corresponds to the
+#'       number of factor levels minus 1}
 #'      \item{form}{formula for model}
-#'      \item{train_CE}{Cross entropy between model predictions and
-#'        \code{train_data}}
-#'      \item{test_CE}{if \code{test_data} is provided, the cross entropy
-#'        between the model fit to \code{train_data} and the \code{test_data}}
+#'      \item{AIC}{\eqn{-2*log-likelihood + k*npar}, where \eqn{npar} represents
+#'      the number of parameters in the fitted model, and \eqn{k = 2}}
+#'      \item{MCE}{Mean cross entropy, estimated as \eqn{-log-likelihood/N},
+#'      where \eqn{N} is the number of observations}
+#'      \item{MSE}{Mean squared error}
+#'      \item{R2}{R-squared, calculated as \eqn{1 - deviance/null deviance}}
 #'       }
 #'    }
 #'  }
 #'  \item\describe{
-#'    \item{all_zero_subsets}{a data frame containing fit statistics for every
+#'    \item{zero_fit_stats}{a data frame containing fit statistics for every
 #'      possible combination of predictors of zeroes vs. non-zeroes:
 #'      \describe{
 #'      \item{n_zero_pred}{the number of zero predictors in model}
 #'      \item{form}{formula for model}
-#'      \item{train_CE}{Cross entropy between model predictions and
-#'        \code{train_data}}
-#'      \item{test_CE}{if \code{test_data} is provided, the cross entropy
-#'        between the model fit to \code{train_data} and the \code{test_data}}
+#'      \item{AIC}{\eqn{-2*log-likelihood + k*npar}, where \eqn{npar} represents
+#'      the number of parameters in the fitted model, and \eqn{k = 2}}
+#'      \item{MCE}{Mean cross entropy, estimated as \eqn{-log-likelihood/N},
+#'      where \eqn{N} is the number of observations}
+#'      \item{MSE}{Mean squared error}
+#'      \item{R2}{R-squared, calculated as \eqn{1 - deviance/null deviance}}
 #'       }
 #'    }
 #'  }
 #'  \item\describe{
-#'    \item{best_subsets}{a data frame containing cross-validation statistics
+#'    \item{xval_stats}{a data frame containing cross-validation statistics
 #'      for the best model for each \code{n_count_pred} and \code{n_zero_pred}
-#'      listed in \code{all_count_subsets} and \code{all_zero_subsets}.
-#'      In addition to the columns found in \code{all_count_subsets} and
-#'      \code{all_zero_subsets}, contains the following:
-#'      \describe{
-#'      \item{cv_CE}{the mean cross entropy between the predictions of models
-#'        fit to \code{n-1} folds and the left-out fold}
-#'      \item{cv_CE_SE}{the standard error of the mean cross entropy}
-#'       }
+#'      listed in \code{count_fit_stats} and \code{zero_fit_stats}. Each metric
+#'      is followed by its standard error, estimated as the standard deviation
+#'      of 1000 bootstrap replicates of computing the median cross-validation
+#'      statistic across all folds and repetitions. The data frame is otherwise
+#'      the same as that documented for \code{fit_stats}, except AIC is omitted.
+#'    }
+#'  }
+#'  \item\describe{
+#'    \item{test_stats}{if \code{test_data} is provided, a data frame containing
+#'     prediction metrics for the best model for each \code{n_count_pred} and
+#'     \code{n_zero_pred} combination listed in \code{count_fit_stats} and
+#'     \code{zero_fit_stats} as applied to the \code{test_data}.
 #'    }
 #'  }
 #' }
@@ -165,7 +167,7 @@ beset_zeroinfl <- function(form, train_data, test_data = NULL,
                            family = "poisson", link = "logit", ...,
                            p_count_max = 10, p_zero_max = 10,
                            n_folds = 10, n_repeats = 10,
-                           n_cores = NULL, seed = 42){
+                           n_cores = 2, seed = 42){
   #==================================================================
   # Check family and link arguments
   #------------------------------------------------------------------
