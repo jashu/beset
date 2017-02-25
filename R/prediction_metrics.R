@@ -1,8 +1,8 @@
 #' Prediction Metrics
 #'
-#' Calculate squared-residual (mean squared error and R-squared) and analagous
-#' deviance-residual (mean cross entropy and deviance explained) metrics to
-#' measure how well a generalized linear model predicts test data.
+#' Calculate mean squared error, mean cross entropy, and R-squared (as fraction
+#' of deviance explained) to measure how well a generalized linear model
+#' predicts test data.
 #'
 #' \code{prediction_metrics} uses a generalized linear model (GLM) previously
 #' fit to a training set to predict responses for a test set. It then computes
@@ -10,7 +10,7 @@
 #' responses, as well as the log-likelihoods for the corresponding saturated
 #' model (a model with one free parameter per observation) and null model (a
 #' model with only an intercept) fit to the true responses. These quantities
-#' are used to derive the metrics described in the following sections.
+#' are used to derive the metrics described below.
 #'
 #' @section Mean squared error (MSE) and mean cross entropy (MCE):
 #' MSE is the average of the squared difference between each predicted response
@@ -29,24 +29,18 @@
 #' @section R-squared and deviance explained:
 #' The prediction R-squared provides a metric analagous to R-squared, except
 #' instead of describing how well a model fits the original training data, it
-#' describes how well the model predicts independent test data. It is calculated
-#' using the traditional formula \eqn{1 - RSS / TSS}, where RSS corresponds to
-#' the sum of the squared residuals (\eqn{(y - ŷ)^2}) and TSS is the total sum
-#' of squares.
+#' describes how well the model predicts independent test data. Instead of using
+#' the traditional formula, \eqn{1 - RSS / TSS}, where RSS corresponds to
+#' the sum of the squared residuals, \eqn{(y - ŷ)^2}, and TSS is the total sum
+#' of squares, it is calculated as \eqn{1 - dev_PRED / dev_NULL}, where
+#' \eqn{dev_PRED} is the deviance for the model prediction and \eqn{dev_NULL} is
+#' the deviance for the null model. This yields a quantity equivalent to the
+#' traditional R-squared formula for linear models with normal error
+#' distributions, but a different quantity for exponential family regression
+#' models (e.g., logistic regression) that preserves the interpretation of
+#' R-squared as the fraction of uncertainty explained (Cameron & Windmeijer,
+#' 1997). (See \code{\link{r2d2}} for more details.)
 #'
-#' The traditional interpretation of R-squared as the fraction of uncertainty
-#' explained by the model does not generally hold for exponential family
-#' regression models. Deviance explained, originally termed \eqn{R_{KL}^2} by
-#' Cameron and Windmeijer (1997), is an R-squared-analagous measure based
-#' on Kullback-Leibler (KL) divergence (\eqn{entropy -  cross-entropy}) that
-#' does retain this interpretation for the wider class of GLMs. Owing to an
-#' equivalence between KL-divergence and deviance, others have referred to
-#' this metric as \eqn{R_D^2} (Martin & Hall, 2016), \eqn{D^2}
-#' (\code{\link[modEvA]{Dsquared}}), or \code{dev.ratio}
-#' (\code{\link[glmnet]{glmnet}}). It is calculated as
-#' \eqn{1 - dev_PRED / dev_NULL}, where \eqn{dev_PRED} is the deviance for the
-#' model prediction and \eqn{dev_NULL} is the deviance for the null model.
-
 #' Note that the prediction R-squared can be negative if overfitting is severe;
 #' i.e., when predicting new data, the model performs worse than if one were to
 #' always predict the mean response.
@@ -61,10 +55,11 @@
 #' @param test_data A data frame containing new data for the response and all
 #' predictors that were used to fit the model \code{object}.
 #'
-#' @return A number giving the cross entropy error between model predictions and
-#' actual observations.
+#' @return A list giving the mean squared error, mean cross entropy, and
+#' deviance R-squared between model predictions and actual observations.
 #'
-#' @seealso \code{\link{beset_glm}}, \code{\link{beset_zeroinfl}}
+#' @seealso \code{\link{r2d2}}, \code{\link[stats]{logLik}},
+#' \code{\link{deviance.zeroinfl}}
 #'
 #' @export
 prediction_metrics <- function(object, test_data = NULL){
