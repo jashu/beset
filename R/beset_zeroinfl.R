@@ -212,23 +212,6 @@ beset_zeroinfl <- function(form, train_data, test_data = NULL,
                paste0(to_remove, collapse = "\n\t"),
                sep = ""))
   }
-
-  #==================================================================
-  # Create model frame and extract response name and vector
-  #------------------------------------------------------------------
-  mf <- model.frame(form, data = train_data, na.action = na.omit)
-  n_drop <- nrow(train_data) - nrow(mf)
-  if(n_drop > 0)
-    warning(paste("Dropping", n_drop, "rows with missing data."),
-            immediate. = TRUE)
-  response <- names(mf)[1]
-  y <- mf[,1]
-  if(min(y) != 0)
-    stop("Observed lower bound does not equal 0.")
-  if(!is.null(test_data)){
-    test_data <- model.frame(form, data = test_data, na.action = na.omit)
-  }
-
   #==================================================================
   # Check that number of predictors and cv folds is acceptable
   #------------------------------------------------------------------
