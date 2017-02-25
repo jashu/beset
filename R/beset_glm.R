@@ -116,7 +116,7 @@
 #'      \item{MCE}{Mean cross entropy, estimated as \eqn{-log-likelihood/N},
 #'      where \eqn{N} is the number of observations}
 #'      \item{MSE}{Mean squared error}
-#'      \item{R2}{R-squared, calculates as \eqn{1 - deviance/null deviance}}
+#'      \item{R2}{R-squared, calculated as \eqn{1 - deviance/null deviance}}
 #'       }
 #'    }
 #'  }
@@ -130,6 +130,12 @@
 #'      validation statistic across all folds and repetitions. The data frame
 #'      is otherwise the same as that documented for \code{fit_stats}, except
 #'      AIC is omitted.
+#'    }
+#'  }
+#'  \item\describe{
+#'    \item{test_stats}{if \code{test_data} is provided, a data frame containing
+#'     prediction metrics for the best model for each \code{n_pred} listed in
+#'     \code{fit_stats} as applied to the \code{test_data}.
 #'    }
 #'  }
 #' }
