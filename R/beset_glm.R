@@ -206,7 +206,6 @@ beset_glm <- function(form, train_data, test_data = NULL,
                paste0(to_remove, collapse = "\n\t"),
                sep = ""))
   }
-
   #==================================================================
   # Check that number of predictors and cv folds is acceptable
   #------------------------------------------------------------------
@@ -242,15 +241,13 @@ beset_glm <- function(form, train_data, test_data = NULL,
                   ".\n  Increasing number of cv folds to ", n_folds, ".",
                   sep = ""), immediate. = TRUE)
   }
-
   #======================================================================
   # Make list of all possible formulas with number of predictors <= p_max
   #----------------------------------------------------------------------
   pred <- lapply(1:p, function(x)
     combn(names(mf)[2:ncol(mf)], x, simplify = FALSE))
   pred <- unlist(sapply(pred, function(vars){
-    sapply(vars, function(x) paste0(x, collapse = " + "))
-    }))
+    sapply(vars, function(x) paste0(x, collapse = " + "))}))
   pred <- c("1", pred)
   form_list <- paste(response, "~", pred)
 
@@ -275,14 +272,13 @@ beset_glm <- function(form, train_data, test_data = NULL,
   negative.binomial <- MASS::negative.binomial
   parallel::clusterExport(cl, c("mf", "family", "dist", "link", "test_data",
                                 "glm_nb", "prediction_metrics", ...,
-                                "negative.binomial"),
-                          envir=environment())
+                                "negative.binomial"), envir=environment())
   if(family == "negbin"){
     CE <- parallel::parLapplyLB(cl, form_list, function(form){
       fit <- glm_nb(form, mf, link = link, ...)
       list(AIC = AIC(fit),
            MCE = -logLik(fit)/nrow(mf),
-           MSE = mean(resid(fit)^2),
+           MSE = mean(residuals(fit, type = "response")^2),
            R2 = 1 - fit$deviance / fit$null.deviance)
     })
   } else {
@@ -290,7 +286,7 @@ beset_glm <- function(form, train_data, test_data = NULL,
       fit <- glm(form, eval(dist), mf, ...)
       list(AIC = AIC(fit),
            MCE = -logLik(fit)/nrow(mf),
-           MSE = mean(resid(fit)^2),
+           MSE = mean(residuals(fit, type = "response")^2),
            R2 = 1 - fit$deviance / fit$null.deviance)
     })
   }
@@ -325,16 +321,16 @@ beset_glm <- function(form, train_data, test_data = NULL,
   #----------------------------------------------------------------------
   set.seed(seed)
   fold_ids <- caret::createMultiFolds(y, k = n_folds, times = n_repeats)
-  form_list <- xval_stats$form
   metrics <- parallel::parLapply(cl, fold_ids, function(i, form_list){
-    fits <- lapply(form_list, function(form){
-      if(family == "negbin")
-        fit <- glm_nb(form, mf[i,], link = link, ...)
-      else
-        fit <- glm(form, eval(dist), mf[i,], ...)
+    lapply(form_list, function(form){
+      fit <- if(family == "negbin"){
+        glm_nb(form, mf[i,], link = link, ...)
+        } else {
+          glm(form, eval(dist), mf[i,], ...)
+        }
+      prediction_metrics(fit, test_data = mf[-i,])
     })
-    lapply(fits, prediction_metrics, test_data = mf[-i,])
-  }, form_list = form_list)
+  }, form_list = xval_stats$form)
   parallel::stopCluster(cl)
   #======================================================================
   # Derive cross-validation statistics
@@ -366,17 +362,17 @@ beset_glm <- function(form, train_data, test_data = NULL,
   #----------------------------------------------------------------------
   test_stats <- NULL
   if(!is.null(test_data)){
-    fits <- lapply(form_list, function(form){
-    if(family == "negbin")
-      glm_nb(form, mf, link = link, ...)
-    else
-      glm(form, eval(dist), mf, ...)
-    })
-  metrics <- lapply(fits, prediction_metrics, test_data = test_data)
-  test_stats <- dplyr::select(xval_stats, n_pred, form)
-  test_stats$MCE <- sapply(metrics, function(x) x$mean_cross_entropy)
-  test_stats$MSE <- sapply(metrics, function(x) x$mean_squared_error)
-  test_stats$R2 <- sapply(metrics, function(x) x$R_squared)
+    metrics <- lapply(form_list, function(form){
+      fit <- if(family == "negbin")
+        glm_nb(form, mf, link = link, ...)
+      else
+        glm(form, eval(dist), mf, ...)
+      prediction_metrics(fit, test_data = test_data)
+      })
+    test_stats <- dplyr::select(xval_stats, n_pred, form)
+    test_stats$MCE <- sapply(metrics, function(x) x$mean_cross_entropy)
+    test_stats$MSE <- sapply(metrics, function(x) x$mean_squared_error)
+    test_stats$R2 <- sapply(metrics, function(x) x$R_squared)
   }
   #======================================================================
   # Construct beset_glm object
