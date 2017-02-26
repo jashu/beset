@@ -73,18 +73,9 @@ A "beset_zeroinfl" object with the following components:
    }
  }
  \item\describe{
-   \item{zero_fit_stats}{a data frame containing fit statistics for every
-     possible combination of predictors of zeroes vs. non-zeroes:
-     \describe{
-     \item{n_zero_pred}{the number of zero predictors in model}
-     \item{form}{formula for model}
-     \item{AIC}{\eqn{-2*log-likelihood + k*npar}, where \eqn{npar} represents
-     the number of parameters in the fitted model, and \eqn{k = 2}}
-     \item{MCE}{Mean cross entropy, estimated as \eqn{-log-likelihood/N},
-     where \eqn{N} is the number of observations}
-     \item{MSE}{Mean squared error}
-     \item{R2}{R-squared, calculated as \eqn{1 - deviance/null deviance}}
-      }
+   \item{zero_fit_stats}{a data frame containing the same fit statistics as
+   \code{count_fit_stats} but for every possible combination of predictors of
+   zeroes vs. non-zeroes
    }
  }
  \item\describe{

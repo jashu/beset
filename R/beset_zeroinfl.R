@@ -128,18 +128,9 @@
 #'    }
 #'  }
 #'  \item\describe{
-#'    \item{zero_fit_stats}{a data frame containing fit statistics for every
-#'      possible combination of predictors of zeroes vs. non-zeroes:
-#'      \describe{
-#'      \item{n_zero_pred}{the number of zero predictors in model}
-#'      \item{form}{formula for model}
-#'      \item{AIC}{\eqn{-2*log-likelihood + k*npar}, where \eqn{npar} represents
-#'      the number of parameters in the fitted model, and \eqn{k = 2}}
-#'      \item{MCE}{Mean cross entropy, estimated as \eqn{-log-likelihood/N},
-#'      where \eqn{N} is the number of observations}
-#'      \item{MSE}{Mean squared error}
-#'      \item{R2}{R-squared, calculated as \eqn{1 - deviance/null deviance}}
-#'       }
+#'    \item{zero_fit_stats}{a data frame containing the same fit statistics as
+#'    \code{count_fit_stats} but for every possible combination of predictors of
+#'    zeroes vs. non-zeroes
 #'    }
 #'  }
 #'  \item\describe{
@@ -215,8 +206,6 @@ beset_zeroinfl <- function(form, train_data, test_data = NULL,
   #==================================================================
   # Check that number of predictors and cv folds is acceptable
   #------------------------------------------------------------------
-  if(ncol(mf) > 11)
-    stop("This approach not recommended for use with more than 10 predictors.")
   p_count <- min(ncol(mf) - 1, p_count_max)
   n <- nrow(mf)
   alt_folds <- n / (n - p_count * 10)
@@ -269,22 +258,16 @@ beset_zeroinfl <- function(form, train_data, test_data = NULL,
                   ".\n  Increasing number of cv folds to ", n_folds, ".",
                   sep = ""), immediate. = TRUE)
   }
-
   #======================================================================
   # Make list of all possible formulas with number of predictors <= p_max
   #----------------------------------------------------------------------
-  n_count_pred <- unlist(sapply(1:p_count,
-                                function(i) rep(i, choose(ncol(mf)-1, i))))
-  n_count_pred <- c(0, n_count_pred)
   count_pred <- lapply(1:p_count, function(x)
     combn(names(mf)[2:ncol(mf)], x, simplify = FALSE))
   count_pred <- unlist(sapply(count_pred, function(vars){
     sapply(vars, function(x) paste0(x, collapse = " + "))}))
   count_pred <- c("1", count_pred)
   count_form_list <- paste(response, "~", count_pred, "| 1")
-  n_zero_pred <- unlist(sapply(1:p_zero,
-                                function(i) rep(i, choose(ncol(mf)-1, i))))
-  n_zero_pred <- c(0, n_zero_pred)
+
   zero_pred <- lapply(1:p_zero, function(x)
     combn(names(mf)[2:ncol(mf)], x, simplify = FALSE))
   zero_pred <- unlist(sapply(zero_pred, function(vars){
@@ -292,177 +275,231 @@ beset_zeroinfl <- function(form, train_data, test_data = NULL,
   zero_pred <- c("1", zero_pred)
   zero_form_list <- paste(response, "~", "1 |", zero_pred)
 
-  #==================================================================
-  # Obtain best subsets for zero vs. non-zero predictors
-  #------------------------------------------------------------------
-  if(is.null(n_cores)) n_cores <- parallel::detectCores() %/% 2
-  cl <- parallel::makeCluster(n_cores)
-  parallel::clusterExport(cl, c("mf", "family", "link", "test_data",
-                                "cross_entropy"),
-                          envir=environment())
-  catch <- parallel::clusterEvalQ(cl, library(pscl))
-  CE <- parallel::parSapplyLB(cl, zero_form_list, function(form){
-    fit <- try(suppressWarnings(zeroinfl(formula(form),
-                                         data = mf,
-                                         dist = family,
-                                         link = link,
-                                         ...
-                                         )), silent = TRUE)
-    train_CE <- NA_real_
-    test_CE <- NA_real_
-    if(class(fit) == "zeroinfl"){
-      train_CE <- cross_entropy(fit, mf)
-      if(!is.null(test_data)) test_CE <- cross_entropy(fit, test_data)
-    }
-    c(train_CE, test_CE)
+  #======================================================================
+  # Determine number of predictors for each model in list
+  #----------------------------------------------------------------------
+  n_count_pred <- sapply(count_pred[-1], function(x){
+    x <- unlist(strsplit(x, split = " + ", fixed = TRUE))
+    sum(sapply(x, function(y){
+      if(is.factor(mf[,y]))
+        length(levels(mf[,y])) - 1
+      else
+        1
+    }))
   })
-  all_zero_subsets <- dplyr::data_frame(n_zero_pred = n_zero_pred,
-                                   zero_pred = zero_pred,
-                                   train_CE = CE[1,],
-                                   test_CE = CE[2,])
-  best_zero_subsets <- dplyr::group_by(all_zero_subsets, n_zero_pred)
-  best_zero_subsets <- dplyr::filter(best_zero_subsets,
-                                     train_CE == min(train_CE, na.rm = TRUE))
+  n_count_pred <- c(intercept = 0, n_count_pred)
+  n_zero_pred <- sapply(zero_pred[-1], function(x){
+    x <- unlist(strsplit(x, split = " + ", fixed = TRUE))
+    sum(sapply(x, function(y){
+      if(is.factor(mf[,y]))
+        length(levels(mf[,y])) - 1
+      else
+        1
+    }))
+  })
+  n_zero_pred <- c(intercept = 0, n_zero_pred)
 
   #==================================================================
-  # Obtain best subsets for count predictors
+  # Obtain fit for every model predicting zero vs. non-zero values,
+  # with a constant predicting counts.
   #------------------------------------------------------------------
-  CE <- parallel::parSapplyLB(cl, count_form_list, function(form){
-    fit <- try(suppressWarnings(zeroinfl(formula(form),
-                                         data = mf,
-                                         dist = family,
-                                         link = link,
-                                         ...
-                                         )), silent = TRUE)
-    train_CE <- NA_real_
-    test_CE <- NA_real_
+  cl <- parallel::makeCluster(n_cores)
+  parallel::clusterExport(cl, c("mf", "family", "link", "test_data",
+                                "prediction_metrics"#, ...
+                                ), envir=environment())
+  catch <- parallel::clusterEvalQ(cl, library(pscl))
+  CE <- parallel::parLapplyLB(cl, zero_form_list, function(form){
+    fit <- try(suppressWarnings(
+      zeroinfl(formula(form), data = mf, dist = family, link = link#, ...
+               )),
+      silent = TRUE)
+    aic <- mce <- mse <- r2 <- NA_real_
     if(class(fit) == "zeroinfl"){
-      train_CE <- cross_entropy(fit, mf)
-      if(!is.null(test_data)) test_CE <- cross_entropy(fit, test_data)
+      aic <- AIC(fit)
+      metrics <- prediction_metrics(fit)
+      mce <- metrics$mean_cross_entropy
+      mse <- metrics$mean_squared_error
+      r2 <- metrics$R_squared
     }
-    c(train_CE, test_CE)
+    list(AIC = aic, MCE = mce, MSE = mse, R2 = r2)
   })
-  all_count_subsets <- dplyr::data_frame(n_count_pred = n_count_pred,
-                                   count_pred = count_pred,
-                                   train_CE = CE[1,],
-                                   test_CE = CE[2,])
-  best_count_subsets <- dplyr::group_by(all_count_subsets, n_count_pred)
+  zero_fit_stats <- dplyr::data_frame(
+    n_zero_pred = n_zero_pred,
+    zero_pred = zero_pred,
+    AIC = sapply(CE, function(x) x$AIC),
+    MCE = sapply(CE, function(x) x$MCE),
+    MSE = sapply(CE, function(x) x$MSE),
+    R2 = sapply(CE, function(x) round(x$R2,3))
+  )
+  best_zero_subsets <- dplyr::group_by(zero_fit_stats, n_zero_pred)
+  best_zero_subsets <- dplyr::filter(best_zero_subsets,
+                                     MCE == min(MCE, na.rm = TRUE))
+  best_zero_subsets <- dplyr::ungroup(best_zero_subsets)
+
+  #=========================================================================
+  # Obtain fit for every model predicting counts, with a constant predicting
+  # zero vs. non-zero values.
+  #-------------------------------------------------------------------------
+  CE <- parallel::parLapplyLB(cl, count_form_list, function(form){
+    fit <- try(suppressWarnings(
+      zeroinfl(formula(form), data = mf, dist = family, link = link#, ...
+      )),
+      silent = TRUE)
+    aic <- mce <- mse <- r2 <- NA_real_
+    if(class(fit) == "zeroinfl"){
+      aic <- AIC(fit)
+      metrics <- prediction_metrics(fit)
+      mce <- metrics$mean_cross_entropy
+      mse <- metrics$mean_squared_error
+      r2 <- metrics$R_squared
+    }
+    list(AIC = aic, MCE = mce, MSE = mse, R2 = r2)
+  })
+  count_fit_stats <- dplyr::data_frame(
+    n_count_pred = n_count_pred,
+    count_pred = count_pred,
+    AIC = sapply(CE, function(x) x$AIC),
+    MCE = sapply(CE, function(x) x$MCE),
+    MSE = sapply(CE, function(x) x$MSE),
+    R2 = sapply(CE, function(x) round(x$R2,3))
+  )
+  best_count_subsets <- dplyr::group_by(count_fit_stats, n_count_pred)
   best_count_subsets <- dplyr::filter(best_count_subsets,
-                                      train_CE == min(train_CE, na.rm = T))
+                                     MCE == min(MCE, na.rm = TRUE))
+  best_count_subsets <- dplyr::ungroup(best_count_subsets)
 
   #======================================================================
   # Make formulas for all combinations of best zero and best count pred
   #----------------------------------------------------------------------
-  best_subsets <- cbind(
+  fit_stats <- cbind(
     expand.grid(n_count_pred = best_count_subsets$n_count_pred,
                 n_zero_pred = best_zero_subsets$n_zero_pred),
     expand.grid(count_pred = best_count_subsets$count_pred,
                 zero_pred = best_zero_subsets$zero_pred,
                 stringsAsFactors = FALSE),
     stringsAsFactors = FALSE)
-  best_subsets$form <- paste(response, "~", best_subsets$count_pred,
-                             "|", best_subsets$zero_pred)
-  best_subsets <- dplyr::select(best_subsets, -count_pred, -zero_pred)
+  fit_stats$form <- paste(response, "~", fit_stats$count_pred,
+                             "|", fit_stats$zero_pred)
+  fit_stats <- dplyr::select(fit_stats, -count_pred, -zero_pred)
 
-
-  CE <- parallel::parSapplyLB(cl, best_subsets$form, function(form){
-    fit <- try(suppressWarnings(zeroinfl(formula(form),
-                                         data = mf,
-                                         dist = family,
-                                         link = link,
-                                          ...
-                                         )), silent = TRUE)
-    train_CE <- NA_real_
-    test_CE <- NA_real_
+  CE <- parallel::parLapplyLB(cl, fit_stats$form, function(form){
+    fit <- try(suppressWarnings(
+      zeroinfl(formula(form), data = mf, dist = family, link = link#, ...
+      )),
+      silent = TRUE)
+    aic <- mce <- mse <- r2 <- NA_real_
     if(class(fit) == "zeroinfl"){
-      train_CE <- cross_entropy(fit, mf)
-      if(!is.null(test_data)) test_CE <- cross_entropy(fit, test_data)
+      aic <- AIC(fit)
+      metrics <- prediction_metrics(fit)
+      mce <- metrics$mean_cross_entropy
+      mse <- metrics$mean_squared_error
+      r2 <- metrics$R_squared
     }
-    c(train_CE, test_CE)
+    list(AIC = aic, MCE = mce, MSE = mse, R2 = r2)
   })
-  parallel::stopCluster(cl)
-  best_subsets$train_CE <- CE[1,]
-  best_subsets$test_CE <- CE[2,]
+
+  fit_stats <- dplyr::mutate(fit_stats,
+    AIC = sapply(CE, function(x) x$AIC),
+    MCE = sapply(CE, function(x) x$MCE),
+    MSE = sapply(CE, function(x) x$MSE),
+    R2 = sapply(CE, function(x) round(x$R2,3))
+  )
+  #======================================================================
+  # Store the fit for the model with the best AIC
+  #----------------------------------------------------------------------
+  fit_stats <- dplyr::arrange(fit_stats, AIC)
+  best_AIC <- pscl::zeroinfl(formula(fit_stats$form[1]), mf, dist = family,
+                             link = link#,...
+                             )
 
   #======================================================================
   # Perform cross-validation on best models
   #----------------------------------------------------------------------
-  search_grid <- expand.grid(fold = 1:n_folds,
-                             form = with(best_subsets, form[!is.na(train_CE)]),
-                             stringsAsFactors = FALSE)
-  seed_seq <- seq.int(from = seed, length.out = n_repeats)
-  doParallel::registerDoParallel()
-  CE <- foreach(seed = seed_seq, .combine = rbind, .packages = "pscl") %dopar% {
-    set.seed(seed)
-    folds <- vector("integer", length(y))
-    # make separate fold assignments for zero vs. non-zero values to insure
-    # both 0 and count process is represented in every fold
-    sample_folds <- rep(1:n_folds, ceiling(length(y)/n_folds))
-    folds[y == 0] <- sample(sample_folds, sum(y == 0))
-    folds[y > 0] <- caret::createFolds(y[y > 0], k = n_folds, list = FALSE)
-    fits <- mapply(function(fold, form){
-      try(suppressWarnings(zeroinfl(formula(form),
-          data = mf[folds != fold,], dist = family, link = link,
-          ...
-          )),
-          silent = TRUE)
-      }, fold = search_grid$fold, form = search_grid$form, SIMPLIFY = FALSE)
-
-    .cross_entropy <- function(object, data){
-      if(class(object) == "zeroinfl") cross_entropy(object, data) else NA_real_
-    }
-
-    cv_CE <- matrix(mapply(function(fit, fold)
-        .cross_entropy(fit, mf[folds == fold,]),
-        fit = fits, fold = search_grid$fold),
-        nrow = n_folds, ncol = nrow(search_grid) / n_folds)
-    CE_cv <- apply(cv_CE, 2, mean, na.rm = T)
-    CE_cv_SE <- apply(cv_CE, 2, function(x) sqrt(var(x, na.rm = T)/length(x)))
-
-    data.frame(form = unique(search_grid$form),
-               cv_CE = CE_cv, cv_CE_SE = CE_cv_SE,
-               stringsAsFactors = FALSE)
-  }
-
+  xval_stats <- dplyr::select(fit_stats, n_count_pred:form)
+  xval_stats <- dplyr::arrange(xval_stats, n_zero_pred, n_count_pred)
+  folds <- matrix(nrow = length(y), ncol = n_repeats)
+  # make separate fold assignments for zero vs. non-zero values to insure
+  # both 0 and count process is represented in every fold
+  zero_folds <- rep(1:n_folds, ceiling(sum(y == 0) / n_folds))[1:sum(y==0)]
+  set.seed(seed)
+  folds[y == 0,] <- replicate(n_repeats, sample(zero_folds))
+  folds[y > 0,] <- replicate(n_repeats,
+    caret::createFolds(y[y > 0], k = n_folds, list = FALSE))
+  fold_ids <- expand.grid(Fold = 1:n_folds, Rep = 1:n_repeats)
+  fold_names <- paste("Fold", fold_ids$Fold, ".Rep", fold_ids$Rep, sep = "")
+  fold_ids <- mapply(function(fold, rep) which(folds[, rep] != fold),
+                     fold_ids$Fold, fold_ids$Rep)
+  names(fold_ids) <- fold_names
+  metrics <- parallel::parLapply(cl, fold_ids, function(i, form_list){
+    lapply(form_list, function(form){
+      fit <- try(suppressWarnings(
+        zeroinfl(formula(form), data = mf[i,], dist = family, link = link#, ...
+                 )),
+        silent = TRUE)
+      if(class(fit) == "zeroinfl"){
+        prediction_metrics(fit, mf[-i,])
+      } else {
+        list(mean_cross_entropy = NA_real_,
+             mean_squared_error = NA_real_,
+             R_squared = NA_real_)
+      }
+    })
+  }, form_list = xval_stats$form)
+  parallel::stopCluster(cl)
   #======================================================================
   # Derive cross-validation statistics
   #----------------------------------------------------------------------
-  CE <- dplyr::group_by(CE, form)
-  mean_CE <- dplyr::summarize_each(CE, dplyr::funs(mean(., na.rm = T)))
-  best_subsets <- dplyr::left_join(best_subsets, mean_CE, by = "form")
+  MCE <- sapply(metrics, function(models)
+    sapply(models, function(x) x$mean_cross_entropy))
+  xval_stats$MCE <- apply(MCE, 1, median, na.rm = T)
+  xval_stats$MCE_SE <- apply(MCE, 1, function(x){
+    MCE_boot <- boot::boot(x, function(x, i) median(x[i], na.rm = T), 1000)
+    sd(MCE_boot$t)
+  })
+  MSE <- sapply(metrics, function(models)
+    sapply(models, function(x) x$mean_squared_error))
+  xval_stats$MSE <- apply(MSE, 1, median, na.rm = T)
+  xval_stats$MSE_SE <- apply(MSE, 1, function(x){
+    MSE_boot <- boot::boot(x, function(x, i) median(x[i], na.rm = T), 1000)
+    sd(MSE_boot$t)
+  })
+  R2 <- sapply(metrics, function(models)
+    sapply(models, function(x) x$R_squared))
+  xval_stats$R2 <- apply(R2, 1, median, na.rm = T)
+  xval_stats$R2_SE <- apply(R2, 1, function(x){
+    R2_boot <- boot::boot(x, function(x, i) median(x[i], na.rm = T), 1000)
+    sd(R2_boot$t)
+  })
 
   #======================================================================
-  # Determine best model and best model within 1SE with smallest number of
-  # total predictors (number of zero predictors + number of count predictors)
+  # Compute prediction statistics for independent test set
   #----------------------------------------------------------------------
-
-  best <- which.min(best_subsets$cv_CE)
-  best_form <- best_subsets$form[best]
-  max_CE <- min(best_subsets$cv_CE, na.rm = T) + best_subsets$cv_CE_SE[best]
-  best_subsets_1SE <- best_subsets[best_subsets$cv_CE < max_CE,]
-  best_subsets_1SE$total_pred <- with(best_subsets_1SE,
-                                      n_count_pred + n_zero_pred)
-  best_subsets_1SE <- dplyr::group_by(best_subsets_1SE, total_pred)
-  best_subsets_1SE <- dplyr::filter(best_subsets_1SE,
-                                    cv_CE == min(cv_CE, na.rm = T))
-  best_form_1SE <- best_subsets_1SE$form[which.min(best_subsets_1SE$total_pred)]
-
-  best_model <- pscl::zeroinfl(formula(best_form), mf, dist = family,
-                               link = link, ...)
-    if(best_form == best_form_1SE){
-      best_model_1SE <- best_model
-    } else {
-      best_model_1SE <- pscl::zeroinfl(formula(best_form_1SE), mf,
-                                       dist = family, link = link, ...)
-    }
-
+  test_stats <- NULL
+  if(!is.null(test_data)){
+    metrics <- lapply(form_list, function(form){
+      fit <- try(suppressWarnings(
+        zeroinfl(formula(form), data = mf[i,], dist = family, link = link#, ...
+                 )), silent = TRUE)
+      if(class(fit) == "zeroinfl"){
+        prediction_metrics(fit, mf[-i,])
+      } else {
+        list(mean_cross_entropy = NA_real_,
+             mean_squared_error = NA_real_,
+             R_squared = NA_real_)
+      }
+    })
+    test_stats <- dplyr::select(xval_stats, n_pred, form)
+    test_stats$MCE <- sapply(metrics, function(x) x$mean_cross_entropy)
+    test_stats$MSE <- sapply(metrics, function(x) x$mean_squared_error)
+    test_stats$R2 <- sapply(metrics, function(x) x$R_squared)
+  }
   #======================================================================
   # Construct beset_zeroinfl object
   #----------------------------------------------------------------------
-
-  structure(list(all_zero_subsets = all_zero_subsets,
-                 all_count_subsets = all_count_subsets,
-                 best_subsets = best_subsets,
-                 best_model = best_model, best_model_1SE = best_model_1SE),
-          class = "beset_zeroinfl")
+  structure(list(
+    fit_stats = fit_stats, xval_stats = xval_stats, test_stats = test_stats,
+    count_fit_stats = count_fit_stats, zero_fit_stats = zero_fit_stats,
+    best_AIC = best_AIC, model_data = mf,
+    xval_params = list(n_folds = n_folds, n_repeats = n_repeats, seed = seed)
+    ), class = "beset_zeroinfl")
 }
