@@ -15,14 +15,13 @@
 plotted.}
 }
 \description{
-\code{plot.beset_glm} takes the output of a \code{\link{beset_glm}} object and creates
-a line plot using \code{\link[ggplot2]{ggplot}}.
+\code{plot.beset_glm} takes the output of a \code{\link{beset_glm}} object
+and creates a line plot using \code{\link[ggplot2]{ggplot}}.
 }
 \details{
-\code{plot.beset_glm} produces a plot showing \eqn{R^2} as a function of the
-number of model parameters from a cross-validated best-subset-selection
-procedure, as implemented by \code{\link{beset_glm}}. Line graphs are plotted
-for the training, cross-validated, and, if included, independent-test
-\eqn{R^2}, which are labeled in the legend as "Train", "CV", and "Test",
-respectively.
+\code{plot.beset_glm} produces a plot showing cross-validated prediction
+error as a function of the number of model parameters from a
+\code{\link{beset_glm}} object. Line graphs are plotted for the training,
+cross-validated, and, if included, independent-test error, which are labeled
+in the legend as "Train", "CV", and "Test", respectively.
 }

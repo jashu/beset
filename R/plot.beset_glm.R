@@ -1,14 +1,13 @@
 #' Plot Method for the \code{beset_glm} Class
 #'
-#' \code{plot.beset_glm} takes the output of a \code{\link{beset_glm}} object and creates
-#' a line plot using \code{\link[ggplot2]{ggplot}}.
+#' \code{plot.beset_glm} takes the output of a \code{\link{beset_glm}} object
+#' and creates a line plot using \code{\link[ggplot2]{ggplot}}.
 #'
-#' \code{plot.beset_glm} produces a plot showing \eqn{R^2} as a function of the
-#' number of model parameters from a cross-validated best-subset-selection
-#' procedure, as implemented by \code{\link{beset_glm}}. Line graphs are plotted
-#' for the training, cross-validated, and, if included, independent-test
-#' \eqn{R^2}, which are labeled in the legend as "Train", "CV", and "Test",
-#' respectively.
+#' \code{plot.beset_glm} produces a plot showing cross-validated prediction
+#' error as a function of the number of model parameters from a
+#' \code{\link{beset_glm}} object. Line graphs are plotted for the training,
+#' cross-validated, and, if included, independent-test error, which are labeled
+#' in the legend as "Train", "CV", and "Test", respectively.
 #'
 #' @param object An object of class \code{beset_glm}.
 #'
@@ -21,12 +20,14 @@
 #'
 #' @export
 plot.beset_glm <- function(object, metric = "MCE", se = TRUE, title = ""){
-  train <- dplyr::select(object$fit_stats, n_pred, form, starts_with(metric))
+  train <- dplyr::select(object$fit_stats, n_pred, form,
+                         dplyr::starts_with(metric))
   names(train)[3] <- "train"
-  xval <- dplyr::select(object$xval_stats, n_pred, form, starts_with(metric))
+  xval <- dplyr::select(object$xval_stats, n_pred, form,
+                        dplyr::starts_with(metric))
   names(xval)[3:4] <- c("cv", "cv_se")
   test <- try(dplyr::select(object$test_stats, n_pred, form,
-                            starts_with(metric)), silent = TRUE)
+                            dplyr::starts_with(metric)), silent = TRUE)
   if(class(test) == "try-error"){
     test <- NULL
   } else {

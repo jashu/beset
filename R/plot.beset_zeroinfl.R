@@ -3,61 +3,62 @@
 #' \code{plot.beset_zeroinfl} takes the output of a \code{\link{beset_zeroinfl}} object and creates
 #' a line plot using \code{\link[ggplot2]{ggplot}}.
 #'
-#' \code{plot.beset_zeroinfl} produces a plot showing \eqn{R^2} as a function o
-#' of the number of count-model parameters (x axis) and zero-model parameters
-#' (individual panels) from a cross-validated  best-subset-selection procedure,
-#' as implemented by \code{\link{beset_zeroinfl}}. Line graphs are plotted for
-#' the training, cross-validated, and, if included, independent-test
-#' \eqn{R^2}, which are labeled in the legend as "Train", "CV", and "Test",
-#' respectively.
+#' \code{plot.beset_zeroinfl} produces a plot showing cross-validated prediction
+#' error as a function of the number of model parameters from a
+#' \code{\link{beset_zeroinfl}} object. Line graphs are plotted for the
+#' training, cross-validated, and, if included, independent-test error, which
+#' are labeled in the legend as "Train", "CV", and "Test", respectively.
 #'
 #' @param object An object of class \code{beset_zeroinfl}.
 #'
 #' @param SE Logical indicating whether or not standard-error bars should be
 #' plotted.
 #'
-#' @param title Optional character vector giving plot title.
-#'
 #' @import ggplot2
 #'
 #' @export
-plot.beset_zeroinfl <- function(object, SE = TRUE, title = ""){
-  data <- object$best_subsets
-  if(any(is.na(data$test_CE))) data <- dplyr::select(data, -test_CE)
-  data <- tidyr::gather(data, type, CE, train_CE:cv_CE)
-  data$type <- factor(gsub("_CE", "", data$type))
-  data$n_zero_pred <- factor(data$n_zero_pred)
-  data$cv_CE_lower <- NA
-  data$cv_CE_upper <- NA
-  data$cv_CE_lower[data$type == "cv"] <-
-    with(data[data$type == "cv",], CE - cv_CE_SE)
-  data$cv_CE_upper[data$type == "cv"] <-
-    with(data[data$type == "cv",], CE + cv_CE_SE)
-  xmax <- max(data$n_count_pred)
-  p <- ggplot(data = data,
-              aes(x = n_count_pred,
-                  y = CE,
-                  color = type)) +
-    facet_wrap(~ n_zero_pred) +
-    ggtitle(title) +
-    xlab("Number of Predictors in Count Model") +
-    ylab("Cross-Entropy Error") +
-    scale_x_continuous(breaks = 0:xmax) +
-    geom_line() +
-    theme_bw() +
-    theme(legend.title = element_blank())
-  if(SE){
-    p <- p + geom_errorbar(data = data[data$type == "cv",],
-                           aes(x = n_count_pred, ymin = cv_CE_lower,
-                               ymax = cv_CE_upper), width = 0.2)
+plot.beset_zeroinfl <- function(object, metric = "MCE", se = TRUE){
+  train <- dplyr::select(object$fit_stats, n_count_pred, n_zero_pred, form,
+                         dplyr::starts_with(metric))
+  names(train)[4] <- "train"
+  xval <- dplyr::select(object$xval_stats, n_count_pred, n_zero_pred, form,
+                        dplyr::starts_with(metric))
+  names(xval)[4:5] <- c("cv", "cv_se")
+  test <- try(dplyr::select(object$test_stats, n_count_pred, n_zero_pred, form,
+                            dplyr::starts_with(metric)), silent = TRUE)
+  if(class(test) == "try-error"){
+    test <- NULL
+  } else {
+    names(test)[3] <- "test"
   }
-  footnote <- paste("Numbers at top of each panel indicate",
-                     "number of predictors in zero-inflation model.")
-  grid::grid.newpage()
-  g <- gridExtra::arrangeGrob(p, bottom = grid::textGrob(
-    footnote, x = 0.5,  just = "centre",
-    gp = grid::gpar(fontface = "italic", fontsize = 10)))
-  grid::grid.draw(g)
-}
+  data <- dplyr::left_join(train, xval,
+                           by = c("n_count_pred", "n_zero_pred", "form"))
+  if(!is.null(test)) data <- dplyr::left_join(data, test)
+  data$cv_lower <- with(data, cv - cv_se)
+  data$cv_upper <- with(data, cv + cv_se)
+  xmax <- max(data$n_count_pred)
+  color_legend <- c("Train" = "grey", "CV" = "red", "Test" = "blue")
+  y_lab <- switch(metric,
+                  MCE = ylab("Mean Cross Entropy (-loglik / N)"),
+                  MSE = ylab("Mean Squared Error"),
+                  R2 = ylab(bquote(~R^2)))
+  p <- ggplot(data = data) + facet_wrap(~n_zero_pred) + theme_bw() +
+    ggtitle(title) + xlab("Number of Predictors of Count Component") + y_lab +
+    scale_x_continuous(breaks = 0:xmax) +
+    scale_color_manual(name = "", values = color_legend) +
+    geom_line(aes(x = n_count_pred, y = train, color = "Train")) +
+    geom_line(aes(x = n_count_pred, y = cv, color = "CV")) +
+    ggtitle(paste("Numbers at top of each panel indicate",
+                "\nnumber of predictors of zero-inflation component.")) +
+    theme(plot.title = element_text(hjust=0, size=10))
 
-#' @export
+  if(se){
+    p <- p +
+      geom_errorbar(aes(x = n_count_pred, ymin = cv_lower, ymax = cv_upper),
+                    width = 0.2, color = "red")
+  }
+  if(!is.null(test)){
+    p <- p + geom_line(aes(x = n_count_pred, y = test_CE, color = "Test"))
+  }
+  print(p)
+}

@@ -9,7 +9,7 @@
 
 summary.beset_glm <- function(object, n_pred = NULL, metric = "MCE",
                               oneSE = TRUE, n_cores = 2){
-  metric <- pmatch(metric, c("AIC", "MCE", "MSE", "R2"))
+  metric <- match.arg(metric, c("AIC", "MCE", "MSE", "R2"))
   if(is.na(metric)) stop("invalid 'metric' argument")
   best_model <- object$best_AIC
   best_form <- object$fit_stats$form[1]
@@ -49,12 +49,13 @@ summary.beset_glm <- function(object, n_pred = NULL, metric = "MCE",
              data = object$model_data)
     }
   }
-  best <- summary(best_model, correlation = TRUE)
-  R2 <- r2d2(best_model, n_cores = n_cores, seed = object$xval_params$seed)
+  best <- c(summary(best_model), loglik = logLik(best_model))
+  R2 <- object$fit_stats$R2[object$fit_stats$form == best_form]
+  R2_test <- object$test_stats$R2[object$test_stats$form == best_form]
   R2_cv <- do.call("cv_r2",
                    args = c(list(object = best_model, n_cores = n_cores),
                             object$xval_params))
-  R2_test <- object$test_stats$R2[object$test_stats$form == best_form]
+
   structure(list(best = best, best_form = best_form, R2 = R2,
                  R2_cv = R2_cv, R2_test = R2_test), class = "summary_beset_glm")
 }
