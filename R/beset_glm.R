@@ -337,33 +337,34 @@ beset_glm <- function(form, train_data, test_data = NULL, p_max = 10,
         } else {
           glm(form, eval(dist), mf[i,], ...)
         }
-      prediction_metrics(fit, test_data = mf[-i,])
+      stats <- try(predict_metrics(fit, test_data = mf[-i,]), silent = TRUE)
+      if(class(stats) == "prediction_metrics") stats
+      else list(mean_cross_entropy = NA,
+                mean_squared_error = NA,
+                R_squared = NA)
     })
-  }, form_list = xval_stats$form)
+  }, form_list = cv_stats$form)
   parallel::stopCluster(cl)
   #======================================================================
   # Derive cross-validation statistics
   #----------------------------------------------------------------------
   MCE <- sapply(metrics, function(models)
     sapply(models, function(x) x$mean_cross_entropy))
-  xval_stats$MCE <- apply(MCE, 1, median, na.rm = T)
-  xval_stats$MCE_SE <- apply(MCE, 1, function(x){
-    MCE_boot <- boot::boot(x, function(x, i) median(x[i], na.rm = T), 1000)
-    sd(MCE_boot$t)
+  cv_stats$MCE <- apply(MCE, 1, mean, na.rm = T)
+  cv_stats$MCE_SE <- apply(MCE, 1, function(x){
+    sd(x, na.rm = TRUE)/sqrt(length(x[!is.na(x)]))
   })
   MSE <- sapply(metrics, function(models)
     sapply(models, function(x) x$mean_squared_error))
-  xval_stats$MSE <- apply(MSE, 1, median, na.rm = T)
-  xval_stats$MSE_SE <- apply(MSE, 1, function(x){
-    MSE_boot <- boot::boot(x, function(x, i) median(x[i], na.rm = T), 1000)
-    sd(MSE_boot$t)
+  cv_stats$MSE <- apply(MSE, 1, mean, na.rm = T)
+  cv_stats$MSE_SE <- apply(MSE, 1, function(x){
+    sd(x, na.rm = TRUE)/sqrt(length(x[!is.na(x)]))
   })
   R2 <- sapply(metrics, function(models)
     sapply(models, function(x) x$R_squared))
-  xval_stats$R2 <- apply(R2, 1, median, na.rm = T)
-  xval_stats$R2_SE <- apply(R2, 1, function(x){
-    R2_boot <- boot::boot(x, function(x, i) median(x[i], na.rm = T), 1000)
-    sd(R2_boot$t)
+  cv_stats$R2 <- apply(R2, 1, mean, na.rm = T)
+  cv_stats$R2_SE <- apply(R2, 1, function(x){
+    sd(x, na.rm = TRUE)/sqrt(length(x[!is.na(x)]))
   })
 
   #======================================================================
@@ -371,14 +372,25 @@ beset_glm <- function(form, train_data, test_data = NULL, p_max = 10,
   #----------------------------------------------------------------------
   test_stats <- NULL
   if(!is.null(test_data)){
-    metrics <- lapply(form_list, function(form){
+    metrics <- lapply(cv_stats$form, function(form){
       fit <- if(family == "negbin")
         glm_nb(form, mf, link = link, ...)
       else
         glm(form, eval(dist), mf, ...)
-      prediction_metrics(fit, test_data = test_data)
+      stats <- tryCatch(
+        predict_metrics(fit, test_data = test_data),
+        error = function(c){
+          c$message <- paste("unable to compute 'test_data' prediction metrics",
+                             "for one or more subsets because\n", c$message)
+          c$call <- NULL
+          warning(c)
+          })
+      if(class(stats) == "prediction_metrics") stats
+      else list(mean_cross_entropy = NA,
+                mean_squared_error = NA,
+                R_squared = NA)
       })
-    test_stats <- dplyr::select(xval_stats, n_pred, form)
+    test_stats <- dplyr::select(cv_stats, n_pred, form)
     test_stats$MCE <- sapply(metrics, function(x) x$mean_cross_entropy)
     test_stats$MSE <- sapply(metrics, function(x) x$mean_squared_error)
     test_stats$R2 <- sapply(metrics, function(x) x$R_squared)
@@ -386,19 +398,19 @@ beset_glm <- function(form, train_data, test_data = NULL, p_max = 10,
   #======================================================================
   # Construct beset_glm object
   #----------------------------------------------------------------------
-  structure(list(fit_stats = fit_stats, xval_stats = xval_stats,
-                 test_stats = test_stats, best_AIC = best_AIC, model_data = mf,
-                 xval_params = list(n_folds = n_folds, n_repeats = n_repeats,
+  structure(list(stats = list(fit = fit_stats, cv = cv_stats,
+                              test = test_stats),
+                 best_AIC = best_AIC, model_data = mf,
+                 cv_params = list(n_folds = n_folds, n_repeats = n_repeats,
                                     seed = seed)),
             class = "beset_glm")
 }
 
 #' @export
-beset_lm <- function(form, train_data, test_data = NULL,
-                     p_max = 10, n_folds = 10, n_repeats = 10,
-                     n_cores = 2, seed = 42){
+beset_lm <- function(form, train_data, test_data = NULL, p_max = 10,
+                     n_cores = 2, n_folds = 10, n_repeats = 10,  seed = 42){
   beset_glm(form, train_data, test_data = test_data, p_max = p_max,
-            n_folds = n_folds, n_repeats = n_repeats, n_cores = n_cores,
+            n_cores = n_cores, n_folds = n_folds, n_repeats = n_repeats,
             seed = seed)
 }
 
@@ -406,7 +418,6 @@ glm_nb <- function (formula, data, weights, subset, na.action, start = NULL,
                     etastart, mustart, control = glm.control(...),
                     method = "glm.fit", model = TRUE, x = FALSE, y = TRUE,
                     contrasts = NULL, ..., init.theta, link = log){
-  negative.binomial <- MASS::negative.binomial
   loglik <- function(n, th, mu, y, w){
     sum(w * (lgamma(th + y) - lgamma(th) - lgamma(y + 1) + th * log(th) + y *
                log(mu + (y == 0)) - (th + y) * log(th + mu)))
