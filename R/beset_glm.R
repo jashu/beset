@@ -319,11 +319,11 @@ beset_glm <- function(form, train_data, test_data = NULL, p_max = 10,
   #======================================================================
   # Obtain model with maximum likelihood for each number of parameters
   #----------------------------------------------------------------------
-  xval_stats <- dplyr::group_by(fit_stats, n_pred)
-  xval_stats <- dplyr::filter(xval_stats, MCE == min(MCE))
-  xval_stats <- dplyr::ungroup(xval_stats)
-  xval_stats <- dplyr::select(xval_stats, n_pred, form)
-  xval_stats <- dplyr::arrange(xval_stats, n_pred)
+  cv_stats <- dplyr::group_by(fit_stats, n_pred)
+  cv_stats <- dplyr::filter(cv_stats, MCE == min(MCE))
+  cv_stats <- dplyr::ungroup(cv_stats)
+  cv_stats <- dplyr::select(cv_stats, n_pred, form)
+  cv_stats <- dplyr::arrange(cv_stats, n_pred)
 
   #======================================================================
   # Perform cross-validation on best models
