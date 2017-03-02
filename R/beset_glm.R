@@ -191,7 +191,7 @@ beset_glm <- function(form, train_data, test_data = NULL, p_max = 10,
             immediate. = TRUE)
   response <- names(mf)[1]
   y <- mf[,1]
-  if(grepl("binomial", family)) y <- as.factor(y)
+  if(family == "binomial") y <- factor(y)
 
   #==================================================================
   # Screen for linear dependencies among predictors
