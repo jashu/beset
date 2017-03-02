@@ -9,8 +9,10 @@ cv_r2(object, n_cores = 2, n_folds = 10, n_repeats = 10, seed = 42)
 \arguments{
 \item{n_cores}{Integer value indicating the number of workers to run in
 parallel during subset search and cross-validation. By default, this will
-be set to 2. You may wish to increase this depending on your hardware and OS.
-See \code{\link[parallel]{parallel-package}} for more information.}
+be set to 2. To determine the theoretical maximum number of cores you have
+available, see \code{\link[parallel]{detectCores}}, but note that the actual
+number of cores available may be less. See
+\code{\link[parallel]{parallel-package}} for more information.}
 
 \item{n_folds}{Integer indicating the number of folds to use for
 cross-validation.}
