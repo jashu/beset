@@ -2,14 +2,15 @@
 % Please edit documentation in R/summary.beset_elnet.R
 \name{summary.beset_elnet}
 \alias{summary.beset_elnet}
-\title{Summary Method for the \code{beset_lm} Class}
+\title{Summary Method for the \code{beset_elnet} Class}
 \usage{
-\method{summary}{beset_elnet}(object)
+\method{summary}{beset_elnet}(object, metric = "MCE", oneSE = TRUE,
+  n_cores = 2)
 }
 \arguments{
-\item{object}{An object of class \code{\link{beset_lm}}.}
+\item{object}{An object of class \code{\link{beset_elnet}}.}
 }
 \description{
-\code{summary.beset_lm} summarizes the output of a \code{\link{beset_lm}}
- object.
+\code{summary.beset_elnet} summarizes the output of a
+\code{\link{beset_elnet}} object.
 }
