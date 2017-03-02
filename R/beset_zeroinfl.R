@@ -63,7 +63,7 @@
 #'
 #' @seealso \code{\link[caret]{createFolds}}, \code{\link{beset_glm}},
 #' \code{\link[pscl]{zeroinfl}}, \code{\link[base]{set.seed}},
-#' \code{\link{prediction_metrics}}
+#' \code{\link{predict_metrics}}
 #'
 #' @param form A model \code{\link[stats]{formula}}.
 #'
@@ -98,8 +98,10 @@
 #'
 #' @param n_cores Integer value indicating the number of workers to run in
 #' parallel during subset search and cross-validation. By default, this will
-#' be set to 2. You may wish to change this depending on your hardware and OS.
-#' See \code{\link[parallel]{parallel-package}} for more information.
+#' be set to 2. To determine the theoretical maximum number of cores you have
+#' available, see \code{\link[parallel]{detectCores}}, but note that the actual
+#' number of cores available may be less. See
+#' \code{\link[parallel]{parallel-package}} for more information.
 #'
 #' @param seed An integer used to seed the random number generator when
 #' assigning observations to folds.
@@ -134,7 +136,7 @@
 #'    }
 #'  }
 #'  \item\describe{
-#'    \item{xval_stats}{a data frame containing cross-validation statistics
+#'    \item{cv_stats}{a data frame containing cross-validation statistics
 #'      for the best model for each \code{n_count_pred} and \code{n_zero_pred}
 #'      listed in \code{count_fit_stats} and \code{zero_fit_stats}. Each metric
 #'      is followed by its standard error, estimated as the standard deviation
@@ -305,7 +307,7 @@ beset_zeroinfl <- function(form, train_data, test_data = NULL,
   #------------------------------------------------------------------
   cl <- parallel::makeCluster(n_cores)
   parallel::clusterExport(cl, c("mf", "family", "link", "test_data",
-                                "prediction_metrics"#, ...
+                                "predict_metrics"#, ...
                                 ), envir=environment())
   catch <- parallel::clusterEvalQ(cl, library(pscl))
   CE <- parallel::parLapplyLB(cl, zero_form_list, function(form){
@@ -316,7 +318,7 @@ beset_zeroinfl <- function(form, train_data, test_data = NULL,
     aic <- mce <- mse <- r2 <- NA_real_
     if(class(fit) == "zeroinfl"){
       aic <- AIC(fit)
-      metrics <- prediction_metrics(fit)
+      metrics <- predict_metrics(fit)
       mce <- metrics$mean_cross_entropy
       mse <- metrics$mean_squared_error
       r2 <- metrics$R_squared
@@ -348,7 +350,7 @@ beset_zeroinfl <- function(form, train_data, test_data = NULL,
     aic <- mce <- mse <- r2 <- NA_real_
     if(class(fit) == "zeroinfl"){
       aic <- AIC(fit)
-      metrics <- prediction_metrics(fit)
+      metrics <- predict_metrics(fit)
       mce <- metrics$mean_cross_entropy
       mse <- metrics$mean_squared_error
       r2 <- metrics$R_squared
@@ -390,7 +392,7 @@ beset_zeroinfl <- function(form, train_data, test_data = NULL,
     aic <- mce <- mse <- r2 <- NA_real_
     if(class(fit) == "zeroinfl"){
       aic <- AIC(fit)
-      metrics <- prediction_metrics(fit)
+      metrics <- predict_metrics(fit)
       mce <- metrics$mean_cross_entropy
       mse <- metrics$mean_squared_error
       r2 <- metrics$R_squared
@@ -415,8 +417,8 @@ beset_zeroinfl <- function(form, train_data, test_data = NULL,
   #======================================================================
   # Perform cross-validation on best models
   #----------------------------------------------------------------------
-  xval_stats <- dplyr::select(fit_stats, n_count_pred:form)
-  xval_stats <- dplyr::arrange(xval_stats, n_zero_pred, n_count_pred)
+  cv_stats <- dplyr::select(fit_stats, n_count_pred:form)
+  cv_stats <- dplyr::arrange(cv_stats, n_zero_pred, n_count_pred)
   folds <- matrix(nrow = length(y), ncol = n_repeats)
   # make separate fold assignments for zero vs. non-zero values to insure
   # both 0 and count process is represented in every fold
@@ -437,36 +439,36 @@ beset_zeroinfl <- function(form, train_data, test_data = NULL,
                  )),
         silent = TRUE)
       if(class(fit) == "zeroinfl"){
-        prediction_metrics(fit, mf[-i,])
+        predict_metrics(fit, mf[-i,])
       } else {
         list(mean_cross_entropy = NA_real_,
              mean_squared_error = NA_real_,
              R_squared = NA_real_)
       }
     })
-  }, form_list = xval_stats$form)
+  }, form_list = cv_stats$form)
   parallel::stopCluster(cl)
   #======================================================================
   # Derive cross-validation statistics
   #----------------------------------------------------------------------
   MCE <- sapply(metrics, function(models)
     sapply(models, function(x) x$mean_cross_entropy))
-  xval_stats$MCE <- apply(MCE, 1, median, na.rm = T)
-  xval_stats$MCE_SE <- apply(MCE, 1, function(x){
+  cv_stats$MCE <- apply(MCE, 1, median, na.rm = T)
+  cv_stats$MCE_SE <- apply(MCE, 1, function(x){
     MCE_boot <- boot::boot(x, function(x, i) median(x[i], na.rm = T), 1000)
     sd(MCE_boot$t)
   })
   MSE <- sapply(metrics, function(models)
     sapply(models, function(x) x$mean_squared_error))
-  xval_stats$MSE <- apply(MSE, 1, median, na.rm = T)
-  xval_stats$MSE_SE <- apply(MSE, 1, function(x){
+  cv_stats$MSE <- apply(MSE, 1, median, na.rm = T)
+  cv_stats$MSE_SE <- apply(MSE, 1, function(x){
     MSE_boot <- boot::boot(x, function(x, i) median(x[i], na.rm = T), 1000)
     sd(MSE_boot$t)
   })
   R2 <- sapply(metrics, function(models)
     sapply(models, function(x) x$R_squared))
-  xval_stats$R2 <- apply(R2, 1, median, na.rm = T)
-  xval_stats$R2_SE <- apply(R2, 1, function(x){
+  cv_stats$R2 <- apply(R2, 1, median, na.rm = T)
+  cv_stats$R2_SE <- apply(R2, 1, function(x){
     R2_boot <- boot::boot(x, function(x, i) median(x[i], na.rm = T), 1000)
     sd(R2_boot$t)
   })
@@ -476,19 +478,19 @@ beset_zeroinfl <- function(form, train_data, test_data = NULL,
   #----------------------------------------------------------------------
   test_stats <- NULL
   if(!is.null(test_data)){
-    metrics <- lapply(form_list, function(form){
+    metrics <- lapply(cv_stats$form, function(form){
       fit <- try(suppressWarnings(
-        zeroinfl(formula(form), data = mf[i,], dist = family, link = link#, ...
+        zeroinfl(formula(form), data = mf, dist = family, link = link#, ...
                  )), silent = TRUE)
       if(class(fit) == "zeroinfl"){
-        prediction_metrics(fit, mf[-i,])
+        predict_metrics(fit, test_data)
       } else {
         list(mean_cross_entropy = NA_real_,
              mean_squared_error = NA_real_,
              R_squared = NA_real_)
       }
     })
-    test_stats <- dplyr::select(xval_stats, n_pred, form)
+    test_stats <- dplyr::select(cv_stats, n_pred, form)
     test_stats$MCE <- sapply(metrics, function(x) x$mean_cross_entropy)
     test_stats$MSE <- sapply(metrics, function(x) x$mean_squared_error)
     test_stats$R2 <- sapply(metrics, function(x) x$R_squared)
@@ -496,10 +498,11 @@ beset_zeroinfl <- function(form, train_data, test_data = NULL,
   #======================================================================
   # Construct beset_zeroinfl object
   #----------------------------------------------------------------------
-  structure(list(
-    fit_stats = fit_stats, xval_stats = xval_stats, test_stats = test_stats,
-    count_fit_stats = count_fit_stats, zero_fit_stats = zero_fit_stats,
-    best_AIC = best_AIC, model_data = mf,
-    xval_params = list(n_folds = n_folds, n_repeats = n_repeats, seed = seed)
+  structure(list(stats = list(fit = fit_stats, cv = cv_stats,
+                              test = test_stats, count = count_fit_stats,
+                              zero = zero_fit_stats),
+                 best_AIC = best_AIC, model_data = mf,
+                 cv_params = list(n_folds = n_folds, n_repeats = n_repeats,
+                                  seed = seed)
     ), class = "beset_zeroinfl")
 }
