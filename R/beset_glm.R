@@ -5,13 +5,13 @@
 #' families of generalized linear models.
 #'
 #' \code{beset_glm} performs best subset selection for generalized linear
-#' models, fitting a separate model for each possible combination of predictors,
-#' i.e., all models that contain exactly 1 predictor, all models that contain
-#' exactly 2 predictors, and so forth. For each number of predictors,
+#' models, fitting a separate model for each possible combination of predictors
+#' (all models that contain exactly 1 predictor, all models that contain
+#' exactly 2 predictors, and so forth). For each number of predictors,
 #' \code{beset_glm} picks the model with the maximum likelihood and then
 #' estimates how well this model predicts new data using \code{k}-fold
-#' cross-validation, i.e., how well a model trained using \eqn{k - 1} folds
-#' predicts the left-out fold.
+#' cross-validation (how well a model trained using \eqn{k - 1} folds
+#' predicts the left-out fold).
 #'
 #' @section Cross-validation details:
 #' \code{beset_glm} uses \code{\link[caret]{createMultiFolds}} to randomly
@@ -65,11 +65,11 @@
 #'
 #' @param form A model \code{\link[stats]{formula}}.
 #'
-#' @param train_data A \code{\link[base]{data.frame}} with the variables in
-#' \code{form} and the data to be used in model training.
+#' @param train_data Data frame with the variables in \code{form} and the data
+#' to be used for model fitting.
 #'
-#' @param test_data Optional \code{\link[base]{data.frame}} with the variables
-#' in \code{form} and the data to be used in model testing.
+#' @param test_data Optional data frame with the variables in \code{form} and
+#' the data to be used for model validation.
 #'
 #' @param family Character string naming the error distribution to be used in
 #' the model. Available families are listed under 'List of available families
@@ -83,10 +83,12 @@
 #'
 #' @param p_max Maximum number of predictors to attempt to fit.
 #'
-#' @param n_cores Integer value indicating the number of workers to run
-#' in parallel during subset search and cross-validation. By default, this will
-#' be set to 2. You may wish to change this depending on your hardware and OS.
-#' See \code{\link[parallel]{parallel-package}} for more information.
+#' @param n_cores Integer value indicating the number of workers to run in
+#' parallel during subset search and cross-validation. By default, this will
+#' be set to 2. To determine the theoretical maximum number of cores you have
+#' available, see \code{\link[parallel]{detectCores}}, but note that the actual
+#' number of cores available may be less. See
+#' \code{\link[parallel]{parallel-package}} for more information.
 #'
 #' @param n_folds Integer indicating the number of folds to use for
 #' cross-validation.
@@ -104,67 +106,70 @@
 #'    corresponding to the model with the lowest Akaike Information Criterion}
 #'    }
 #'  \item\describe{
-#'    \item{fit_stats}{a data frame containing fit statistics for every
-#'      possible combination of predictors:
+#'    \item{stats}{a list with three data frames:
 #'      \describe{
-#'      \item{n_pred}{the total number of predictors in model; note that the
-#'      number of predictors for a factor variable corresponds to the number of
-#'      factor levels minus 1}
-#'      \item{form}{formula for model}
-#'      \item{AIC}{\eqn{-2*log-likelihood + k*npar}, where \eqn{npar} represents
-#'      the number of parameters in the fitted model, and \eqn{k = 2}}
-#'      \item{MCE}{Mean cross entropy, estimated as \eqn{-log-likelihood/N},
-#'      where \eqn{N} is the number of observations}
-#'      \item{MSE}{Mean squared error}
-#'      \item{R2}{R-squared, calculated as \eqn{1 - deviance/null deviance}}
-#'       }
-#'    }
-#'  }
-#'  \item\describe{
-#'    \item{xval_stats}{a data frame containing cross-validation statistics
+#'        \item{fit}{statistics for every possible combination of predictors:
+#'          \describe{
+#'            \item{n_pred}{the total number of predictors in model; note that
+#'               the number of predictors for a factor variable corresponds to the
+#'               number of factor levels minus 1}
+#'            \item{form}{formula for model}
+#'            \item{AIC}{\eqn{-2*log-likelihood + k*npar}, where \eqn{npar}
+#'              represents the number of parameters in the fitted model, and
+#'              \eqn{k = 2}}
+#'            \item{MCE}{Mean cross entropy, estimated as
+#'              \eqn{-log-likelihood/N}, where \eqn{N} is the number of
+#'              observations}
+#'            \item{MSE}{Mean squared error}
+#'            \item{R2}{R-squared, calculated as
+#'              \eqn{1 - deviance/null deviance}}
+#'            }
+#'          }
+#'      \item{cv}{a data frame containing cross-validation statistics
 #'      for the best model for each \code{n_pred} listed in \code{fit_stats}.
-#'      Each metric is computed using \code{\link{prediction_metrics}}, with
+#'      Each metric is computed using \code{\link{predict_metrics}}, with
 #'      models fit to \eqn{n-1} folds and predictions made on the left-out fold.
 #'      Each metric is followed by its standard error, estimated as the standard
 #'      deviation of 1000 bootstrap replicates of computing the median cross-
 #'      validation statistic across all folds and repetitions. The data frame
-#'      is otherwise the same as that documented for \code{fit_stats}, except
-#'      AIC is omitted.
-#'    }
-#'  }
-#'  \item\describe{
-#'    \item{test_stats}{if \code{test_data} is provided, a data frame containing
-#'     prediction metrics for the best model for each \code{n_pred} listed in
-#'     \code{fit_stats} as applied to the \code{test_data}.
-#'    }
-#'  }
+#'      is otherwise the same as that documented for \code{fit}, except
+#'      AIC is omitted.}
+#'      \item{test_stats}{if \code{test_data} is provided, a data frame
+#'      containing prediction metrics for the best model for each \code{n_pred}
+#'      listed in \code{fit} as applied to the \code{test_data}.}
+#'       }
+#'     }
+#'   }
 #' }
-#'
 #' @export
-beset_glm <- function(form, train_data, test_data = NULL,
+beset_glm <- function(form, train_data, test_data = NULL, p_max = 10,
                       family = "gaussian", link = NULL,  ...,
-                      p_max = 10, n_folds = 10, n_repeats = 10,
-                      n_cores = 2, seed = 42){
+                      n_cores = 2, n_folds = 10, n_repeats = 10, seed = 42){
   #==================================================================
   # Check family argument and set up link function if specified
   #------------------------------------------------------------------
-  family <- try(match.arg(family,
-                          c("binomial", "gaussian", "poisson", "negbin")),
-                silent = TRUE)
-  if(class(family) == "try-error") stop("Invalid 'family' argument.")
+  family <- tryCatch(match.arg(family, c("binomial", "gaussian", "poisson",
+                                         "negbin")),
+                     error = function(c){
+                       c$message <- gsub("arg", "family", c$message)
+                       c$call <- NULL
+                       stop(c)
+                     })
   if(!is.null(link)){
-    if(family == "binomial"){
-      link <- try(match.arg(link, c("logit", "probit", "cauchit",
-                                      "log", "cloglog")), silent = TRUE)
-    } else if(family == "gaussian"){
-      link <- try(match.arg(link, c("identity", "log", "inverse")),
-                  silent = TRUE)
-    } else if(family %in% c("negbin", "poisson")){
-      link <- try(match.arg(link, c("log", "sqrt", "identity")),
-                  silent = TRUE)
-    }
-    if(class(link) == "try-error")
-      stop(paste("Invalid 'link' argument for", family, "family."))
+    link <- tryCatch(
+      if(family == "binomial"){
+        match.arg(link, c("logit", "probit", "cauchit", "log", "cloglog"))
+        } else if(family == "gaussian"){
+          match.arg(link, c("identity", "log", "inverse"))
+          } else if(family %in% c("negbin", "poisson")){
+            match.arg(link, c("log", "sqrt", "identity"))
+          },
+      error = function(c){
+        c$message <- gsub("'arg'", paste("'link' for", family, "family"),
+                          c$message)
+        c$call <- NULL
+        stop(c)
+      })
   }
   if(family == "negbin"){
     if(is.null(link)) link <- "log"
@@ -173,7 +178,6 @@ beset_glm <- function(form, train_data, test_data = NULL,
   } else {
     dist <- call(family, link = link)
   }
-
   #==================================================================
   # Create model frame and extract response name and vector
   #------------------------------------------------------------------
