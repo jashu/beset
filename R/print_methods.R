@@ -22,12 +22,13 @@ print.beset_zeroinfl <- function(object) print(summary(object))
 print.summary_beset_glm <- function(
   object, digits = max(3L, getOption("digits") - 3L),
   signif.stars = getOption("show.signif.stars"), ...){
-  cat(paste("\n=======================================================",
-            "\nBest Model:\n",
-            object$best_form,
-            "\n\n"))
+  cat("\n=======================================================",
+      "\nBest Model:\n ", object$best_form, "\n")
+  if(length(object$near_best) > 0){
+    cat("\nNearly Equivalent Models:", object$near_best, sep = "\n  ")
+  }
   x <- object$best
-  cat("Deviance Residuals: \n")
+  cat("\nDeviance Residuals: \n")
   if (x$df.residual > 5) {
     x$deviance.resid <- setNames(quantile(x$deviance.resid,
                                           na.rm = TRUE),
@@ -62,7 +63,7 @@ print.summary_beset_glm <- function(
   if (nzchar(mess <- naprint(x$na.action)))
     cat("  (", mess, ")\n", sep = "")
   cat("Log-likelihood: ", formatC(x$loglik, digits = digits), " on ",
-      x$n - x$df.residual, " Df\nAIC: ",
+      x$loglik_df, " Df\nAIC: ",
       format(x$aic, digits = max(4L, digits + 1L)),
       "\n\n", "Number of Fisher Scoring iterations: ", x$iter,
       "\n", sep = "")
@@ -87,7 +88,7 @@ print.summary_beset_glm <- function(
   }
   cat("\n")
   cat(paste("Train-sample R-squared =", round(object$R2,2)))
-  if(!is.null(object$R2test)){
+  if(!is.null(object$R2_test)){
     cat(paste(", Test-sample R-squared =", round(object$R2_test, 2)))
   }
   cat("\n")
@@ -136,6 +137,44 @@ print.summary_beset_zeroinfl <- function(
   }
   cat("\n=======================================================")
 }
+
+#' @export
+print.summary_beset_elnet <- function(object){
+  cat("\n=======================================================",
+      "\nBest Model:\n", sep = "")
+  if(object$best_alpha < .25){
+    cat("Primarily ridge ")
+  } else if (object$best_alpha > .75){
+    cat("Primarily lasso ")
+  } else {
+    cat("Mixture of ridge and lasso ")
+  }
+  cat("(alpha = ", object$best_alpha, ") with lambda = ", object$best_lambda,
+      sep = "")
+  cat("\n\nNon-zero coefficients ranked in order of importance:\n")
+  best_coef <- dplyr::select(object$var_imp, variable, stand.coef = coef)
+  best_coef <- dplyr::filter(best_coef, abs(stand.coef) > 0)
+  best_coef <- dplyr::arrange(best_coef, desc(abs(stand.coef)))
+  best_coef <- dplyr::mutate(best_coef, stand.coef = round(stand.coef, 3))
+  best_coef <- as.data.frame(best_coef)
+  if(nrow(best_coef) > 1){
+    print(best_coef, quote = FALSE)
+    cat(paste("\nTrain-sample R-squared =", round(object$R2,2)))
+    if(!is.null(object$R2test)){
+      cat(paste(", Test-sample R-squared =", round(object$R2_test, 2)))
+    }
+    cat("\n")
+    print(object$R2_cv)
+  } else {
+    cat("\n\nNo reliable predictors.")
+  }
+  cat("\n=======================================================")
+}
+
+#' @export
+print.beset_elnet <- function(object) print(summary(object))
+
+
 
 
 
