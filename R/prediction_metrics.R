@@ -4,7 +4,7 @@
 #' of deviance explained) to measure how well a generalized linear model
 #' predicts test data.
 #'
-#' \code{prediction_metrics} uses a generalized linear model (GLM) previously
+#' \code{predict_metrics} uses a generalized linear model (GLM) previously
 #' fit to a training set to predict responses for a test set. It then computes
 #' the residual sum of squares and the log-likelihood of the predicted
 #' responses, as well as the log-likelihoods for the corresponding saturated
@@ -62,7 +62,7 @@
 #' \code{\link{deviance.zeroinfl}}
 #'
 #' @export
-prediction_metrics <- function(object, test_data = NULL){
+predict_metrics <- function(object, test_data = NULL){
   if(is.null(test_data)) test_data <- object$model
   model_type <- class(object)[1]
   family <- NULL
@@ -80,55 +80,59 @@ prediction_metrics <- function(object, test_data = NULL){
   y_hat <- predict(object, test_data, type="response")
   y <- y[!is.na(y_hat)]
   y_hat <- y_hat[!is.na(y_hat)]
-  y_bar <- mean(y)
-  N <- length(y)
-  if(family == "gaussian"){
-    n <- nrow(object$model)
-    sd <- sigma(object) * sqrt((n-dim(model.matrix(object))[2])/n)
+  phi <- theta <- NULL
+  if(family %in% c("zip", "zinb")){
+    y_hat <- predict(object, test_data, type = "count")
+    phi <- predict(object, test_data, type = "zero")
   }
+  if(family %in% c("negbin","zinb")) theta <- object$theta
+  predict_metrics_(y, y_hat, family, phi, theta)
+}
+
+#' @export
+predict_metrics_ <- function(y, y_hat, family, phi = NULL, theta = NULL){
+  y_bar <- mean(y)
+  sigma <- sqrt(mean((y_hat-y)^2))
+  N <- length(y)
   ll_null <- sum(
     switch(
       family,
-      gaussian = dnorm(y, mean = y_bar, sd = sd, log = TRUE),
+      gaussian = dnorm(y, mean = y_bar, sd = sigma, log = TRUE),
       binomial = dbinom(y, size = 1, prob = y_bar, log = TRUE),
       poisson = dpois(y, lambda = y_bar, log = TRUE),
-      negbin = dnbinom(y, size=object$theta, mu = y_bar, log = TRUE),
+      negbin = dnbinom(y, size = theta, mu = y_bar, log = TRUE),
       zip = dpois(y, lambda = y_bar, log = TRUE),
-      zinb = dnbinom(y, size=object$theta, mu = y_bar, log = TRUE)
+      zinb = dnbinom(y, size = theta, mu = y_bar, log = TRUE)
     )
   )
   ll_predicted <- sum(
     switch(
       family,
-      gaussian = dnorm(y, mean = y_hat, sd = sd, log = TRUE),
+      gaussian = dnorm(y, mean = y_hat, sd = sigma, log = TRUE),
       binomial = dbinom(y, size = 1, prob = y_hat, log = TRUE),
       poisson = dpois(y, lambda = y_hat, log = TRUE),
-      negbin = dnbinom(y, mu = y_hat, size=object$theta, log = TRUE),
-      zip = VGAM::dzipois(y,
-                          lambda = predict(object, test_data, type = "count"),
-                          pstr0 = predict(object, test_data, type = "zero"),
-                          log = TRUE),
-      zinb = VGAM::dzinegbin(y, size = object$theta,
-                             munb = predict(object, test_data, type = "count"),
-                             pstr0 = predict(object, test_data, type = "zero"),
+      negbin = dnbinom(y, mu = y_hat, size = theta, log = TRUE),
+      zip = VGAM::dzipois(y, lambda = y_hat, pstr0 = phi, log = TRUE),
+      zinb = VGAM::dzinegbin(y, size = theta, munb = y_hat, pstr0 = phi,
                              log = TRUE)
     )
   )
   ll_saturated <- sum(
     switch(
       family,
-      gaussian = -length(y)/2 * log(2*pi*sd^2),
+      gaussian = -N/2 * log(2*pi*sigma^2),
       binomial = 0,
       poisson = dpois(y, lambda = y, log = TRUE),
-      negbin = dnbinom(y, mu = y, size=object$theta, log = TRUE),
+      negbin = dnbinom(y, mu = y, size = theta, log = TRUE),
       zip = dpois(y, lambda = y, log = TRUE),
-      zinb = dnbinom(y, size=object$theta, mu = y, log = TRUE)
+      zinb = dnbinom(y, size = theta, mu = y, log = TRUE)
     )
   )
-  KLd_pred <- 2 * (ll_saturated - ll_predicted)
-  KLd_null <- 2 * (ll_saturated - ll_null)
+  dev_pred <- 2 * (ll_saturated - ll_predicted)
+  dev_null <- 2 * (ll_saturated - ll_null)
   structure(list(mean_cross_entropy = -ll_predicted / N,
                  mean_squared_error = mean((y - y_hat)^2),
-                 R_squared = 1 - KLd_pred / KLd_null),
+                 R_squared = 1 - dev_pred / dev_null),
             class = "prediction_metrics")
 }
+
