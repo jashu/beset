@@ -4,15 +4,22 @@
 \alias{beset_elnet}
 \title{Beset GLM with Elasticnet Regularization}
 \usage{
-beset_elnet(form, train_data, alpha = c(0.05, 0.5, 0.95),
-  standardize = TRUE, method = c("min", "1SE"), n_folds = 5,
-  n_repeats = 5, seed = 42, n_cores = NULL)
+beset_elnet(form, train_data, test_data = NULL, family = "gaussian",
+  alpha = c(0.05, 0.5, 0.95), standard_coef = TRUE, ..., n_folds = 10,
+  n_repeats = 10, seed = 42, n_cores = 2)
 }
 \arguments{
-\item{form}{A formula of the form y ~ x1 + x2 + ...}
+\item{form}{A model \code{\link[stats]{formula}}.}
 
-\item{train_data}{Data frame containing the training data set and all of the
-variables specified in \code{form}.}
+\item{train_data}{Data frame with the variables in \code{form} and the data
+to be used for model fitting.}
+
+\item{test_data}{Optional data frame with the variables in \code{form} and
+the data to be used for model validation.}
+
+\item{family}{Character string naming the error distribution to be used in
+the model. Currently supported options are \code{"gaussian"} (default),
+\code{"binomial"}, and \code{"poisson"}.}
 
 \item{alpha}{Numeric vector of alpha values between 0 and 1 to use as tuning
 parameters. \code{alpha = 0} results in ridge regression, and \code{alpha =
@@ -20,28 +27,37 @@ parameters. \code{alpha = 0} results in ridge regression, and \code{alpha =
 and L2 penalties. (Values closer to 0 weight the L2 penalty more heavily,
 and values closer to 1 weight the L1 penalty more heavily.)}
 
+\item{standard_coef}{Logical flag to return standardized regression
+coefficients. Default is \code{standard_coef = TRUE}. Note that this refers
+to how the coefficients are returned; the elastic net requires all \code{x}
+variables to be at the same scale, so if \code{standard_coef = FALSE}
+these variables will still be standardized for purposes of model fitting,
+but the coefficients will be converted back to original scale before they are
+returned.}
+
+\item{...}{Additional parameters to be passed to
+\code{\link[glmnet]{glmnet}}.}
+
 \item{n_folds}{Integer indicating the number of cross-validation folds.}
 
 \item{n_repeats}{Number of times cross-validation should be repeated.}
 
-\item{seed}{Seed for random number generator.}
+\item{seed}{Seed for random number generator, used for assigning observations
+to cross-validation folds.}
 
 \item{n_cores}{Number of cores to use for parallel execution. If not
-specified, the number of cores is set to the value of
-\code{options("cores")}, if specified, or to approximately half the number of
-cores detected by the \code{parallel} package. To determine the theoretical
+specified, the number of cores is set to 2. To determine the theoretical
 maximum number of cores you have available, see
 \code{\link[parallel]{detectCores}}, but note that the actual number of cores
-available may be less. See \href{
-https://stat.ethz.ch/R-manual/R-devel/library/parallel/doc/parallel.pdf}{
-\code{parallel} package vignette} for more information.}
+available may be less. See \code{\link[parallel]{parallel}} for
+more information.}
 }
 \description{
 \code{beset_elnet} is a wrapper to \code{\link[glmnet]{glmnet}} for fitting
  generalized linear models via penalized maximum likelihood, providing
  automated data preprocessing and selection of both the elasticnet penalty
- and regularization parameter through cross-validation.
+ and regularization parameter through repeated cross-validation.
 }
 \seealso{
-\code{\link[glmnet]{glmnet}}, \code{\link[caret]{train}}
+\code{\link[glmnet]{glmnet}}
 }

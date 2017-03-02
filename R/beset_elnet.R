@@ -3,12 +3,19 @@
 #' \code{beset_elnet} is a wrapper to \code{\link[glmnet]{glmnet}} for fitting
 #'  generalized linear models via penalized maximum likelihood, providing
 #'  automated data preprocessing and selection of both the elasticnet penalty
-#'  and regularization parameter through cross-validation.
+#'  and regularization parameter through repeated cross-validation.
 #'
-#' @param form A formula of the form y ~ x1 + x2 + ...
+#' @param form A model \code{\link[stats]{formula}}.
 #'
-#' @param train_data Data frame containing the training data set and all of the
-#' variables specified in \code{form}.
+#' @param train_data Data frame with the variables in \code{form} and the data
+#' to be used for model fitting.
+#'
+#' @param test_data Optional data frame with the variables in \code{form} and
+#' the data to be used for model validation.
+#'
+#' @param family Character string naming the error distribution to be used in
+#' the model. Currently supported options are \code{"gaussian"} (default),
+#' \code{"binomial"}, and \code{"poisson"}.
 #'
 #' @param alpha Numeric vector of alpha values between 0 and 1 to use as tuning
 #' parameters. \code{alpha = 0} results in ridge regression, and \code{alpha =
@@ -16,145 +23,165 @@
 #' and L2 penalties. (Values closer to 0 weight the L2 penalty more heavily,
 #' and values closer to 1 weight the L1 penalty more heavily.)
 #'
+#' @param standard_coef Logical flag to return standardized regression
+#' coefficients. Default is \code{standard_coef = TRUE}. Note that this refers
+#' to how the coefficients are returned; the elastic net requires all \code{x}
+#' variables to be at the same scale, so if \code{standard_coef = FALSE}
+#' these variables will still be standardized for purposes of model fitting,
+#' but the coefficients will be converted back to original scale before they are
+#' returned.
+#'
+#' @param ... Additional parameters to be passed to
+#' \code{\link[glmnet]{glmnet}}.
+#'
 #' @param n_folds Integer indicating the number of cross-validation folds.
 #'
 #' @param n_repeats Number of times cross-validation should be repeated.
 #'
-#' @param seed Seed for random number generator.
-#'
 #' @param n_cores Number of cores to use for parallel execution. If not
-#' specified, the number of cores is set to the value of
-#' \code{options("cores")}, if specified, or to approximately half the number of
-#' cores detected by the \code{parallel} package. To determine the theoretical
+#' specified, the number of cores is set to 2. To determine the theoretical
 #' maximum number of cores you have available, see
 #' \code{\link[parallel]{detectCores}}, but note that the actual number of cores
-#' available may be less. See \href{
-#' https://stat.ethz.ch/R-manual/R-devel/library/parallel/doc/parallel.pdf}{
-#' \code{parallel} package vignette} for more information.
+#' available may be less. See \code{\link[parallel]{parallel}} for
+#' more information.
 #'
-#' @seealso \code{\link[glmnet]{glmnet}}, \code{\link[caret]{train}}
+#' @param seed Seed for random number generator, used for assigning observations
+#' to cross-validation folds.
+#'
+#' @seealso \code{\link[glmnet]{glmnet}}
 #'
 #' @export
 
-beset_elnet <- function(form, train_data, alpha = c(.05, .5, .95),
-                        standardize = TRUE, method = c("min", "1SE"),
-                        n_folds = 5, n_repeats = 5,
-                        seed = 42, n_cores = NULL){
+beset_elnet <- function(form, train_data, test_data = NULL,
+                        family = "gaussian", alpha = c(.05, .5, .95),
+                        standard_coef = TRUE, ...,
+                        n_folds = 10, n_repeats = 10,
+                        seed = 42, n_cores = 2){
+  #==================================================================
+  # Create model frame and extract response name and vector
+  #------------------------------------------------------------------
+  mf <- model.frame(form, data = train_data, na.action = na.omit)
+  if(!is.null(test_data)){
+    test_data <- model.frame(form, data = test_data, na.action = na.omit)
+  }
+  n_drop <- nrow(train_data) - nrow(mf)
+  if(n_drop > 0)
+    warning(paste("Dropping", n_drop, "rows with missing data."),
+            immediate. = TRUE)
+  if(standard_coef) mf <- dplyr::mutate_if(mf, is.numeric, scale)
+  y <- mf[,1]
+  if(grepl("binomial", family)) y <- as.factor(y)
+  x <- model.matrix(form, data = mf)[,-1]
+
+  #======================================================================
+  # Obtain fit statistics
+  #----------------------------------------------------------------------
+  fits <- lapply(alpha, function(a){
+    glmnet::glmnet(x, y, family, alpha = a)#, ...)
+   })
+  names(fits) <- alpha
+  lambda_seq <- sapply(fits, function(x) unique(round(x$lambda, 3)))
+  lambda_length <- sapply(lambda_seq, function(x) length(x))
+  alpha_seq <- mapply(function(a, l) rep(a, l), a = alpha, l = lambda_length)
+  fit_stats <- data.frame(alpha = unlist(alpha_seq),
+                          lambda = unlist(lambda_seq))
+  metrics <- mapply(function(fit, lambda){
+    y_hat <- predict(fit, x, lambda, type = "response")
+    apply(y_hat, 2, function(x) predict_metrics_(y, x, family))
+  }, fit = fits, lambda = lambda_seq)
+  fit_stats$MCE <- unlist(sapply(metrics, function(x)
+    sapply(x, function(s) s$mean_cross_entropy)))
+  fit_stats$MSE <- unlist(sapply(metrics, function(x)
+    sapply(x, function(s) s$mean_squared_error)))
+  fit_stats$R2 <- unlist(sapply(metrics, function(x)
+    sapply(x, function(s) round(s$R_squared, 3))))
 
   #==================================================================
-  # ETL x and y from formula and data frame
+  # Obtain independent test stats
   #------------------------------------------------------------------
-  if("data.frame" %in% class(train_data)){
-    mf <- model.frame(form, data = train_data)
-    x <- as.matrix(mf[, 2:ncol(mf)])
-    y <- mf[, 1]
-  } else if("matrix" %in% class(train_data)) {
-    vars <- all.vars(form)
-    y <- train_data[, vars[1]]
-    if(vars[2] == "."){
-      x <- train_data[, colnames(train_data) != vars[1]]
-    } else{
-      x <- train_data[, vars[2:length(vars)]]
+  test_stats <- NULL
+  if(!is.null(test_data)){
+    test_stats <- data.frame(alpha = unlist(alpha_seq),
+                             lambda = unlist(lambda_seq))
+    if(standard_coef){
+      test_data <- dplyr::mutate_if(test_data, is.numeric, scale)
     }
+    y_test <- test_data[,1]
+    if(grepl("binomial", family)) y_test <- factor(y_test)
+    x_test <- model.matrix(form, data = test_data)[,-1]
+    metrics <- mapply(function(fit, lambda){
+      y_hats <- predict(fit, x_test, lambda, type = "response")
+      apply(y_hats, 2, function(y_hat) predict_metrics_(y_test, y_hat, family))
+    }, fit = fits, lambda = lambda_seq)
+    test_stats$MCE <- unlist(sapply(metrics, function(x)
+      sapply(x, function(s) s$mean_cross_entropy)))
+    test_stats$MSE <- unlist(sapply(metrics, function(x)
+      sapply(x, function(s) s$mean_squared_error)))
+    test_stats$R2 <- unlist(sapply(metrics, function(x)
+      sapply(x, function(s) round(s$R_squared, 3))))
   }
-  if(any(is.na(y))){
-    warning("Cases missing response will be deleted.", immediate. = TRUE)
-    x <- x[!is.na(y),]
-    y <- na.omit(y)
-  }
-  if(standardize){
-    x <- apply(x, 2, scale)
-  }
-  return(fit_elnet(x, y, family, alpha, standardize, method, n_folds, n_repeats,
-                   seed, n_cores))
-
-}
-#' @export
-fit_elnet <- function(x, y, family = "gaussian", alpha = c(.05, .5, .95),
-                      standardize = TRUE, method = c("best", "1SE"),
-                      n_folds = 5, n_repeats = 5, seed = 42, n_cores = NULL){
-
-  #===================================================================
-  # Register parallel backend
-  #-------------------------------------------------------------------
-  if(is.null(n_cores)) n_cores <- parallel::detectCores() %/% 2
-  doParallel::registerDoParallel(cores = n_cores)
 
   #==================================================================
-  # Assign cross-validation folds
+  # Obtain cross-validation stats
   #------------------------------------------------------------------
-  folds <- matrix(nrow = length(y), ncol = n_repeats)
-  set.seed(seed, kind = "default")
-  for(r in 1:n_repeats){
-    folds[, r] <- caret::createFolds(y, k = n_folds, list = FALSE)
+  set.seed(seed)
+  fold_ids <- caret::createMultiFolds(y, k = n_folds, times = n_repeats)
+  fold_list <- rep(fold_ids, length(alpha))
+  alpha_list <- rep(alpha, each = n_folds * n_repeats)
+  lambda_list <- rep(lambda_seq, each = n_folds * n_repeats)
+  cl <- parallel::makeCluster(n_cores)
+  parallel::clusterExport(cl, "predict_metrics_")
+  metrics <- parallel::clusterMap(
+    cl, function(i, alpha, lambda, predictors, response, ...){
+      fit <- glmnet::glmnet(x = predictors[i,], y = response[i], alpha = alpha,
+                            ...)
+      y <- response[-i]
+      y_hat <- predict(fit, predictors[-i,], lambda, "response")
+      apply(y_hat, 2, function(x) predict_metrics_(y, x, "gaussian"))
+      }, i = fold_list, alpha = alpha_list, lambda = lambda_list,
+    MoreArgs = list(predictors = x, response = y, family = family)#, ...)
+  )
+  parallel::stopCluster(cl)
+  cv_stats <- data.frame(
+    fold_id = rep(names(fold_ids), each = nrow(fit_stats)),
+    alpha = rep(fit_stats$alpha, n_repeats*n_folds),
+    lambda = rep(fit_stats$lambda, n_repeats*n_folds))
+  cv_stats <- dplyr::arrange(cv_stats, alpha, fold_id, dplyr::desc(lambda))
+  cv_stats$MCE <- unlist(sapply(metrics, function(lambdas)
+    sapply(lambdas, function(x) x$mean_cross_entropy)))
+  cv_stats$MSE <- unlist(sapply(metrics, function(lambdas)
+    sapply(lambdas, function(x) x$mean_squared_error)))
+  cv_stats$R2 <- unlist(sapply(metrics, function(lambdas)
+    sapply(lambdas, function(x) round(x$R_squared, 3))))
+  get_se <- function(x){
+    sd(x)/sqrt(length(x))
   }
-  #======================================================================
-  # Train glmnet
-  #----------------------------------------------------------------------
-  if(dplyr::n_distinct(y) == 2) family <- "binomial"
-  results <- data.frame()
-  pb <- txtProgressBar(min = 0, max = length(alpha) * n_repeats, style = 3)
-  i <- 1
-  for(a in seq_along(alpha)){
-    for(r in 1:n_repeats){
-      temp <- glmnet::cv.glmnet(x, y, foldid = folds[, r], parallel = TRUE,
-                        alpha = alpha[a], family = family, standardize = FALSE)
-      temp <- cbind(alpha = alpha[a], as.data.frame(temp[1:5]))
-      results <- rbind(results, temp)
-      setTxtProgressBar(pb, i)
-      i <- i + 1
-    }
-  }
+  cv_stats <- dplyr::group_by(cv_stats, alpha, lambda)
+  cv_stats <- dplyr::summarize(cv_stats,
+                                 MCE_SE = get_se(MCE),
+                                 MSE_SE = get_se(MSE),
+                                 R2_SE = get_se(R2),
+                                 MCE = mean(MCE),
+                                 MSE = mean(MSE),
+                                 R2 = mean(R2))
+  cv_stats <- dplyr::ungroup(cv_stats)
+  cv_stats <- dplyr::select(cv_stats, alpha, lambda,
+                              MCE, MCE_SE, MSE, MSE_SE, R2, R2_SE)
+  cv_stats <- dplyr::arrange(cv_stats, alpha, desc(lambda))
 
   #======================================================================
-  # Extract results and determine largest alpha and smallest lambda within 1 SE
+  # Construct beset_glm object
   #----------------------------------------------------------------------
-  results <- dplyr::mutate(results, lambda = round(lambda, 3))
-  results <- dplyr::group_by(results, alpha, lambda)
-  results <- dplyr::summarise(results, cve = mean(cvm),
-                              cve_se = mean(cvsd),
-                              cve_lo = mean(cvlo),
-                              cve_hi = mean(cvup))
-  results <- na.omit(results)
-  results <- dplyr::ungroup(results)
-  best_result <- dplyr::filter(results, cve == min(cve))
-  best_results <- dplyr::filter(results, cve < best_result$cve_hi)
-  best_result_1SE <- dplyr::filter(best_results, alpha == max(alpha))
-  best_result_1SE <- dplyr::filter(best_result_1SE, lambda == max(lambda))
-  best_alpha <- best_result$alpha
-  best_lambda <- best_result$lambda
-  best_alpha_1SE <- best_result_1SE$alpha
-  best_lambda_1SE <- best_result_1SE$lambda
-
-  #======================================================================
-  # Fit best model and best model within 1 SD
-  #----------------------------------------------------------------------
-  best_model <- NULL; best_model_1SE <- NULL
-  if("best" %in% method){
-    best_model <- glmnet::glmnet(x, y, family = family,
-                                 alpha = best_alpha,
-                                 standardize = FALSE)
-  }
-  if("1SE" %in% method){
-    if(!is.null(best_model) && best_alpha == best_alpha_1SE){
-      best_model_1SE <- best_model
-      } else {
-        best_model_1SE <- glmnet::glmnet(x, y, family = family,
-                                         alpha = best_alpha_1SE,
-                                         standardize = FALSE)
-      }
-  }
-  structure(list(results = results,
-                 best_alpha = best_alpha,
-                 best_alpha_1SE = best_alpha_1SE,
-                 best_lambda = best_lambda,
-                 best_lambda_1SE = best_lambda_1SE,
-                 best_model = best_model,
-                 best_model_1SE = best_model_1SE),
+  structure(list(stats = list(fit = fit_stats, cv = cv_stats,
+                              test = test_stats),
+                 cv_params = list(n_folds = n_folds, n_repeats = n_repeats,
+                                    seed = seed, fold_ids = fold_ids),
+                 model_fits = fits,
+                 model_params = list(x = x, y = y, family = family)),
             class = "beset_elnet")
+
 }
 
-#' @export
 rec_elnet <- function(x, y, ..., n_vars = NULL, threshold = NULL, seed = 42){
   n_observed <- nrow(x)
   n_features <- ncol(x)
