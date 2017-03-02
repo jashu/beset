@@ -270,12 +270,17 @@ beset_glm <- function(form, train_data, test_data = NULL, p_max = 10,
   n_pred <- c(intercept = 0, n_pred)
 
   #======================================================================
-  # Obtain fit for every model
+  # Eliminate formulae that exceed p_max
+  #----------------------------------------------------------------------
+  form_list <- form_list[n_pred <= p]
+  n_pred <- n_pred[n_pred <= p]
+
+  #======================================================================
+  # Obtain fit statistics for every model
   #----------------------------------------------------------------------
   cl <- parallel::makeCluster(n_cores)
-  negative.binomial <- MASS::negative.binomial
   parallel::clusterExport(cl, c("mf", "family", "dist", "link", "test_data",
-                                "glm_nb", "prediction_metrics", ...,
+                                "glm_nb", "predict_metrics", ...,
                                 "negative.binomial"), envir=environment())
   if(family == "negbin"){
     CE <- parallel::parLapplyLB(cl, form_list, function(form){
