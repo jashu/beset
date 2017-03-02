@@ -42,8 +42,10 @@ should be repeated.}
 
 \item{n_cores}{Integer value indicating the number of workers to run in
 parallel during subset search and cross-validation. By default, this will
-be set to 2. You may wish to change this depending on your hardware and OS.
-See \code{\link[parallel]{parallel-package}} for more information.}
+be set to 2. To determine the theoretical maximum number of cores you have
+available, see \code{\link[parallel]{detectCores}}, but note that the actual
+number of cores available may be less. See
+\code{\link[parallel]{parallel-package}} for more information.}
 
 \item{seed}{An integer used to seed the random number generator when
 assigning observations to folds.}
@@ -79,7 +81,7 @@ A "beset_zeroinfl" object with the following components:
    }
  }
  \item\describe{
-   \item{xval_stats}{a data frame containing cross-validation statistics
+   \item{cv_stats}{a data frame containing cross-validation statistics
      for the best model for each \code{n_count_pred} and \code{n_zero_pred}
      listed in \code{count_fit_stats} and \code{zero_fit_stats}. Each metric
      is followed by its standard error, estimated as the standard deviation
@@ -165,5 +167,5 @@ the new settings.
 \seealso{
 \code{\link[caret]{createFolds}}, \code{\link{beset_glm}},
 \code{\link[pscl]{zeroinfl}}, \code{\link[base]{set.seed}},
-\code{\link{prediction_metrics}}
+\code{\link{predict_metrics}}
 }
