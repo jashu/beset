@@ -55,7 +55,7 @@ plot.beset_elnet <- function(object, type = "cv", metric = "MCE"){
       geom_errorbar(aes(x = lambda, ymin = cv_lower, ymax = cv_upper),
                     width = 0.1)
   }
-  print(p)
+  p
 }
 
 #' @export
@@ -99,7 +99,7 @@ plot.beset_glm <- function(object, metric = "MCE"){
   if(!is.null(test)){
     p <- p + geom_line(aes(x = n_pred, y = test, color = "Test"))
   }
-  suppressWarnings(print(p))
+  p
 }
 
 #' @export
@@ -120,11 +120,11 @@ plot.beset_zeroinfl <- function(object, type = "cv", metric = "MCE"){
   )
   data$n_zero_pred <- factor(data$n_zero_pred)
   if(type == "cv"){
-    names(data)[3:4] <- c("error", "se")
+    names(data)[4:5] <- c("error", "se")
     data$cv_lower <- with(data, error - se)
     data$cv_upper <- with(data, error + se)
   } else{
-    names(data)[3] <- "error"
+    names(data)[4] <- "error"
   }
   title <- ggtitle(switch(type,
                           train = "Fit to training data",
@@ -138,11 +138,11 @@ plot.beset_zeroinfl <- function(object, type = "cv", metric = "MCE"){
               aes(x = n_count_pred, y = error, color = n_zero_pred)) +
     theme_bw() + title + xlab("Number of Count-Component Predictors") +
     y_lab + scale_x_continuous(breaks = 0:max(data$n_count_pred)) +
-    geom_line() + labs(color = "Number of Zero-Component Predictors") +
+    geom_line() + labs(color = "Number of\nZero-Component\nPredictors")
   if(type == "cv"){
     p <- p +
       geom_errorbar(aes(x = n_count_pred, ymin = cv_lower, ymax = cv_upper),
                     width = 0.2)
   }
-  print(p)
+  p
 }
