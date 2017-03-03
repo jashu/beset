@@ -7,7 +7,7 @@
 #'
 #' @export
 
-summary.beset_glm <- function(object, n_pred = NULL, metric = "MCE",
+summary.beset_glm <- function(object, metric = "MCE", n_pred = NULL,
                               oneSE = TRUE, n_cores = 2){
   metric <- tryCatch(match.arg(metric, c("AIC", "MCE", "MSE", "R2")),
                      error = function(c){
@@ -16,7 +16,7 @@ summary.beset_glm <- function(object, n_pred = NULL, metric = "MCE",
                        stop(c)
                      })
   best_model <- object$best_AIC
-  best_form <- object$stats$fit$form[best_idx]
+  best_form <- object$stats$fit$form[1]
   if(!is.null(n_pred)){
     best_form <- object$stats$cv$form[object$stats$cv$n_pred == n_pred]
     best_model <- if(class(best_model)[1] == "negbin"){
@@ -57,8 +57,7 @@ summary.beset_glm <- function(object, n_pred = NULL, metric = "MCE",
     best_model <- if(class(best_model)[1] == "negbin"){
       update(best_model, best_form, data = object$model_data)
     } else {
-      update(best_model, best_form,
-             family = best_model$family,
+      update(best_model, best_form, family = best_model$family,
              data = object$model_data)
     }
   }
@@ -70,11 +69,11 @@ summary.beset_glm <- function(object, n_pred = NULL, metric = "MCE",
   R2_test <- object$stats$test$R2[object$stats$test$form == best_form]
   R2_cv <- do.call("cv_r2",
                    args = c(list(object = best_model, n_cores = n_cores),
-                            object$xval_params))
+                            object$cv_params))
   near_equals <- dplyr::filter(object$stats$fit, n_pred == p)
   if(metric == "AIC") metric <- "MCE"
-  near_equals <- dplyr::select(near_equals, form, n_pred,
-                               metric = starts_with(metric))
+  near_equals <- dplyr::select(near_equals, form,
+                               metric = dplyr::starts_with(metric))
   if(metric == "MCE") near_equals$metric <- exp(-near_equals$metric)
   best_metric <- if(metric == "MSE") min(near_equals$metric, na.rm = T)[1] else
     max(near_equals$metric, na.rm = T)[1]
