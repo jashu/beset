@@ -58,7 +58,7 @@
 #'   \item{R2cv}{if \code{cv = TRUE}, an object returned by \code{\link{cv_r2}}}
 #'   }}
 #'
-#' @seealso \code{\link{prediction_metrics}}, \code{\link{deviance.zeroinfl}},
+#' @seealso \code{\link{predict_metrics}}, \code{\link{deviance.zeroinfl}},
 #' \code{\link{cv_r2}}
 #'
 #' @references

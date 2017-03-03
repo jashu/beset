@@ -78,6 +78,6 @@ models for count data with excess zeros, Journal of Statistical Computation
 and Simulation, 86:18, 3777-3790, DOI: 10.1080/00949655.2016.1186166
 }
 \seealso{
-\code{\link{prediction_metrics}}, \code{\link{deviance.zeroinfl}},
+\code{\link{predict_metrics}}, \code{\link{deviance.zeroinfl}},
 \code{\link{cv_r2}}
 }
