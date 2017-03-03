@@ -22,36 +22,31 @@ frames named \code{train} and \code{test}, containing the training and
 testing sets, respectively.
 }
 \description{
-Wrapper for \code{\link[caret]{createDataPartition}}
+\code{partition} randomly splits a data frame into two data frames,
+\code{train} and \code{test},
 }
 \details{
-\code{\link[caret]{createDataPartition}} returns row position integers
-corresponding to the training data, as derived from a random sampling within
-the factor levels of a classification outcome or the quintiles of a numeric
-outcome. This insures that the training and test samples will be closely
-matched in terms of class incidence or frequency distribution of the outcome
-measure. The typical use case for \code{\link[caret]{createDataPartition}}
-is to create a single partition, which will include a preceding call to
-\code{\link[base]{set.seed}}, so that the randomization is reproducible, and
-a subsequent construction of separate training and testing data frames using
-the row positions that are returned.
+\code{partition} is mainly a convenince wrapper for
+\code{\link[caret]{createDataPartition}}, which returns row position integers
+corresponding to the training data, as derived from stratefied random
+sampling within the factor levels of a classification outcome or the
+quintiles of a numeric outcome. This insures that the training and test
+samples will be closely matched in terms of class incidence or frequency
+distribution of the outcome measure. The typical use case for
+\code{\link[caret]{createDataPartition}} is to create a single partition,
+which will include a preceding call to \code{\link[base]{set.seed}}, so that
+the randomization is reproducible, and a subsequent construction of separate
+training and testing data frames using the row positions that are returned.
 
-\code{partition} consolidates the above steps into a single function call.
-In addition, it insures that binary response variables are converted to
-factors using \code{\link{binary_to_factor}} and that the partition can be
-reproduced by including a randomization seed as a function argument, and it
-creates analysis-ready \code{train} and \code{test} data frames, which are
+\code{partition} consolidates the above steps into a single function call,
+creating analysis-ready \code{train} and \code{test} data frames, which are
 bound together in a "\code{\link{data_partition}}" structure so that their
 common ancestry is maintained and self-documented. For example, if you name
 your \code{\link{data_partition}} "\code{data}", you can intutively access
 the training set with \code{data$train} and its corresponding test set with
-\code{data$test}. Moreover, you can lazily pass a
-\code{\link{data_partition}} object to any predictive modeling function in
-the \code{\link{beset}} package, and it will automatically choose the
-appropriate data frame for the task at hand.
+\code{data$test}.
 }
 \seealso{
 \code{\link[caret]{createDataPartition}},
-\code{\link{binary_to_factor}}, \code{\link[base]{set.seed}},
-\code{\link{data_partition}}
+ \code{\link[base]{set.seed}}, \code{\link{data_partition}}
 }
