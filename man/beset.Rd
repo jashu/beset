@@ -12,18 +12,46 @@ interpretability of generalized linear models by automatically performing
 variable selection, either explicitly (e.g., with subset selection) or
 implicitly (e.g., with coefficient shrinkage), based on cross-validation.
 }
-\details{
-It has three main goals:
-\itemize{
+\section{Overarching goals}{
+
+\enumerate{
   \item Establish a common, user-friendly interface for best subset selection
-   that works with several model fitting functions, including
-   \code{\link[stats]{lm}}, \code{\link[stats]{glm}},
-   \code{\link[MASS]{glm.nb}}, and \code{\link[pscl]{zeroinfl}}.
-  \item Make it fast and easy to cross-validate generalized linear models,
-   with a streamlined, parallelized implementation that can take advantage of
-   multicore computing architectures.
-  \item Make elastic-net regression more accessible by providing a simple
-   \code{\link[stats]{lm}}-like wrapper and summary method for
-   \code{\link[glmnet]{glmnet}}.
+    that works with several model fitting functions, including
+    \code{\link[stats]{lm}}, \code{\link[stats]{glm}},
+    \code{\link[MASS]{glm.nb}}, and \code{\link[pscl]{zeroinfl}}.
+  \item Provide a fast and easy way to cross-validate generalized linear
+    models, with a streamlined, parallelized implementation that can take
+    advantage of multicore computing architectures.
+  \item Make elastic-net regression and cross-validation more accessible by
+    providing simple wrappers and informative summary methods for fitting
+    models with \code{\link[glmnet]{glmnet}}.
 }
 }
+
+\section{Overview of principal functions}{
+
+\describe{
+ \item{\code{\link{partition}}}{Makes it quick and easy to split a data
+   frame into a train/test partition and keep track of which train set goes
+   with which test set.}
+ \item{\code{\link{beset_glm}}}{Performs best subset selection using repeated
+   cross-validation to find the optimal number of predictors for several
+   families of generalized linear models.}
+ \item{\code{\link{beset_zeroinfl}}}{Provides a cross-validated search
+   strategy for identifying the best predictors for each of the two
+   components in a zero-inflated count model.}
+ \item{\code{\link{beset_elnet}}}{Enhances elastic-net regression with
+   \code{\link[glmnet]{glmnet}} by 1) allowing the user to specify a model
+   using R's formula syntax, 2) allowing the user to simultaneously tune both
+   alpha and lambda using cross-validation, and 3) providing a summary output
+   that ranks the relative importance of the predictors that survived
+   shrinkage and gives some statistics indicating how well the model fits the
+   training data and predicts new data.}
+ \item{\code{\link{r2d}}}{Calculates an R-squared as the fraction of deviance
+   explained for any "\code{glm}", "\code{negbin}", or "\code{zeroinfl}"
+   model object and, with optional additional arguments, returns a predictive
+   R-squared for how well the model predicts responses for new observations
+   and/or a cross-validated R-squared with bootstrapped confidence interval.}
+ }
+}
+
