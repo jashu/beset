@@ -109,20 +109,20 @@ regression models.
 count models, fitting both a count model (e.g., negative binomial regression)
 and zero-inflation model (e.g., logistic regression). Given that there are
 two models involved, the search for the best combination of predictors is
-not completely exhaustive, which would require fitting \emph{(2^p)^2} models,
-e.g., 10 predictors have over 1 million possible combinations. Instead, best
-subset selection is first performed separately for each of the two models,
-using only an intercept term for the other model. This narrows the search to
-\eqn{p^2} models: the best models for each possible number of predictors of
-the count process (using a constant to predict the zero process) crossed
-with the best models for each possible number of predictors of the zero
-process (using a constant to predict the count process). Thus, for every
-\eqn{m} in \eqn{0, 1, ... p} best predictors of the count process and every
-\eqn{n} in \eqn{0, 1, ... p} best predictors of the zero-inflation process,
-\code{beset_zeroinfl} uses \eqn{k}-fold cross-validation to select the model
-with the \eqn{m * n} number of predictors that minimizes prediction error,
-i.e., how well the best models trained using \eqn{k - 1} folds predict the
-out-of-fold sample.
+not completely exhaustive, which would require fitting \eqn{(2^p)^2} models,
+e.g., just 10 predictors have over 1 million possible combinations. Instead,
+best subset selection is first performed separately for each of the two
+models, using only an intercept term for the other model. This narrows the
+search to \eqn{2(2^p) + p^2} models (2148 for \eqn{p = 10}): the
+best models for each possible number of predictors of the count process
+(using a constant to predict the zero process) crossed with the best models
+for each possible number of predictors of the zero process (using a constant
+to predict the count process). Thus, for every \eqn{m} in \eqn{0, 1, ... p}
+best predictors of the count process and every \eqn{n} in \eqn{0, 1, ... p}
+best predictors of the zero-inflation process, \code{beset_zeroinfl} uses
+\eqn{k}-fold cross-validation to select the model with the \eqn{m * n} number
+of predictors that minimizes prediction error, i.e., how well the best models
+trained using \eqn{k - 1} folds predict the out-of-fold sample.
 
 When randomly assigning observations to cross-validation folds, responses
 with zero values are first allocated to equalize (as much as possible) the

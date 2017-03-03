@@ -4,8 +4,8 @@
 \alias{summary.beset_zeroinfl}
 \title{Summary Method for the \code{beset_zeroinfl} Class}
 \usage{
-\method{summary}{beset_zeroinfl}(object, n_pred = NULL, metric = "MCE",
-  oneSE = TRUE, n_cores = 2)
+\method{summary}{beset_zeroinfl}(object, metric = "MCE",
+  n_count_pred = NULL, n_zero_pred = NULL, oneSE = TRUE, n_cores = 2)
 }
 \arguments{
 \item{object}{An object of class \code{\link{beset_zeroinfl}}.}
