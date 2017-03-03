@@ -8,20 +8,20 @@
 #' count models, fitting both a count model (e.g., negative binomial regression)
 #' and zero-inflation model (e.g., logistic regression). Given that there are
 #' two models involved, the search for the best combination of predictors is
-#' not completely exhaustive, which would require fitting \emph{(2^p)^2} models,
-#' e.g., 10 predictors have over 1 million possible combinations. Instead, best
-#' subset selection is first performed separately for each of the two models,
-#' using only an intercept term for the other model. This narrows the search to
-#' \eqn{p^2} models: the best models for each possible number of predictors of
-#' the count process (using a constant to predict the zero process) crossed
-#' with the best models for each possible number of predictors of the zero
-#' process (using a constant to predict the count process). Thus, for every
-#' \eqn{m} in \eqn{0, 1, ... p} best predictors of the count process and every
-#' \eqn{n} in \eqn{0, 1, ... p} best predictors of the zero-inflation process,
-#' \code{beset_zeroinfl} uses \eqn{k}-fold cross-validation to select the model
-#' with the \eqn{m * n} number of predictors that minimizes prediction error,
-#' i.e., how well the best models trained using \eqn{k - 1} folds predict the
-#' out-of-fold sample.
+#' not completely exhaustive, which would require fitting \eqn{(2^p)^2} models,
+#' e.g., just 10 predictors have over 1 million possible combinations. Instead,
+#' best subset selection is first performed separately for each of the two
+#' models, using only an intercept term for the other model. This narrows the
+#' search to \eqn{2(2^p) + p^2} models (2148 for \eqn{p = 10}): the
+#' best models for each possible number of predictors of the count process
+#' (using a constant to predict the zero process) crossed with the best models
+#' for each possible number of predictors of the zero process (using a constant
+#' to predict the count process). Thus, for every \eqn{m} in \eqn{0, 1, ... p}
+#' best predictors of the count process and every \eqn{n} in \eqn{0, 1, ... p}
+#' best predictors of the zero-inflation process, \code{beset_zeroinfl} uses
+#' \eqn{k}-fold cross-validation to select the model with the \eqn{m * n} number
+#' of predictors that minimizes prediction error, i.e., how well the best models
+#' trained using \eqn{k - 1} folds predict the out-of-fold sample.
 #'
 #' When randomly assigning observations to cross-validation folds, responses
 #' with zero values are first allocated to equalize (as much as possible) the
@@ -154,7 +154,6 @@
 #'  }
 #' }
 #'
-#' @import foreach
 #' @export
 beset_zeroinfl <- function(form, train_data, test_data = NULL,
                            family = "poisson", link = "logit", ...,
@@ -164,14 +163,20 @@ beset_zeroinfl <- function(form, train_data, test_data = NULL,
   #==================================================================
   # Check family and link arguments
   #------------------------------------------------------------------
-  family <- try(match.arg(family, c("negbin", "poisson", "geometric")),
-                silent = TRUE)
-  if(class(family) == "try-error") stop("Invalid 'family' argument.")
-  if(!is.null(link)){
-      link <- try(match.arg(link, c("logit", "probit", "cauchit",
-                                    "log", "cloglog")), silent = TRUE)
+  family <- tryCatch(match.arg(family, c("negbin", "poisson", "geometric")),
+                     error = function(c){
+                       c$message <- gsub("arg", "family", c$message)
+                       c$call <- NULL
+                       stop(c)
+                     })
+  link <- if(!is.null(link)){
+    tryCatch(match.arg(link, c("logit", "probit", "cauchit", "log", "cloglog")),
+             error = function(c){
+               c$message <- gsub("arg", "link", c$message)
+               c$call <- NULL
+               stop(c)
+             })
     }
-  if(class(link) == "try-error") stop("Invalid 'link' argument.")
 
   #==================================================================
   # Create model frame and extract response name and vector
@@ -453,24 +458,21 @@ beset_zeroinfl <- function(form, train_data, test_data = NULL,
   #----------------------------------------------------------------------
   MCE <- sapply(metrics, function(models)
     sapply(models, function(x) x$mean_cross_entropy))
-  cv_stats$MCE <- apply(MCE, 1, median, na.rm = T)
+  cv_stats$MCE <- apply(MCE, 1, mean, na.rm = T)
   cv_stats$MCE_SE <- apply(MCE, 1, function(x){
-    MCE_boot <- boot::boot(x, function(x, i) median(x[i], na.rm = T), 1000)
-    sd(MCE_boot$t)
+    sd(x, na.rm = TRUE)/sqrt(length(x[!is.na(x)]))
   })
   MSE <- sapply(metrics, function(models)
     sapply(models, function(x) x$mean_squared_error))
-  cv_stats$MSE <- apply(MSE, 1, median, na.rm = T)
+  cv_stats$MSE <- apply(MSE, 1, mean, na.rm = T)
   cv_stats$MSE_SE <- apply(MSE, 1, function(x){
-    MSE_boot <- boot::boot(x, function(x, i) median(x[i], na.rm = T), 1000)
-    sd(MSE_boot$t)
+    sd(x, na.rm = TRUE)/sqrt(length(x[!is.na(x)]))
   })
   R2 <- sapply(metrics, function(models)
     sapply(models, function(x) x$R_squared))
-  cv_stats$R2 <- apply(R2, 1, median, na.rm = T)
+  cv_stats$R2 <- apply(R2, 1, mean, na.rm = T)
   cv_stats$R2_SE <- apply(R2, 1, function(x){
-    R2_boot <- boot::boot(x, function(x, i) median(x[i], na.rm = T), 1000)
-    sd(R2_boot$t)
+    sd(x, na.rm = TRUE)/sqrt(length(x[!is.na(x)]))
   })
 
   #======================================================================
@@ -480,7 +482,7 @@ beset_zeroinfl <- function(form, train_data, test_data = NULL,
   if(!is.null(test_data)){
     metrics <- lapply(cv_stats$form, function(form){
       fit <- try(suppressWarnings(
-        zeroinfl(formula(form), data = mf, dist = family, link = link#, ...
+        pscl::zeroinfl(formula(form), data = mf, dist = family, link = link#, ...
                  )), silent = TRUE)
       if(class(fit) == "zeroinfl"){
         predict_metrics(fit, test_data)
@@ -490,7 +492,7 @@ beset_zeroinfl <- function(form, train_data, test_data = NULL,
              R_squared = NA_real_)
       }
     })
-    test_stats <- dplyr::select(cv_stats, n_pred, form)
+    test_stats <- dplyr::select(cv_stats, n_count_pred:form)
     test_stats$MCE <- sapply(metrics, function(x) x$mean_cross_entropy)
     test_stats$MSE <- sapply(metrics, function(x) x$mean_squared_error)
     test_stats$R2 <- sapply(metrics, function(x) x$R_squared)
@@ -503,6 +505,5 @@ beset_zeroinfl <- function(form, train_data, test_data = NULL,
                               zero = zero_fit_stats),
                  best_AIC = best_AIC, model_data = mf,
                  cv_params = list(n_folds = n_folds, n_repeats = n_repeats,
-                                  seed = seed)
-    ), class = "beset_zeroinfl")
+                                  seed = seed)), class = "beset_zeroinfl")
 }
