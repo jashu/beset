@@ -56,7 +56,14 @@ A "beset_glm" object with the following components:
  \item\describe{
    \item{best_AIC}{an object of class \code{\link[stats]{glm}}
    corresponding to the model with the lowest Akaike Information Criterion}
-   }
+ }
+ \item\describe{
+   \item{cv_params}{list of the values of the parameters used for
+   cross-validation, i.e., \code{n_folds}, \code{n_repeats}, \code{seed}}
+ }
+  \item\describe{
+    \item{model_data}{data frame used to identify best subsets}
+ }
  \item\describe{
    \item{stats}{a list with three data frames:
      \describe{
