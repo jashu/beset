@@ -2,11 +2,16 @@
 % Please edit documentation in R/beset_glm.R
 \name{beset_glm}
 \alias{beset_glm}
+\alias{beset_glm}
+\alias{beset_lm}
 \title{Best Subset Selection for Generalized Linear Models}
 \usage{
 beset_glm(form, train_data, test_data = NULL, p_max = 10,
   family = "gaussian", link = NULL, ..., n_cores = 2, n_folds = 10,
   n_repeats = 10, seed = 42)
+
+beset_lm(form, train_data, test_data = NULL, p_max = 10, n_cores = 2,
+  n_folds = 10, n_repeats = 10, seed = 42)
 }
 \arguments{
 \item{form}{A model \code{\link[stats]{formula}}.}

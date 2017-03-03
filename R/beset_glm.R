@@ -60,6 +60,8 @@
 #'    works with a more restricted set of distributions.
 #' }
 #'
+#' @name beset_glm
+#'
 #' @seealso \code{\link[caret]{createFolds}}, \code{\link[stats]{glm}},
 #' \code{\link[base]{set.seed}}, \code{\link[MASS]{glm.nb}}
 #'
@@ -141,6 +143,9 @@
 #'     }
 #'   }
 #' }
+NULL
+
+#' @rdname beset_glm
 #' @export
 beset_glm <- function(form, train_data, test_data = NULL, p_max = 10,
                       family = "gaussian", link = NULL,  ...,
@@ -155,8 +160,8 @@ beset_glm <- function(form, train_data, test_data = NULL, p_max = 10,
                        c$call <- NULL
                        stop(c)
                      })
-  if(!is.null(link)){
-    link <- tryCatch(
+  link <- if(!is.null(link)){
+    tryCatch(
       if(family == "binomial"){
         match.arg(link, c("logit", "probit", "cauchit", "log", "cloglog"))
         } else if(family == "gaussian"){
@@ -170,13 +175,12 @@ beset_glm <- function(form, train_data, test_data = NULL, p_max = 10,
         c$call <- NULL
         stop(c)
       })
-  }
-  if(family == "negbin"){
-    if(is.null(link)) link <- "log"
-  } else if(is.null(link)){
-    dist <- call(family)
   } else {
-    dist <- call(family, link = link)
+    switch(family,
+           binomial = "logit",
+           gaussian = "identity",
+           poisson = "log",
+           negbin = "log")
   }
   #==================================================================
   # Create model frame and extract response name and vector
@@ -292,7 +296,7 @@ beset_glm <- function(form, train_data, test_data = NULL, p_max = 10,
     })
   } else {
     CE <- parallel::parLapplyLB(cl, form_list, function(form){
-      fit <- glm(form, eval(dist), mf, ...)
+      fit <- glm(form, do.call(family, list(link = link)), mf, ...)
       list(AIC = AIC(fit),
            MCE = -logLik(fit)/nrow(mf),
            MSE = mean(residuals(fit, type = "response")^2),
@@ -314,7 +318,7 @@ beset_glm <- function(form, train_data, test_data = NULL, p_max = 10,
   best_AIC <- if(family == "negbin"){
     glm_nb(fit_stats$form[1], mf, link = link, ...)
   } else{
-    glm(fit_stats$form[1], eval(dist), mf, ...)
+    glm(fit_stats$form[1], do.call(family, list(link = link)), mf, ...)
   }
   #======================================================================
   # Obtain model with maximum likelihood for each number of parameters
@@ -335,7 +339,7 @@ beset_glm <- function(form, train_data, test_data = NULL, p_max = 10,
       fit <- if(family == "negbin"){
         glm_nb(form, mf[i,], link = link, ...)
         } else {
-          glm(form, eval(dist), mf[i,], ...)
+          glm(form, do.call(family, list(link = link)), mf[i,], ...)
         }
       stats <- try(predict_metrics(fit, test_data = mf[-i,]), silent = TRUE)
       if(class(stats) == "prediction_metrics") stats
@@ -376,7 +380,7 @@ beset_glm <- function(form, train_data, test_data = NULL, p_max = 10,
       fit <- if(family == "negbin")
         glm_nb(form, mf, link = link, ...)
       else
-        glm(form, eval(dist), mf, ...)
+        glm(form, do.call(family, list(link = link)), mf, ...)
       stats <- tryCatch(
         predict_metrics(fit, test_data = test_data),
         error = function(c){
@@ -398,15 +402,19 @@ beset_glm <- function(form, train_data, test_data = NULL, p_max = 10,
   #======================================================================
   # Construct beset_glm object
   #----------------------------------------------------------------------
-  structure(list(stats = list(fit = fit_stats, cv = cv_stats,
-                              test = test_stats),
-                 best_AIC = best_AIC, model_data = mf,
-                 cv_params = list(n_folds = n_folds, n_repeats = n_repeats,
-                                    seed = seed)),
+  structure(list(best_AIC = best_AIC,
+                 cv_params = list(n_folds = n_folds,
+                                  n_repeats = n_repeats,
+                                  seed = seed),
+                 model_data = mf,
+                 stats = list(fit = fit_stats,
+                              cv = cv_stats,
+                              test = test_stats)),
             class = "beset_glm")
 }
 
 #' @export
+#' @rdname beset_glm
 beset_lm <- function(form, train_data, test_data = NULL, p_max = 10,
                      n_cores = 2, n_folds = 10, n_repeats = 10,  seed = 42){
   beset_glm(form, train_data, test_data = test_data, p_max = p_max,
