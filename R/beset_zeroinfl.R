@@ -12,7 +12,7 @@
 #' e.g., just 10 predictors have over 1 million possible combinations. Instead,
 #' best subset selection is first performed separately for each of the two
 #' models, using only an intercept term for the other model. This narrows the
-#' search to \eqn{2(2^p) + p^2} models (2148 for \eqn{p = 10}): the
+#' search to \eqn{2(2^p) + p^2} models (e.g., 2148 for \eqn{p = 10}): the
 #' best models for each possible number of predictors of the count process
 #' (using a constant to predict the zero process) crossed with the best models
 #' for each possible number of predictors of the zero process (using a constant
@@ -21,13 +21,15 @@
 #' best predictors of the zero-inflation process, \code{beset_zeroinfl} uses
 #' \eqn{k}-fold cross-validation to select the model with the \eqn{m * n} number
 #' of predictors that minimizes prediction error, i.e., how well the best models
-#' trained using \eqn{k - 1} folds predict the out-of-fold sample.
+#' trained using \eqn{k - 1} folds predict the out-of-fold samples.
 #'
+#' @section Cross-validation details:
 #' When randomly assigning observations to cross-validation folds, responses
 #' with zero values are first allocated to equalize (as much as possible) the
 #' incidence of zero observations across folds. The remaining non-zero values
 #' are then randomly allocated within subgroups based on percentiles to insure
 #' that the folds will also be balanced in terms of the count distribution.
+#'
 #' \code{beset_zeroinfl} enforces the "one in ten rule" for each component of
 #' the model with respect to the sample size expected for \eqn{k - 1} folds,
 #' i.e., there must be a minimum of 10 observations of zero across \eqn{k - 1}
@@ -113,7 +115,17 @@
 #'    corresponding to the model with the lowest Akaike Information Criterion}
 #'    }
 #'  \item\describe{
-#'    \item{count_fit_stats}{a data frame containing fit statistics for every
+#'    \item{cv_params}{list of the values of the parameters used for
+#'    cross-validation, i.e., \code{n_folds}, \code{n_repeats}, \code{seed}}
+#'  }
+#'   \item\describe{
+#'     \item{model_data}{data frame extracted from \code{train_data} and used to
+#'      identify best subsets}
+#'  }
+#'  \item\describe{
+#'    \item{stats}{The following five data frames, each containing metrics
+#'    describing model fits or predictions:
+#'    \describe{\item{count_fit}{a data frame containing fit statistics for every
 #'      possible combination of predictors of count data:
 #'      \describe{
 #'      \item{n_count_pred}{the number of count predictors in model; note that
@@ -125,41 +137,36 @@
 #'      \item{MCE}{Mean cross entropy, estimated as \eqn{-log-likelihood/N},
 #'      where \eqn{N} is the number of observations}
 #'      \item{MSE}{Mean squared error}
-#'      \item{R2}{R-squared, calculated as \eqn{1 - deviance/null deviance}}
-#'       }
-#'    }
-#'  }
-#'  \item\describe{
-#'    \item{zero_fit_stats}{a data frame containing the same fit statistics as
-#'    \code{count_fit_stats} but for every possible combination of predictors of
-#'    zeroes vs. non-zeroes
-#'    }
-#'  }
-#'  \item\describe{
-#'    \item{cv_stats}{a data frame containing cross-validation statistics
-#'      for the best model for each \code{n_count_pred} and \code{n_zero_pred}
-#'      listed in \code{count_fit_stats} and \code{zero_fit_stats}. Each metric
-#'      is followed by its standard error, estimated as the standard deviation
-#'      of 1000 bootstrap replicates of computing the median cross-validation
-#'      statistic across all folds and repetitions. The data frame is otherwise
-#'      the same as that documented for \code{fit_stats}, except AIC is omitted.
-#'    }
-#'  }
-#'  \item\describe{
-#'    \item{test_stats}{if \code{test_data} is provided, a data frame containing
+#'      \item{R2}{R-squared, calculated as \eqn{1 - deviance/null deviance}}}
+#'     }}
+#'    \describe{
+#'    \item{zero_fit}{a data frame containing the same fit statistics as
+#'    \code{count_fit} but for every possible combination of predictors of
+#'    zeroes vs. non-zeroes}}
+#'    \describe{
+#'    \item{fit}{a data frame containing fit statistics for all combinations of
+#'    the best model for each \code{n_count_pred} and the best model for each
+#'    \code{n_zero_pred} listed in \code{count_fit} and \code{zero_fit},
+#'    respectively. The data frame contains the same metrics as described for
+#'    \code{count_fit}}}
+#'    \describe{
+#'    \item{cv}{a data frame containing cross-validation statistics for all
+#'     combinations of the best models for each \code{n_count_pred} and
+#'     \code{n_zero_pred} listed in \code{fit}. Each metric is followed by its
+#'     standard error.}}
+#'  \describe{
+#'    \item{test}{if \code{test_data} is provided, a data frame containing
 #'     prediction metrics for the best model for each \code{n_count_pred} and
-#'     \code{n_zero_pred} combination listed in \code{count_fit_stats} and
-#'     \code{zero_fit_stats} as applied to the \code{test_data}.
-#'    }
-#'  }
+#'     \code{n_zero_pred} combination listed in \code{fit} as applied to the
+#'     \code{test_data}.}}
+#'  }}
 #' }
 #'
 #' @export
 beset_zeroinfl <- function(form, train_data, test_data = NULL,
                            family = "poisson", link = "logit", ...,
-                           p_count_max = 10, p_zero_max = 10,
-                           n_folds = 10, n_repeats = 10,
-                           n_cores = 2, seed = 42){
+                           p_count_max = 10, p_zero_max = 10, n_cores = 2,
+                           n_folds = 10, n_repeats = 10, seed = 42){
   #==================================================================
   # Check family and link arguments
   #------------------------------------------------------------------
@@ -500,10 +507,13 @@ beset_zeroinfl <- function(form, train_data, test_data = NULL,
   #======================================================================
   # Construct beset_zeroinfl object
   #----------------------------------------------------------------------
-  structure(list(stats = list(fit = fit_stats, cv = cv_stats,
-                              test = test_stats, count = count_fit_stats,
-                              zero = zero_fit_stats),
-                 best_AIC = best_AIC, model_data = mf,
+  structure(list(best_AIC = best_AIC,
                  cv_params = list(n_folds = n_folds, n_repeats = n_repeats,
-                                  seed = seed)), class = "beset_zeroinfl")
+                                  seed = seed),
+                 model_data = mf,
+                 stats = list(count_fit = count_fit_stats,
+                              zero_fit = zero_fit_stats,
+                              fit = fit_stats,
+                              cv = cv_stats,
+                              test = test_stats)), class = "beset_zeroinfl")
 }
