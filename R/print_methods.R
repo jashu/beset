@@ -98,15 +98,16 @@ print.summary_beset_glm <- function(
 #' @export
 print.summary_beset_zeroinfl <- function(
   object, digits = max(3, getOption("digits") - 3), ...){
-  cat(paste("\n=======================================================",
-            "\nBest Model:\n",
-            object$best_form,
-            "\n\n"))
+  cat("\n=======================================================",
+      "\nBest Model:\n ", object$best_form, "\n")
+  if(length(object$near_best) > 0){
+    cat("\nNearly Equivalent Models:", object$near_best, sep = "\n  ")
+  }
   x <- object$best
   if (!x$converged) {
     cat("model did not converge\n")
   } else {
-    cat("Pearson residuals:\n")
+    cat("\nPearson residuals:\n")
     print(structure(quantile(x$residuals),
                     names = c("Min","1Q", "Median", "3Q", "Max")),
           digits = digits, ...)
@@ -129,7 +130,7 @@ print.summary_beset_zeroinfl <- function(
         "on", x$n - x$df.residual, "Df\nAIC: ",
         format(x$aic, digits = max(4L, digits + 1L)), "\n\n")
     cat(paste("Train-sample R-squared =", round(object$R2,2)))
-    if(!is.null(object$R2test)){
+    if(!is.null(object$R2_test)){
       cat(paste(", Test-sample R-squared =", round(object$R2_test, 2)))
     }
     cat("\n")
