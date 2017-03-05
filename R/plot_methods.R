@@ -3,8 +3,8 @@
 #' @param object An object of class \code{"beset_glm"},
 #' \code{"beset_zeroinfl"}, or \code{"beset_elnet"}
 #'
-#' @param type Type of error to plot. Can be one of \code{"cv"}, \code{"train"},
-#'  or \code{"test"}.
+#' @param type Type of error to plot. Can be one of \code{"train"}, \code{"cv"},
+#' or \code{"test"}.
 #'
 #' @param metric Which error metric to plot. Can be one of \code{"MCE"} for
 #' mean cross entropy, \code{"MSE"} for mean squared error, or \code{"R2"} for
@@ -44,9 +44,10 @@ plot.beset_elnet <- function(object, type = "cv", metric = "MCE"){
                           cv = "Cross-validation error",
                           test = "Prediction of new data"))
   y_lab <- switch(metric,
-                  MCE = ylab("Mean Cross Entropy (-loglik / N)"),
+                  MCE = ylab("Mean Cross Entropy"),
                   MSE = ylab("Mean Squared Error"),
                   R2 = ylab(bquote(~R^2)))
+
   p <- ggplot(data = data, aes(x = lambda, y = error, color = alpha)) +
     theme_bw() + title + xlab("Regularization parameter") + y_lab +
     scale_x_log10() + geom_line() + labs(color = "Mixing parameter")
@@ -82,10 +83,13 @@ plot.beset_glm <- function(object, metric = "MCE"){
   data$cv_upper <- with(data, cv + cv_se)
   xmax <- max(data$n_pred)
   color_legend <- c("Train" = "grey", "CV" = "red", "Test" = "blue")
+  if(metric == "R2" && object$best_AIC$family$family != "gaussian")
+    metric <- "R2D"
   y_lab <- switch(metric,
-                  MCE = ylab("Mean Cross Entropy (-loglik / N)"),
+                  MCE = ylab("Mean Cross Entropy"),
                   MSE = ylab("Mean Squared Error"),
-                  R2 = ylab(bquote(~R^2)))
+                  R2 = ylab(bquote(~R^2)),
+                  R2D = ylab(bquote(~R[D]^2)))
   p <- ggplot(data = data) +
     theme_bw() +
     xlab("Number of Predictors") +
