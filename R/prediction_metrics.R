@@ -63,6 +63,8 @@
 #'
 #' @export
 predict_metrics <- function(object, test_data = NULL){
+  if(is.null(object$model))
+    stop("Model frame missing. Refit model with arg 'model = TRUE'")
   if(is.null(test_data)) test_data <- object$model
   model_type <- class(object)[1]
   family <- NULL
@@ -89,7 +91,6 @@ predict_metrics <- function(object, test_data = NULL){
   predict_metrics_(y, y_hat, family, phi, theta)
 }
 
-#' @export
 predict_metrics_ <- function(y, y_hat, family, phi = NULL, theta = NULL){
   y_bar <- mean(y)
   sigma <- sqrt(mean((y_hat-y)^2))
