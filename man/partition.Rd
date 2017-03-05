@@ -23,7 +23,8 @@ testing sets, respectively.
 }
 \description{
 \code{partition} randomly splits a data frame into two data frames,
-\code{train} and \code{test},
+\code{train} and \code{test}, which are returned as a
+\code{\link{data_partition}} structure.
 }
 \details{
 \code{partition} is mainly a convenince wrapper for
@@ -40,7 +41,7 @@ training and testing data frames using the row positions that are returned.
 
 \code{partition} consolidates the above steps into a single function call,
 creating analysis-ready \code{train} and \code{test} data frames, which are
-bound together in a "\code{\link{data_partition}}" structure so that their
+bound together in a \code{\link{data_partition}} structure so that their
 common ancestry is maintained and self-documented. For example, if you name
 your \code{\link{data_partition}} "\code{data}", you can intutively access
 the training set with \code{data$train} and its corresponding test set with
