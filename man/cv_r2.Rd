@@ -7,6 +7,9 @@
 cv_r2(object, n_cores = 2, n_folds = 10, n_repeats = 10, seed = 42)
 }
 \arguments{
+\item{object}{A model object for which a cross-validated R-squared is
+desired.}
+
 \item{n_cores}{Integer value indicating the number of workers to run in
 parallel during subset search and cross-validation. By default, this will
 be set to 2. To determine the theoretical maximum number of cores you have

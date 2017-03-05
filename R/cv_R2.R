@@ -3,6 +3,9 @@
 #' Returns a cross-validated estimate of R-squared, or how well the fitted model
 #' object is expected to explain new data.
 #'
+#' @param object A model object for which a cross-validated R-squared is
+#' desired.
+#'
 #' @param n_cores Integer value indicating the number of workers to run in
 #' parallel during subset search and cross-validation. By default, this will
 #' be set to 2. To determine the theoretical maximum number of cores you have
