@@ -1,33 +1,33 @@
 #' @export
-print.R2 <- function(object){
-  cat(paste("Model-fit R-squared =", round(object$R2fit,2)))
-  if(!is.null(object$R2new)){
-    cat(paste(", Predictive R-squared =", round(object$R2new, 2)))
+print.R2 <- function(x){
+  cat(paste("Model-fit R-squared =", round(x$R2fit,2)))
+  if(!is.null(x$R2new)){
+    cat(paste(", Predictive R-squared =", round(x$R2new, 2)))
   }
-  if(!is.null(object$R2cv)){
+  if(!is.null(x$R2cv)){
     cat("\n")
-    print(object$R2cv)
+    print(x$R2cv)
   }
 }
 #' @export
-print.cv_R2 <- function(object)
-  cat(paste("Cross-validated R-squared = ", round(object$cv_R2,2), ", 95% CI [",
-            round(object$`95% CI`[1],2), ", ", round(object$`95% CI`[2],2), "]",
+print.cv_R2 <- function(x)
+  cat(paste("Cross-validated R-squared = ", round(x$cv_R2,2), ", 95% CI [",
+            round(x$`95% CI`[1],2), ", ", round(x$`95% CI`[2],2), "]",
             sep = ""))
 #' @export
-print.beset_glm <- function(object) print(summary(object))
+print.beset_glm <- function(x) print(summary(x))
 #' @export
-print.beset_zeroinfl <- function(object) print(summary(object))
+print.beset_zeroinfl <- function(x) print(summary(x))
 #' @export
 print.summary_beset_glm <- function(
-  object, digits = max(3L, getOption("digits") - 3L),
+  x, digits = max(3L, getOption("digits") - 3L),
   signif.stars = getOption("show.signif.stars"), ...){
   cat("\n=======================================================",
-      "\nBest Model:\n ", object$best_form, "\n")
-  if(length(object$near_best) > 0){
-    cat("\nNearly Equivalent Models:", object$near_best, sep = "\n  ")
+      "\nBest Model:\n ", x$best_form, "\n")
+  if(length(x$near_best) > 0){
+    cat("\nNearly Equivalent Models:", x$near_best, sep = "\n  ")
   }
-  x <- object$best
+  x <- x$best
   cat("\nDeviance Residuals: \n")
   if (x$df.residual > 5) {
     x$deviance.resid <- setNames(quantile(x$deviance.resid,
@@ -87,23 +87,23 @@ print.summary_beset_glm <- function(
       cat("Warning while fitting theta:", x$th.warn, "\n")
   }
   cat("\n")
-  cat(paste("Train-sample R-squared =", round(object$R2,2)))
-  if(!is.null(object$R2_test)){
-    cat(paste(", Test-sample R-squared =", round(object$R2_test, 2)))
+  cat(paste("Train-sample R-squared =", round(x$R2,2)))
+  if(!is.null(x$R2_test)){
+    cat(paste(", Test-sample R-squared =", round(x$R2_test, 2)))
   }
   cat("\n")
-  print(object$R2_cv)
+  print(x$R2_cv)
   cat("\n=======================================================")
 }
 #' @export
 print.summary_beset_zeroinfl <- function(
-  object, digits = max(3, getOption("digits") - 3), ...){
+  x, digits = max(3, getOption("digits") - 3), ...){
   cat("\n=======================================================",
-      "\nBest Model:\n ", object$best_form, "\n")
-  if(length(object$near_best) > 0){
-    cat("\nNearly Equivalent Models:", object$near_best, sep = "\n  ")
+      "\nBest Model:\n ", x$best_form, "\n")
+  if(length(x$near_best) > 0){
+    cat("\nNearly Equivalent Models:", x$near_best, sep = "\n  ")
   }
-  x <- object$best
+  x <- x$best
   if (!x$converged) {
     cat("model did not converge\n")
   } else {
@@ -129,43 +129,43 @@ print.summary_beset_zeroinfl <- function(
     cat("Log-likelihood:", formatC(x$loglik, digits = digits),
         "on", x$n - x$df.residual, "Df\nAIC: ",
         format(x$aic, digits = max(4L, digits + 1L)), "\n\n")
-    cat(paste("Train-sample R-squared =", round(object$R2,2)))
-    if(!is.null(object$R2_test)){
-      cat(paste(", Test-sample R-squared =", round(object$R2_test, 2)))
+    cat(paste("Train-sample R-squared =", round(x$R2,2)))
+    if(!is.null(x$R2_test)){
+      cat(paste(", Test-sample R-squared =", round(x$R2_test, 2)))
     }
     cat("\n")
-    print(object$R2_cv)
+    print(x$R2_cv)
   }
   cat("\n=======================================================")
 }
 
 #' @export
-print.summary_beset_elnet <- function(object){
+print.summary_beset_elnet <- function(x){
   cat("\n=======================================================",
       "\nBest Model:\n", sep = "")
-  if(object$best_alpha < .25){
+  if(x$best_alpha < .25){
     cat("Primarily ridge ")
-  } else if (object$best_alpha > .75){
+  } else if (x$best_alpha > .75){
     cat("Primarily lasso ")
   } else {
     cat("Mixture of ridge and lasso ")
   }
-  cat("(alpha = ", object$best_alpha, ") with lambda = ", object$best_lambda,
+  cat("(alpha = ", x$best_alpha, ") with lambda = ", x$best_lambda,
       sep = "")
   cat("\n\nNon-zero coefficients ranked in order of importance:\n")
-  best_coef <- dplyr::select(object$var_imp, variable, stand.coef = coef)
+  best_coef <- dplyr::select(x$var_imp, variable, stand.coef = coef)
   best_coef <- dplyr::filter(best_coef, abs(stand.coef) > 0)
   best_coef <- dplyr::arrange(best_coef, desc(abs(stand.coef)))
   best_coef <- dplyr::mutate(best_coef, stand.coef = round(stand.coef, 3))
   best_coef <- as.data.frame(best_coef)
   if(nrow(best_coef) > 1){
     print(best_coef, quote = FALSE)
-    cat(paste("\nTrain-sample R-squared =", round(object$R2,2)))
-    if(!is.null(object$R2test)){
-      cat(paste(", Test-sample R-squared =", round(object$R2_test, 2)))
+    cat(paste("\nTrain-sample R-squared =", round(x$R2,2)))
+    if(!is.null(x$R2test)){
+      cat(paste(", Test-sample R-squared =", round(x$R2_test, 2)))
     }
     cat("\n")
-    print(object$R2_cv)
+    print(x$R2_cv)
   } else {
     cat("\n\nNo reliable predictors.")
   }
@@ -173,7 +173,7 @@ print.summary_beset_elnet <- function(object){
 }
 
 #' @export
-print.beset_elnet <- function(object) print(summary(object))
+print.beset_elnet <- function(x) print(summary(x))
 
 
 

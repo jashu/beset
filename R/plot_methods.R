@@ -1,6 +1,6 @@
 #' Plot Methods for \code{beset} Objects
 #'
-#' @param object An object of class \code{"beset_glm"},
+#' @param x An object of class \code{"beset_glm"},
 #' \code{"beset_zeroinfl"}, or \code{"beset_elnet"}
 #'
 #' @param type Type of error to plot. Can be one of \code{"train"}, \code{"cv"},
@@ -17,14 +17,14 @@ NULL
 
 #' @export
 #' @rdname plot.beset
-plot.beset_elnet <- function(object, type = "cv", metric = "MCE"){
+plot.beset_elnet <- function(x, type = "cv", metric = "MCE"){
   data <- switch(
     type,
-    train = dplyr::select(object$stats$fit, alpha, lambda,
+    train = dplyr::select(x$stats$fit, alpha, lambda,
                           dplyr::starts_with(metric)),
-    cv = dplyr::select(object$stats$cv, alpha, lambda,
+    cv = dplyr::select(x$stats$cv, alpha, lambda,
                          dplyr::starts_with(metric)),
-    test = tryCatch(dplyr::select(object$stats$test, alpha, lambda,
+    test = tryCatch(dplyr::select(x$stats$test, alpha, lambda,
                                   dplyr::starts_with(metric)),
                     error = function(c){
                       c$message <- "test data not found"
@@ -61,14 +61,14 @@ plot.beset_elnet <- function(object, type = "cv", metric = "MCE"){
 
 #' @export
 #' @rdname plot.beset
-plot.beset_glm <- function(object, metric = "MCE"){
-  train <- dplyr::select(object$stats$fit, n_pred, form,
+plot.beset_glm <- function(x, metric = "MCE"){
+  train <- dplyr::select(x$stats$fit, n_pred, form,
                          dplyr::starts_with(metric))
   names(train)[3] <- "train"
-  cv <- dplyr::select(object$stats$cv, n_pred, form,
+  cv <- dplyr::select(x$stats$cv, n_pred, form,
                         dplyr::starts_with(metric))
   names(cv)[3:4] <- c("cv", "cv_se")
-  test <- try(dplyr::select(object$stats$test, n_pred, form,
+  test <- try(dplyr::select(x$stats$test, n_pred, form,
                             dplyr::starts_with(metric)), silent = TRUE)
   if(class(test)[1] == "try-error"){
     test <- NULL
@@ -83,7 +83,7 @@ plot.beset_glm <- function(object, metric = "MCE"){
   data$cv_upper <- with(data, cv + cv_se)
   xmax <- max(data$n_pred)
   color_legend <- c("Train" = "grey", "CV" = "red", "Test" = "blue")
-  if(metric == "R2" && object$best_AIC$family$family != "gaussian")
+  if(metric == "R2" && x$best_AIC$family$family != "gaussian")
     metric <- "R2D"
   y_lab <- switch(metric,
                   MCE = ylab("Mean Cross Entropy"),
@@ -108,14 +108,14 @@ plot.beset_glm <- function(object, metric = "MCE"){
 
 #' @export
 #' @rdname plot.beset
-plot.beset_zeroinfl <- function(object, type = "cv", metric = "MCE"){
+plot.beset_zeroinfl <- function(x, type = "cv", metric = "MCE"){
   data <- switch(
     type,
-    train = dplyr::select(object$stats$fit, form, n_count_pred, n_zero_pred,
+    train = dplyr::select(x$stats$fit, form, n_count_pred, n_zero_pred,
                           dplyr::starts_with(metric)),
-    cv = dplyr::select(object$stats$cv, form, n_count_pred, n_zero_pred,
+    cv = dplyr::select(x$stats$cv, form, n_count_pred, n_zero_pred,
                          dplyr::starts_with(metric)),
-    test = tryCatch(dplyr::select(object$stats$test, form, n_count_pred,
+    test = tryCatch(dplyr::select(x$stats$test, form, n_count_pred,
                                   n_zero_pred, dplyr::starts_with(metric)),
                     error = function(c){
                       c$message <- "test data not found"
