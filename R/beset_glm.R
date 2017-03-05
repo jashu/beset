@@ -260,7 +260,7 @@ beset_glm <- function(form, train_data, test_data = NULL, p_max = 10,
   # Make list of all possible formulas with number of predictors <= p_max
   #----------------------------------------------------------------------
   pred <- lapply(1:p, function(x)
-    combn(names(mf)[2:ncol(mf)], x, simplify = FALSE))
+    utils::combn(names(mf)[2:ncol(mf)], x, simplify = FALSE))
   pred <- unlist(sapply(pred, function(vars){
     sapply(vars, function(x) paste0(x, collapse = " + "))}))
   pred <- c("1", pred)
@@ -296,16 +296,16 @@ beset_glm <- function(form, train_data, test_data = NULL, p_max = 10,
   if(family == "negbin"){
     CE <- parallel::parLapplyLB(cl, form_list, function(form){
       fit <- glm_nb(form, mf, link = link, ...)
-      list(AIC = AIC(fit),
-           MCE = -logLik(fit)/nrow(mf),
+      list(AIC = stats::AIC(fit),
+           MCE = -stats::logLik(fit)/nrow(mf),
            MSE = mean(residuals(fit, type = "response")^2),
            R2 = 1 - fit$deviance / fit$null.deviance)
     })
   } else {
     CE <- parallel::parLapplyLB(cl, form_list, function(form){
-      fit <- glm(form, do.call(family, list(link = link)), mf, ...)
-      list(AIC = AIC(fit),
-           MCE = -logLik(fit)/nrow(mf),
+      fit <- stats::glm(form, do.call(family, list(link = link)), mf, ...)
+      list(AIC = stats::AIC(fit),
+           MCE = -stats::logLik(fit)/nrow(mf),
            MSE = mean(residuals(fit, type = "response")^2),
            R2 = 1 - fit$deviance / fit$null.deviance)
     })
@@ -325,7 +325,7 @@ beset_glm <- function(form, train_data, test_data = NULL, p_max = 10,
   best_AIC <- if(family == "negbin"){
     glm_nb(fit_stats$form[1], mf, link = link, ...)
   } else{
-    glm(fit_stats$form[1], do.call(family, list(link = link)), mf, ...)
+    stats::glm(fit_stats$form[1], do.call(family, list(link = link)), mf, ...)
   }
   #======================================================================
   # Obtain model with maximum likelihood for each number of parameters
@@ -346,7 +346,7 @@ beset_glm <- function(form, train_data, test_data = NULL, p_max = 10,
       fit <- if(family == "negbin"){
         glm_nb(form, mf[i,], link = link, ...)
         } else {
-          glm(form, do.call(family, list(link = link)), mf[i,], ...)
+          stats::glm(form, do.call(family, list(link = link)), mf[i,], ...)
         }
       stats <- try(predict_metrics(fit, test_data = mf[-i,]), silent = TRUE)
       if(class(stats) == "prediction_metrics") stats
@@ -387,7 +387,7 @@ beset_glm <- function(form, train_data, test_data = NULL, p_max = 10,
       fit <- if(family == "negbin")
         glm_nb(form, mf, link = link, ...)
       else
-        glm(form, do.call(family, list(link = link)), mf, ...)
+        stats::lm(form, do.call(family, list(link = link)), mf, ...)
       stats <- tryCatch(
         predict_metrics(fit, test_data = test_data),
         error = function(c){
@@ -430,7 +430,7 @@ beset_lm <- function(form, train_data, test_data = NULL, p_max = 10,
 }
 
 glm_nb <- function (formula, data, weights, subset, na.action, start = NULL,
-                    etastart, mustart, control = glm.control(...),
+                    etastart, mustart, control = stats::glm.control(...),
                     method = "glm.fit", model = TRUE, x = FALSE, y = TRUE,
                     contrasts = NULL, ..., init.theta, link = log){
   loglik <- function(n, th, mu, y, w){
@@ -450,7 +450,7 @@ glm_nb <- function (formula, data, weights, subset, na.action, start = NULL,
   Terms <- attr(mf, "terms")
   if (method == "model.frame")
     return(mf)
-  Y <- model.response(mf, "numeric")
+  Y <- stats::model.response(mf, "numeric")
   X <- if (!is.empty.model(Terms))
     model.matrix(Terms, mf, contrasts)
   else matrix(nrow = NROW(Y), ncol = 0)
