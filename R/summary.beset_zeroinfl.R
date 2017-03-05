@@ -58,9 +58,13 @@ summary.beset_zeroinfl <- function(object, metric = "MCE", n_count_pred = NULL,
       best_1SE <- dplyr::filter(best_1SE,
                                 (n_zero_pred + n_count_pred) ==
                                   min(n_zero_pred + n_count_pred))
-      best_1SE <- dplyr::filter(best_1SE, n_zero_pred == min(n_zero_pred))
-      best_1SE <- dplyr::filter(best_1SE, n_count_pred == min(n_count_pred))
-      best_form <- best_1SE$form
+      best_idx <- switch(
+        metric,
+        MCE = which.min(best_1SE$MCE),
+        MSE = which.min(best_1SE$MSE),
+        R2 = which.max(best_1SE$R2)
+      )
+      best_form <- best_1SE$form[best_idx]
     }
     best_model <- pscl::zeroinfl(formula = formula(best_form),
                                  data = object$model_data,
@@ -80,8 +84,8 @@ summary.beset_zeroinfl <- function(object, metric = "MCE", n_count_pred = NULL,
   R2_cv <- do.call("cv_r2",
                    args = c(list(object = best_model, n_cores = n_cores),
                             object$cv_params))
-  near_equals <- dplyr::filter(object$stats$fit, n_zero_pred == pz,
-                               n_count_pred == pc)
+  near_equals <- dplyr::filter(object$stats$fit,
+                               (n_zero_pred + n_count_pred) == (pc + pz))
   if(metric == "AIC") metric <- "MCE"
   near_equals <- dplyr::select(near_equals, form,
                                metric = dplyr::starts_with(metric))
