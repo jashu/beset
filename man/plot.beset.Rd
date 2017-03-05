@@ -17,7 +17,7 @@
 \item{object}{An object of class \code{"beset_glm"},
 \code{"beset_zeroinfl"}, or \code{"beset_elnet"}}
 
-\item{type}{Type of error to plot. Can be one of \code{"cv"}, \code{"train"},
+\item{type}{Type of error to plot. Can be one of \code{"train"}, \code{"cv"},
 or \code{"test"}.}
 
 \item{metric}{Which error metric to plot. Can be one of \code{"MCE"} for
