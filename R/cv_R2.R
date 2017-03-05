@@ -40,11 +40,11 @@ cv_r2 <- function(object, n_cores = 2, n_folds = 10, n_repeats = 10, seed = 42){
                  silent = TRUE)
     if(class(stats) == "prediction_metrics") stats$R_squared else NA
   }, object = object)
-  boot_r2 <- boot::boot(r2, function(x, i) median(x[i], na.rm = TRUE), 1000,
+  boot_r2 <- boot::boot(r2, function(x, i) mean(x[i], na.rm = TRUE), 1000,
                         parallel = "snow", cl = cl)
   parallel::stopCluster(cl)
   boot_CI <- boot::boot.ci(boot_r2, type = "bca")
-  structure(list(cv_R2 = median(r2, na.rm = TRUE), `95% CI` = boot_CI$bca[4:5],
+  structure(list(cv_R2 = mean(r2, na.rm = TRUE), `95% CI` = boot_CI$bca[4:5],
             R2 = r2), class = "cv_R2")
 }
 
