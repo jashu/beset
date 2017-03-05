@@ -1,15 +1,16 @@
 library(beset)
 context("Prediction Metrics")
 
-test_that("lm cross-entropy = -logLik/N", {
-  object <- lm(uptake ~ conc, data = CO2)
+test_that("lm cross-entropy = -logLik/N and R_squared = summary()$r.squared", {
+  object <- lm(Fertility ~ ., data = swiss, model = FALSE)
   metrics <- predict_metrics(object)
   expect_equal(metrics$mean_cross_entropy,
                -1 * as.numeric(logLik(object))/nrow(object$model))
+  expect_equal(metrics$R_squared, summary(object)$r.squared)
 })
 
 test_that("gauss metrics = -logLik/N", {
-  object <- glm(uptake ~ conc, data = CO2, family = "gaussian")
+  object <- glm(Fertility ~ ., data = swiss, family = "gaussian")
   metrics <- predict_metrics(object)
   expect_equal(metrics$mean_cross_entropy,
                -1 * as.numeric(logLik(object))/nrow(object$model))
@@ -45,8 +46,8 @@ test_that("zeroinfl poisson cross entropy = -logLik/N", {
 })
 
 test_that("zeroinfl negbin cross entropy = -logLik/N", {
-  InsectSprays$count[1:10] <- 0
-  object <- pscl::zeroinfl(count ~ spray, data = InsectSprays, dist = "negbin")
+  object <- pscl::zeroinfl(art ~ ., data = pscl::bioChemists,
+                           dist = "negbin")
   metrics <- predict_metrics(object)
   expect_equal(metrics$mean_cross_entropy,
                -1 * as.numeric(logLik(object))/nrow(object$model))
