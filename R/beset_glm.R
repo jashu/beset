@@ -230,11 +230,11 @@ beset_glm <- function(form, train_data, test_data = NULL, p_max = 10,
   } else {
     n <- nrow(mf)
   }
-  alt_folds <- n / (n - p * 10)
+  alt_folds <- n / (n - p * 2)
   alt_p <- p
   while(!dplyr::between(alt_folds, 1, 10)){
     alt_p <- alt_p - 1
-    alt_folds <- n / (n - alt_p * 10)
+    alt_folds <- n / (n - alt_p * 2)
   }
   if(alt_p < 1){
     if(family == "binomial"){
