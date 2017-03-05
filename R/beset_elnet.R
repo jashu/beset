@@ -60,9 +60,9 @@ beset_elnet <- function(form, train_data, test_data = NULL,
   #==================================================================
   # Create model frame and extract response name and vector
   #------------------------------------------------------------------
-  mf <- model.frame(form, data = train_data, na.action = na.omit)
+  mf <- stats::model.frame(form, data = train_data, na.action = stats::na.omit)
   if(!is.null(test_data)){
-    test_data <- model.frame(form, data = test_data, na.action = na.omit)
+    test_data <- model.frame(form, data = test_data, na.action = stats::na.omit)
   }
   n_drop <- nrow(train_data) - nrow(mf)
   if(n_drop > 0)
@@ -71,7 +71,7 @@ beset_elnet <- function(form, train_data, test_data = NULL,
   if(standard_coef) mf <- dplyr::mutate_if(mf, is.numeric, scale)
   y <- mf[,1]
   if(grepl("binomial", family)) y <- as.factor(y)
-  x <- model.matrix(form, data = mf)[,-1]
+  x <- stats::model.matrix(form, data = mf)[,-1]
 
   #======================================================================
   # Obtain fit statistics
@@ -86,7 +86,7 @@ beset_elnet <- function(form, train_data, test_data = NULL,
   fit_stats <- data.frame(alpha = unlist(alpha_seq),
                           lambda = unlist(lambda_seq))
   metrics <- mapply(function(fit, lambda){
-    y_hat <- predict(fit, x, lambda, type = "response")
+    y_hat <- stats::predict(fit, x, lambda, type = "response")
     apply(y_hat, 2, function(x) predict_metrics_(y, x, family))
   }, fit = fits, lambda = lambda_seq)
   fit_stats$MCE <- unlist(sapply(metrics, function(x)
