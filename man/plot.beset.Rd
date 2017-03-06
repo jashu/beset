@@ -7,14 +7,14 @@
 \alias{plot.beset_zeroinfl}
 \title{Plot Methods for \code{beset} Objects}
 \usage{
-\method{plot}{beset_elnet}(object, type = "cv", metric = "MCE")
+\method{plot}{beset_elnet}(x, type = "cv", metric = "MCE")
 
-\method{plot}{beset_glm}(object, metric = "MCE")
+\method{plot}{beset_glm}(x, metric = "MCE")
 
-\method{plot}{beset_zeroinfl}(object, type = "cv", metric = "MCE")
+\method{plot}{beset_zeroinfl}(x, type = "cv", metric = "MCE")
 }
 \arguments{
-\item{object}{An object of class \code{"beset_glm"},
+\item{x}{An object of class \code{"beset_glm"},
 \code{"beset_zeroinfl"}, or \code{"beset_elnet"}}
 
 \item{type}{Type of error to plot. Can be one of \code{"train"}, \code{"cv"},
