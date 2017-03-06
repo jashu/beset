@@ -168,7 +168,7 @@ beset_elnet <- function(form, train_data, test_data = NULL,
   cv_stats <- dplyr::ungroup(cv_stats)
   cv_stats <- dplyr::select(cv_stats, alpha, lambda,
                               MCE, MCE_SE, MSE, MSE_SE, R2, R2_SE)
-  cv_stats <- dplyr::arrange(cv_stats, alpha, desc(lambda))
+  cv_stats <- dplyr::arrange(cv_stats, alpha, dplyr::desc(lambda))
 
   #======================================================================
   # Construct beset_glm object
