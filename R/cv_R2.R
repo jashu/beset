@@ -22,6 +22,7 @@
 #' @param seed An integer used to seed the random number generator when
 #' assigning observations to folds.
 #'
+#' @import stats
 #' @export
 cv_r2 <- function(object, n_cores = 2, n_folds = 10, n_repeats = 10, seed = 42){
   y <- object$model[,1]
