@@ -61,6 +61,7 @@
 #' }
 #'
 #' @name beset_glm
+#' @importFrom utils combn
 #' @import stats
 #'
 #' @seealso \code{\link[caret]{createFolds}}, \code{\link[stats]{glm}},
@@ -261,7 +262,7 @@ beset_glm <- function(form, train_data, test_data = NULL, p_max = 10,
   # Make list of all possible formulas with number of predictors <= p_max
   #----------------------------------------------------------------------
   pred <- lapply(1:p, function(x)
-    utils::combn(names(mf)[2:ncol(mf)], x, simplify = FALSE))
+    combn(names(mf)[2:ncol(mf)], x, simplify = FALSE))
   pred <- unlist(sapply(pred, function(vars){
     sapply(vars, function(x) paste0(x, collapse = " + "))}))
   pred <- c("1", pred)

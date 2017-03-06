@@ -9,6 +9,7 @@ print.R2 <- function(x, ...){
     print(x$R2cv)
   }
 }
+#' @importFrom utils tail
 #' @export
 print.cv_R2 <- function(x, ...)
   cat(paste("Cross-validated R-squared = ", round(x$cv_R2,2), ", 95% CI [",

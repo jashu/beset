@@ -108,6 +108,7 @@
 #' @param seed An integer used to seed the random number generator when
 #' assigning observations to folds.
 #'
+#' @importFrom utils combn
 #' @import stats
 #'
 #' @return A "beset_zeroinfl" object with the following components:
