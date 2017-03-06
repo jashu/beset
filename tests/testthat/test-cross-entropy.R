@@ -2,7 +2,7 @@ library(beset)
 context("Prediction Metrics")
 
 test_that("lm cross-entropy = -logLik/N and R_squared = summary()$r.squared", {
-  object <- lm(Fertility ~ ., data = swiss, model = FALSE)
+  object <- lm(Fertility ~ ., data = swiss)
   metrics <- predict_metrics(object)
   expect_equal(metrics$mean_cross_entropy,
                -1 * as.numeric(logLik(object))/nrow(object$model))
