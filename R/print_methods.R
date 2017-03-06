@@ -1,5 +1,5 @@
 #' @export
-print.R2 <- function(x){
+print.R2 <- function(x, ...){
   cat(paste("Model-fit R-squared =", round(x$R2fit,2)))
   if(!is.null(x$R2new)){
     cat(paste(", Predictive R-squared =", round(x$R2new, 2)))
@@ -173,7 +173,7 @@ print.summary_beset_elnet <- function(x){
 }
 
 #' @export
-print.beset_elnet <- function(x) print(summary(x))
+print.beset_elnet <- function(x, ...) print(summary(x))
 
 
 
