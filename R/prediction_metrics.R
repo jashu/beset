@@ -61,6 +61,7 @@
 #' @seealso \code{\link{r2d}}, \code{\link[stats]{logLik}},
 #' \code{\link{deviance.zeroinfl}}
 #'
+#' @import stats
 #' @export
 predict_metrics <- function(object, test_data = NULL){
   if(is.null(object$model))
