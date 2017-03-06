@@ -39,7 +39,7 @@
 #' distributions, but a different quantity for exponential family regression
 #' models (e.g., logistic regression) that preserves the interpretation of
 #' R-squared as the fraction of uncertainty explained (Cameron & Windmeijer,
-#' 1997). (See \code{\link{r2d2}} for more details.)
+#' 1997). (See \code{\link{r2d}} for more details.)
 #'
 #' Note that the prediction R-squared can be negative if overfitting is severe;
 #' i.e., when predicting new data, the model performs worse than if one were to
@@ -58,7 +58,7 @@
 #' @return A list giving the mean squared error, mean cross entropy, and
 #' deviance R-squared between model predictions and actual observations.
 #'
-#' @seealso \code{\link{r2d2}}, \code{\link[stats]{logLik}},
+#' @seealso \code{\link{r2d}}, \code{\link[stats]{logLik}},
 #' \code{\link{deviance.zeroinfl}}
 #'
 #' @export
