@@ -326,7 +326,7 @@ beset_zeroinfl <- function(form, train_data, test_data = NULL,
   catch <- parallel::clusterEvalQ(cl, library(pscl))
   CE <- parallel::parLapplyLB(cl, zero_form_list, function(form){
     fit <- try(suppressWarnings(
-      zeroinfl(formula(form), data = mf, dist = family, link = link, ...)),
+      pscl::zeroinfl(formula(form), data = mf, dist = family, link = link, ...)),
       silent = TRUE)
     aic <- mce <- mse <- r2 <- NA_real_
     if(class(fit) == "zeroinfl"){
@@ -357,7 +357,7 @@ beset_zeroinfl <- function(form, train_data, test_data = NULL,
   #-------------------------------------------------------------------------
   CE <- parallel::parLapplyLB(cl, count_form_list, function(form){
     fit <- try(suppressWarnings(
-      zeroinfl(formula(form), data = mf, dist = family, link = link, ...)),
+      pscl::zeroinfl(formula(form), data = mf, dist = family, link = link, ...)),
       silent = TRUE)
     aic <- mce <- mse <- r2 <- NA_real_
     if(class(fit) == "zeroinfl"){
@@ -398,7 +398,7 @@ beset_zeroinfl <- function(form, train_data, test_data = NULL,
 
   CE <- parallel::parLapplyLB(cl, fit_stats$form, function(form){
     fit <- try(suppressWarnings(
-      zeroinfl(formula(form), data = mf, dist = family, link = link, ...)),
+      pscl::zeroinfl(formula(form), data = mf, dist = family, link = link, ...)),
       silent = TRUE)
     aic <- mce <- mse <- r2 <- NA_real_
     if(class(fit) == "zeroinfl"){
@@ -445,7 +445,7 @@ beset_zeroinfl <- function(form, train_data, test_data = NULL,
   metrics <- parallel::parLapply(cl, fold_ids, function(i, form_list){
     lapply(form_list, function(form){
       fit <- try(suppressWarnings(
-        zeroinfl(formula(form), data = mf[i,], dist = family, link = link,
+        pscl::zeroinfl(formula(form), data = mf[i,], dist = family, link = link,
                  ...)),
         silent = TRUE)
       if(class(fit) == "zeroinfl"){
