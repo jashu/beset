@@ -15,9 +15,9 @@ print.cv_R2 <- function(x)
             round(x$`95% CI`[1],2), ", ", round(x$`95% CI`[2],2), "]",
             sep = ""))
 #' @export
-print.beset_glm <- function(x) print(summary(x))
+print.beset_glm <- function(x, ...) print(summary(x))
 #' @export
-print.beset_zeroinfl <- function(x) print(summary(x))
+print.beset_zeroinfl <- function(x, ...) print(summary(x))
 #' @export
 print.summary_beset_glm <- function(
   x, digits = max(3L, getOption("digits") - 3L),

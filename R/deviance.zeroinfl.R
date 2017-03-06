@@ -23,7 +23,7 @@
 #' DOI: 10.1080/00949655.2016.1186166
 #'
 #' @export
-deviance.zeroinfl <- function(object){
+deviance.zeroinfl <- function(object, ...){
   loglik_sat <- sum(
     switch(
       object$dist,
