@@ -22,11 +22,11 @@
 #' @param n_cores Number of CPUs to use when computing a bootstrapped confidence
 #' interval for the cross-validated estimate of R-squared
 #'
-#' @name plot.beset
+#' @name summary.beset
 NULL
 
 #' @export
-#' @rdname plot.beset
+#' @rdname summary.beset
 summary.beset_elnet <- function(object, metric = "MCE", oneSE = TRUE,
                                 n_cores = 2){
   metric <- match.arg(metric, c("MCE", "MSE", "R2"))
@@ -92,7 +92,7 @@ summary.beset_elnet <- function(object, metric = "MCE", oneSE = TRUE,
 }
 
 #' @export
-#' @rdname plot.beset
+#' @rdname summary.beset
 summary.beset_glm <- function(object, metric = "MCE", n_pred = NULL,
                               oneSE = TRUE, n_cores = 2){
   metric <- tryCatch(match.arg(metric, c("AIC", "MCE", "MSE", "R2")),
@@ -174,7 +174,7 @@ summary.beset_glm <- function(object, metric = "MCE", n_pred = NULL,
 }
 
 #' @export
-#' @rdname plot.beset
+#' @rdname summary.beset
 summary.beset_zeroinfl <- function(object, metric = "MCE", n_count_pred = NULL,
                                    n_zero_pred = NULL, oneSE = TRUE,
                                    n_cores = 2){
