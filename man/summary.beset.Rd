@@ -8,13 +8,14 @@
 \title{Summary Methods for \code{beset} Objects}
 \usage{
 \method{summary}{beset_elnet}(object, metric = "MCE", oneSE = TRUE,
-  n_cores = 2)
+  n_cores = 2, ...)
 
 \method{summary}{beset_glm}(object, metric = "MCE", n_pred = NULL,
-  oneSE = TRUE, n_cores = 2)
+  oneSE = TRUE, n_cores = 2, ...)
 
 \method{summary}{beset_zeroinfl}(object, metric = "MCE",
-  n_count_pred = NULL, n_zero_pred = NULL, oneSE = TRUE, n_cores = 2)
+  n_count_pred = NULL, n_zero_pred = NULL, oneSE = TRUE, n_cores = 2,
+  ...)
 }
 \arguments{
 \item{object}{An object of class \code{"beset_glm"},
@@ -29,6 +30,8 @@ rule should be applied when determining the best model from the model metric}
 
 \item{n_cores}{Number of CPUs to use when computing a bootstrapped confidence
 interval for the cross-validated estimate of R-squared}
+
+\item{...}{additional arguments affecting the summary produced.}
 
 \item{n_pred}{Optional: number of predictors that the best model should
 contain}

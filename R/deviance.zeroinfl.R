@@ -13,7 +13,7 @@
 #' regression: e.g., the saturated model for ZI-Poisson regression is the same
 #' as the saturated model for Poisson regression.
 #'
-#' @param object A model of \code{"zeroinfl"} class.
+#' @inheritParams stats::deviance
 #'
 #' @return The value of the deviance extracted from the model \code{object}.
 #'

@@ -10,7 +10,7 @@ print.R2 <- function(x, ...){
   }
 }
 #' @export
-print.cv_R2 <- function(x)
+print.cv_R2 <- function(x, ...)
   cat(paste("Cross-validated R-squared = ", round(x$cv_R2,2), ", 95% CI [",
             round(x$`95% CI`[1],2), ", ", round(x$`95% CI`[2],2), "]",
             sep = ""))
@@ -19,8 +19,9 @@ print.beset_glm <- function(x, ...) print(summary(x))
 #' @export
 print.beset_zeroinfl <- function(x, ...) print(summary(x))
 #' @export
-print.summary_beset_glm <- function(
-  x, digits = max(3L, getOption("digits") - 3L),
+print.summary_beset_glm <- function(x,
+                                    digits = max(3L, getOption("digits") - 3L,
+                                                 ...),
   signif.stars = getOption("show.signif.stars"), ...){
   cat("\n=======================================================",
       "\nBest Model:\n ", x$best_form, "\n")
@@ -140,7 +141,7 @@ print.summary_beset_zeroinfl <- function(
 }
 
 #' @export
-print.summary_beset_elnet <- function(x){
+print.summary_beset_elnet <- function(x, ...){
   cat("\n=======================================================",
       "\nBest Model:\n", sep = "")
   if(x$best_alpha < .25){
@@ -155,7 +156,7 @@ print.summary_beset_elnet <- function(x){
   cat("\n\nNon-zero coefficients ranked in order of importance:\n")
   best_coef <- dplyr::select(x$var_imp, variable, stand.coef = coef)
   best_coef <- dplyr::filter(best_coef, abs(stand.coef) > 0)
-  best_coef <- dplyr::arrange(best_coef, desc(abs(stand.coef)))
+  best_coef <- dplyr::arrange(best_coef, dplyr::desc(abs(stand.coef)))
   best_coef <- dplyr::mutate(best_coef, stand.coef = round(stand.coef, 3))
   best_coef <- as.data.frame(best_coef)
   if(nrow(best_coef) > 1){

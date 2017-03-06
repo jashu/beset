@@ -1,5 +1,7 @@
 #' Summary Methods for \code{beset} Objects
 #'
+#' @inheritParams base::summary
+#'
 #' @param object An object of class \code{"beset_glm"},
 #' \code{"beset_zeroinfl"}, or \code{"beset_elnet"}
 #'
@@ -28,7 +30,7 @@ NULL
 #' @export
 #' @rdname summary.beset
 summary.beset_elnet <- function(object, metric = "MCE", oneSE = TRUE,
-                                n_cores = 2){
+                                n_cores = 2, ...){
   metric <- match.arg(metric, c("MCE", "MSE", "R2"))
   if(is.na(metric)) stop("invalid 'metric' argument")
   best_metric <- switch(
@@ -94,7 +96,7 @@ summary.beset_elnet <- function(object, metric = "MCE", oneSE = TRUE,
 #' @export
 #' @rdname summary.beset
 summary.beset_glm <- function(object, metric = "MCE", n_pred = NULL,
-                              oneSE = TRUE, n_cores = 2){
+                              oneSE = TRUE, n_cores = 2, ...){
   metric <- tryCatch(match.arg(metric, c("AIC", "MCE", "MSE", "R2")),
                      error = function(c){
                        c$message <- gsub("arg", "metric", c$message)
@@ -177,7 +179,7 @@ summary.beset_glm <- function(object, metric = "MCE", n_pred = NULL,
 #' @rdname summary.beset
 summary.beset_zeroinfl <- function(object, metric = "MCE", n_count_pred = NULL,
                                    n_zero_pred = NULL, oneSE = TRUE,
-                                   n_cores = 2){
+                                   n_cores = 2, ...){
   metric <- tryCatch(match.arg(metric, c("AIC", "MCE", "MSE", "R2")),
                      error = function(c){
                        c$message <- gsub("arg", "metric", c$message)

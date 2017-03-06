@@ -7,7 +7,9 @@
 \method{deviance}{zeroinfl}(object, ...)
 }
 \arguments{
-\item{object}{A model of \code{"zeroinfl"} class.}
+\item{object}{an object for which the deviance is desired.}
+
+\item{...}{additional optional argument.}
 }
 \value{
 The value of the deviance extracted from the model \code{object}.

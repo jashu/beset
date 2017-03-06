@@ -10,6 +10,8 @@
 #' mean cross entropy, \code{"MSE"} for mean squared error, or \code{"R2"} for
 #' R-squared.
 #'
+#' @param ... Arguments to be passed to methods
+#'
 #' @name plot.beset
 #'
 #' @import ggplot2
@@ -17,7 +19,7 @@ NULL
 
 #' @export
 #' @rdname plot.beset
-plot.beset_elnet <- function(x, type = "cv", metric = "MCE"){
+plot.beset_elnet <- function(x, type = "cv", metric = "MCE", ...){
   data <- switch(
     type,
     train = dplyr::select(x$stats$fit, alpha, lambda,
@@ -61,7 +63,7 @@ plot.beset_elnet <- function(x, type = "cv", metric = "MCE"){
 
 #' @export
 #' @rdname plot.beset
-plot.beset_glm <- function(x, metric = "MCE"){
+plot.beset_glm <- function(x, metric = "MCE", ...){
   train <- dplyr::select(x$stats$fit, n_pred, form,
                          dplyr::starts_with(metric))
   names(train)[3] <- "train"
@@ -108,7 +110,7 @@ plot.beset_glm <- function(x, metric = "MCE"){
 
 #' @export
 #' @rdname plot.beset
-plot.beset_zeroinfl <- function(x, type = "cv", metric = "MCE"){
+plot.beset_zeroinfl <- function(x, type = "cv", metric = "MCE", ...){
   data <- switch(
     type,
     train = dplyr::select(x$stats$fit, form, n_count_pred, n_zero_pred,
