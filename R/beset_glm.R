@@ -61,6 +61,7 @@
 #' }
 #'
 #' @name beset_glm
+#' @import stats
 #'
 #' @seealso \code{\link[caret]{createFolds}}, \code{\link[stats]{glm}},
 #' \code{\link[base]{set.seed}}, \code{\link[MASS]{glm.nb}}
@@ -296,16 +297,16 @@ beset_glm <- function(form, train_data, test_data = NULL, p_max = 10,
   if(family == "negbin"){
     CE <- parallel::parLapplyLB(cl, form_list, function(form){
       fit <- glm_nb(form, mf, link = link, ...)
-      list(AIC = stats::AIC(fit),
-           MCE = -stats::logLik(fit)/nrow(mf),
+      list(AIC = AIC(fit),
+           MCE = -logLik(fit)/nrow(mf),
            MSE = mean(residuals(fit, type = "response")^2),
            R2 = 1 - fit$deviance / fit$null.deviance)
     })
   } else {
     CE <- parallel::parLapplyLB(cl, form_list, function(form){
-      fit <- stats::glm(form, do.call(family, list(link = link)), mf, ...)
-      list(AIC = stats::AIC(fit),
-           MCE = -stats::logLik(fit)/nrow(mf),
+      fit <- glm(form, do.call(family, list(link = link)), mf, ...)
+      list(AIC = AIC(fit),
+           MCE = -logLik(fit)/nrow(mf),
            MSE = mean(residuals(fit, type = "response")^2),
            R2 = 1 - fit$deviance / fit$null.deviance)
     })
@@ -325,7 +326,7 @@ beset_glm <- function(form, train_data, test_data = NULL, p_max = 10,
   best_AIC <- if(family == "negbin"){
     glm_nb(fit_stats$form[1], mf, link = link, ...)
   } else{
-    stats::glm(fit_stats$form[1], do.call(family, list(link = link)), mf, ...)
+    glm(fit_stats$form[1], do.call(family, list(link = link)), mf, ...)
   }
   #======================================================================
   # Obtain model with maximum likelihood for each number of parameters
@@ -346,7 +347,7 @@ beset_glm <- function(form, train_data, test_data = NULL, p_max = 10,
       fit <- if(family == "negbin"){
         glm_nb(form, mf[i,], link = link, ...)
         } else {
-          stats::glm(form, do.call(family, list(link = link)), mf[i,], ...)
+          glm(form, do.call(family, list(link = link)), mf[i,], ...)
         }
       stats <- try(predict_metrics(fit, test_data = mf[-i,]), silent = TRUE)
       if(class(stats) == "prediction_metrics") stats
@@ -387,7 +388,7 @@ beset_glm <- function(form, train_data, test_data = NULL, p_max = 10,
       fit <- if(family == "negbin")
         glm_nb(form, mf, link = link, ...)
       else
-        stats::lm(form, do.call(family, list(link = link)), mf, ...)
+        glm(form, do.call(family, list(link = link)), mf, ...)
       stats <- tryCatch(
         predict_metrics(fit, test_data = test_data),
         error = function(c){
@@ -430,7 +431,7 @@ beset_lm <- function(form, train_data, test_data = NULL, p_max = 10,
 }
 
 glm_nb <- function (formula, data, weights, subset, na.action, start = NULL,
-                    etastart, mustart, control = stats::glm.control(...),
+                    etastart, mustart, control = glm.control(...),
                     method = "glm.fit", model = TRUE, x = FALSE, y = TRUE,
                     contrasts = NULL, ..., init.theta, link = log){
   loglik <- function(n, th, mu, y, w){
@@ -445,12 +446,12 @@ glm_nb <- function (formula, data, weights, subset, na.action, start = NULL,
                "etastart", "mustart", "offset"), names(mf), 0)
   mf <- mf[c(1, m)]
   mf$drop.unused.levels <- TRUE
-  mf[[1L]] <- quote(stats::model.frame)
+  mf[[1L]] <- quote(model.frame)
   mf <- eval.parent(mf)
   Terms <- attr(mf, "terms")
   if (method == "model.frame")
     return(mf)
-  Y <- stats::model.response(mf, "numeric")
+  Y <- model.response(mf, "numeric")
   X <- if (!is.empty.model(Terms))
     model.matrix(Terms, mf, contrasts)
   else matrix(nrow = NROW(Y), ncol = 0)
@@ -471,7 +472,7 @@ glm_nb <- function (formula, data, weights, subset, na.action, start = NULL,
   }
   else {
     method <- "glm.fit"
-    glm.fitter <- stats::glm.fit
+    glm.fitter <- glm.fit
   }
   if (control$trace > 1)
     message("Initial fit:")

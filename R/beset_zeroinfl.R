@@ -108,6 +108,8 @@
 #' @param seed An integer used to seed the random number generator when
 #' assigning observations to folds.
 #'
+#' @import stats
+#'
 #' @return A "beset_zeroinfl" object with the following components:
 #' \enumerate{
 #' \item\describe{
@@ -319,13 +321,11 @@ beset_zeroinfl <- function(form, train_data, test_data = NULL,
   #------------------------------------------------------------------
   cl <- parallel::makeCluster(n_cores)
   parallel::clusterExport(cl, c("mf", "family", "link", "test_data",
-                                "predict_metrics"#, ...
-                                ), envir=environment())
+                                "predict_metrics", ...), envir=environment())
   catch <- parallel::clusterEvalQ(cl, library(pscl))
   CE <- parallel::parLapplyLB(cl, zero_form_list, function(form){
     fit <- try(suppressWarnings(
-      zeroinfl(formula(form), data = mf, dist = family, link = link#, ...
-               )),
+      zeroinfl(formula(form), data = mf, dist = family, link = link, ...)),
       silent = TRUE)
     aic <- mce <- mse <- r2 <- NA_real_
     if(class(fit) == "zeroinfl"){
@@ -356,8 +356,7 @@ beset_zeroinfl <- function(form, train_data, test_data = NULL,
   #-------------------------------------------------------------------------
   CE <- parallel::parLapplyLB(cl, count_form_list, function(form){
     fit <- try(suppressWarnings(
-      zeroinfl(formula(form), data = mf, dist = family, link = link#, ...
-      )),
+      zeroinfl(formula(form), data = mf, dist = family, link = link, ...)),
       silent = TRUE)
     aic <- mce <- mse <- r2 <- NA_real_
     if(class(fit) == "zeroinfl"){
@@ -398,8 +397,7 @@ beset_zeroinfl <- function(form, train_data, test_data = NULL,
 
   CE <- parallel::parLapplyLB(cl, fit_stats$form, function(form){
     fit <- try(suppressWarnings(
-      zeroinfl(formula(form), data = mf, dist = family, link = link#, ...
-      )),
+      zeroinfl(formula(form), data = mf, dist = family, link = link, ...)),
       silent = TRUE)
     aic <- mce <- mse <- r2 <- NA_real_
     if(class(fit) == "zeroinfl"){
@@ -423,8 +421,7 @@ beset_zeroinfl <- function(form, train_data, test_data = NULL,
   #----------------------------------------------------------------------
   fit_stats <- dplyr::arrange(fit_stats, AIC)
   best_AIC <- pscl::zeroinfl(formula(fit_stats$form[1]), mf, dist = family,
-                             link = link#,...
-                             )
+                             link = link)
 
   #======================================================================
   # Perform cross-validation on best models
@@ -447,8 +444,8 @@ beset_zeroinfl <- function(form, train_data, test_data = NULL,
   metrics <- parallel::parLapply(cl, fold_ids, function(i, form_list){
     lapply(form_list, function(form){
       fit <- try(suppressWarnings(
-        zeroinfl(formula(form), data = mf[i,], dist = family, link = link#, ...
-                 )),
+        zeroinfl(formula(form), data = mf[i,], dist = family, link = link,
+                 ...)),
         silent = TRUE)
       if(class(fit) == "zeroinfl"){
         predict_metrics(fit, mf[-i,])
@@ -489,8 +486,8 @@ beset_zeroinfl <- function(form, train_data, test_data = NULL,
   if(!is.null(test_data)){
     metrics <- lapply(cv_stats$form, function(form){
       fit <- try(suppressWarnings(
-        pscl::zeroinfl(formula(form), data = mf, dist = family, link = link#, ...
-                 )), silent = TRUE)
+        pscl::zeroinfl(formula(form), data = mf, dist = family, link = link,
+                       ...)), silent = TRUE)
       if(class(fit) == "zeroinfl"){
         predict_metrics(fit, test_data)
       } else {

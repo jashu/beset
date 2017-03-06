@@ -50,6 +50,7 @@
 #'
 #' @seealso \code{\link[glmnet]{glmnet}}
 #'
+#' @import stats
 #' @export
 
 beset_elnet <- function(form, train_data, test_data = NULL,
@@ -77,7 +78,7 @@ beset_elnet <- function(form, train_data, test_data = NULL,
   # Obtain fit statistics
   #----------------------------------------------------------------------
   fits <- lapply(alpha, function(a){
-    glmnet::glmnet(x, y, family, alpha = a)#, ...)
+    glmnet::glmnet(x, y, family, alpha = a, ...)
    })
   names(fits) <- alpha
   lambda_seq <- sapply(fits, function(x) unique(round(x$lambda, 3)))
@@ -139,7 +140,7 @@ beset_elnet <- function(form, train_data, test_data = NULL,
       y_hat <- predict(fit, predictors[-i,], lambda, "response")
       apply(y_hat, 2, function(x) predict_metrics_(y, x, "gaussian"))
       }, i = fold_list, alpha = alpha_list, lambda = lambda_list,
-    MoreArgs = list(predictors = x, response = y, family = family)#, ...)
+    MoreArgs = list(predictors = x, response = y, family = family, ...)
   )
   parallel::stopCluster(cl)
   cv_stats <- data.frame(
@@ -180,46 +181,5 @@ beset_elnet <- function(form, train_data, test_data = NULL,
                  model_params = list(x = x, y = y, family = family)),
             class = "beset_elnet")
 
-}
-
-rec_elnet <- function(x, y, ..., n_vars = NULL, threshold = NULL, seed = 42){
-  n_observed <- nrow(x)
-  n_features <- ncol(x)
-  snp_name <- colnames(x)
-  if(is.null(n_vars)) n_vars <- ceiling(sqrt(n_features))
-  if(is.null(threshold)) threshold <- 1 / n_observed
-  n_samples <- n_vars * 10
-  betas <- matrix(NA, nrow = n_samples, ncol = n_features)
-  intercepts <- vector(mode = "numeric", length = n_samples)
-  set.seed(seed, kind = "default")
-  pb <- txtProgressBar(min = 0, max = n_samples, style = 3)
-  for(i in 1:n_samples){
-    importance <- apply(betas, 2, mean, na.rm = T)
-    importance[is.nan(importance)] <- 1
-    importance <- abs(importance)
-    importance[importance < threshold] <- 0
-    rows_in_train <- sample.int(nrow(x), replace = TRUE)
-    cols_in_train <- sample.int(n_features, n_vars, prob = importance)
-    temp_x <- x[rows_in_train, cols_in_train]
-    temp_y <- y[rows_in_train]
-    temp_pf <- 1 / importance[cols_in_train]
-    temp_mod <- gcdnet::cv.gcdnet(temp_x, temp_y, lambda2 = 1,
-                                  pf = temp_pf, ...)
-    betas[i, cols_in_train] <- as(coef(temp_mod), "matrix")[-1,]
-    intercepts[i] <- as(coef(temp_mod), "matrix")[1,]
-    setTxtProgressBar(pb, i)
-  }
-  importance <- apply(betas, 2, mean, na.rm = T)
-  importance[is.nan(importance)] <- 0
-  importance <- abs(importance)
-  importance[importance < threshold] <- 0
-  structure(
-    list(
-      cv_gcdnet = gcdnet::cv.gcdnet(x[, importance > 0], y, lambda2 = 1,
-                                    pf = 1 / importance[importance > 0], ...),
-      b0_bag = intercepts,
-      beta_bag = as(betas, "dgCMatrix")),
-    class = "rr_elnet"
-  )
 }
 
