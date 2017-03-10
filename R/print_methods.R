@@ -24,15 +24,16 @@ print.summary_beset_glm <- function(x,
                                     digits = max(3L, getOption("digits") - 3L,
                                                  ...),
   signif.stars = getOption("show.signif.stars"), ...){
+  object <- x
   cat("\n=======================================================",
-      "\nBest Model:\n ", x$best_form, "\n")
-  if(length(x$near_best) > 0){
-    cat("\nNearly Equivalent Models:", x$near_best, sep = "\n  ")
+      "\nBest Model:\n ", object$best_form, "\n")
+  if(length(object$near_best) > 0){
+    cat("\nNearly Equivalent Models:", object$near_best, sep = "\n  ")
   }
-  x <- x$best
+  x <- object$best
   cat("\nDeviance Residuals: \n")
   if (x$df.residual > 5) {
-    x$deviance.resid <- setNames(quantile(x$deviance.resid,
+    x$deviance.resid <- stats::setNames(stats::quantile(x$deviance.resid,
                                           na.rm = TRUE),
                                  c("Min", "1Q", "Median", "3Q", "Max"))
   }
@@ -57,12 +58,12 @@ print.summary_beset_glm <- function(x,
                                                                colnames(coefs)))
       coefs[!aliased, ] <- x$coefficients
     }
-    printCoefmat(coefs, digits = digits, signif.stars = signif.stars,
+    stats::printCoefmat(coefs, digits = digits, signif.stars = signif.stars,
                  na.print = "NA", ...)
   }
   cat("\n(Dispersion parameter for ", x$family$family, " family taken to be ",
       format(x$dispersion), ")\n\n", sep = "")
-  if (nzchar(mess <- naprint(x$na.action)))
+  if (nzchar(mess <- stats::naprint(x$na.action)))
     cat("  (", mess, ")\n", sep = "")
   cat("Log-likelihood: ", formatC(x$loglik, digits = digits), " on ",
       x$loglik_df, " Df\nAIC: ",
@@ -89,36 +90,37 @@ print.summary_beset_glm <- function(x,
       cat("Warning while fitting theta:", x$th.warn, "\n")
   }
   cat("\n")
-  cat(paste("Train-sample R-squared =", round(x$R2,2)))
-  if(!is.null(x$R2_test)){
-    cat(paste(", Test-sample R-squared =", round(x$R2_test, 2)))
+  cat(paste("Train-sample R-squared =", round(object$r2,2)))
+  if(!is.null(object$r2_test)){
+    cat(paste(", Test-sample R-squared =", round(object$r2_test, 2)))
   }
   cat("\n")
-  print(x$R2_cv)
+  print(object$r2_cv)
   cat("\n=======================================================")
 }
 #' @export
 print.summary_beset_zeroinfl <- function(
   x, digits = max(3, getOption("digits") - 3), ...){
+  object <- x
   cat("\n=======================================================",
-      "\nBest Model:\n ", x$best_form, "\n")
-  if(length(x$near_best) > 0){
-    cat("\nNearly Equivalent Models:", x$near_best, sep = "\n  ")
+      "\nBest Model:\n ", object$best_form, "\n")
+  if(length(object$near_best) > 0){
+    cat("\nNearly Equivalent Models:", object$near_best, sep = "\n  ")
   }
-  x <- x$best
+  x <- object$best
   if (!x$converged) {
     cat("model did not converge\n")
   } else {
     cat("\nPearson residuals:\n")
-    print(structure(quantile(x$residuals),
+    print(structure(stats::quantile(x$residuals),
                     names = c("Min","1Q", "Median", "3Q", "Max")),
           digits = digits, ...)
     cat(paste("\nCount model coefficients (", x$dist, " with log link):\n",
               sep = ""))
-    printCoefmat(x$coefficients$count, digits = digits, signif.legend = FALSE)
+    stats::printCoefmat(x$coefficients$count, digits = digits, signif.legend = FALSE)
     cat(paste("\nZero-inflation model coefficients (binomial with ",
               x$link, " link):\n", sep = ""))
-    printCoefmat(x$coefficients$zero, digits = digits, signif.legend = FALSE)
+    stats::printCoefmat(x$coefficients$zero, digits = digits, signif.legend = FALSE)
     if (getOption("show.signif.stars") &
         any(rbind(x$coefficients$count, x$coefficients$zero)[, 4] < 0.1))
       cat("---\nSignif. codes: ",
@@ -127,16 +129,16 @@ print.summary_beset_zeroinfl <- function(
     if (x$dist == "negbin")
       cat(paste("\nTheta =", round(x$theta, digits), "\n")) else cat("\n")
     cat(paste("Number of iterations in", x$method, "optimization:",
-              tail(na.omit(x$optim$count), 1), "\n"))
+              tail(stats::na.omit(x$optim$count), 1), "\n"))
     cat("Log-likelihood:", formatC(x$loglik, digits = digits),
         "on", x$n - x$df.residual, "Df\nAIC: ",
         format(x$aic, digits = max(4L, digits + 1L)), "\n\n")
-    cat(paste("Train-sample R-squared =", round(x$R2,2)))
-    if(!is.null(x$R2_test)){
-      cat(paste(", Test-sample R-squared =", round(x$R2_test, 2)))
+    cat(paste("Train-sample R-squared =", round(object$r2,2)))
+    if(!is.null(object$r2_test)){
+      cat(paste(", Test-sample R-squared =", round(object$r2_test, 2)))
     }
     cat("\n")
-    print(x$R2_cv)
+    print(object$r2_cv)
   }
   cat("\n=======================================================")
 }
@@ -155,19 +157,19 @@ print.summary_beset_elnet <- function(x, ...){
   cat("(alpha = ", x$best_alpha, ") with lambda = ", x$best_lambda,
       sep = "")
   cat("\n\nNon-zero coefficients ranked in order of importance:\n")
-  best_coef <- dplyr::select(x$var_imp, variable, stand.coef = coef)
+  best_coef <- dplyr::select(x$var_imp, variable, stand.coef)
   best_coef <- dplyr::filter(best_coef, abs(stand.coef) > 0)
   best_coef <- dplyr::arrange(best_coef, dplyr::desc(abs(stand.coef)))
   best_coef <- dplyr::mutate(best_coef, stand.coef = round(stand.coef, 3))
   best_coef <- as.data.frame(best_coef)
   if(nrow(best_coef) > 1){
     print(best_coef, quote = FALSE)
-    cat(paste("\nTrain-sample R-squared =", round(x$R2,2)))
-    if(!is.null(x$R2test)){
-      cat(paste(", Test-sample R-squared =", round(x$R2_test, 2)))
+    cat(paste("\nTrain-sample R-squared =", round(x$r2,2)))
+    if(!is.null(x$r2test)){
+      cat(paste(", Test-sample R-squared =", round(x$r2_test, 2)))
     }
     cat("\n")
-    print(x$R2_cv)
+    print(x$r2_cv)
   } else {
     cat("\n\nNo reliable predictors.")
   }
