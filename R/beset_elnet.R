@@ -50,7 +50,6 @@
 #'
 #' @seealso \code{\link[glmnet]{glmnet}}
 #'
-#' @import stats
 #' @export
 
 beset_elnet <- function(form, train_data, test_data = NULL,
@@ -63,7 +62,7 @@ beset_elnet <- function(form, train_data, test_data = NULL,
   #------------------------------------------------------------------
   mf <- stats::model.frame(form, data = train_data, na.action = stats::na.omit)
   if(!is.null(test_data)){
-    test_data <- model.frame(form, data = test_data, na.action = stats::na.omit)
+    test_data <- stats::model.frame(form, data = test_data, na.action = stats::na.omit)
   }
   n_drop <- nrow(train_data) - nrow(mf)
   if(n_drop > 0)
@@ -109,9 +108,9 @@ beset_elnet <- function(form, train_data, test_data = NULL,
     }
     y_test <- test_data[,1]
     if(grepl("binomial", family)) y_test <- factor(y_test)
-    x_test <- model.matrix(form, data = test_data)[,-1]
+    x_test <- stats::model.matrix(form, data = test_data)[,-1]
     metrics <- mapply(function(fit, lambda){
-      y_hats <- predict(fit, x_test, lambda, type = "response")
+      y_hats <- stats::predict(fit, x_test, lambda, type = "response")
       apply(y_hats, 2, function(y_hat) predict_metrics_(y_test, y_hat, family))
     }, fit = fits, lambda = lambda_seq)
     test_stats$MCE <- unlist(sapply(metrics, function(x)
@@ -137,7 +136,7 @@ beset_elnet <- function(form, train_data, test_data = NULL,
       fit <- glmnet::glmnet(x = predictors[i,], y = response[i], alpha = alpha,
                             ...)
       y <- response[-i]
-      y_hat <- predict(fit, predictors[-i,], lambda, "response")
+      y_hat <- stats::predict(fit, predictors[-i,], lambda, "response")
       apply(y_hat, 2, function(x) predict_metrics_(y, x, "gaussian"))
       }, i = fold_list, alpha = alpha_list, lambda = lambda_list,
     MoreArgs = list(predictors = x, response = y, family = family, ...)

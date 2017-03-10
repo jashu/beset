@@ -22,7 +22,6 @@
 #' @param seed An integer used to seed the random number generator when
 #' assigning observations to folds.
 #'
-#' @import stats
 #' @export
 cv_r2 <- function(object, n_cores = 2, n_folds = 10, n_repeats = 10, seed = 42){
   y <- object$model[,1]
@@ -32,8 +31,8 @@ cv_r2 <- function(object, n_cores = 2, n_folds = 10, n_repeats = 10, seed = 42){
   r2 <- parallel::parSapply(cl, fold_ids, function(i, object){
     fit <- switch(
       class(object)[1],
-      lm = lm(object$terms, data = object$model[i,]),
-      glm = glm(object$terms, data = object$model[i,],
+      lm = stats::lm(object$terms, data = object$model[i,]),
+      glm = stats::glm(object$terms, data = object$model[i,],
                 family = object$family$family),
       negbin = MASS::glm.nb(object$terms, data = object$model[i,]),
       zeroinfl = pscl::zeroinfl(object$terms$full,

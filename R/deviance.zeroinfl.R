@@ -27,9 +27,9 @@ deviance.zeroinfl <- function(object, ...){
   loglik_sat <- sum(
     switch(
       object$dist,
-      poisson = dpois(object$y, lambda = object$y, log = TRUE),
-      negbin = dnbinom(object$y, mu = object$y, size=object$theta, log = TRUE)
+      poisson = stats::dpois(object$y, lambda = object$y, log = TRUE),
+      negbin = stats::dnbinom(object$y, mu = object$y, size=object$theta, log = TRUE)
       )
     )
-  as.numeric(2 * (loglik_sat - logLik(object)))
+  as.numeric(2 * (loglik_sat - stats::logLik(object)))
 }
