@@ -74,7 +74,8 @@
 r2d <- function (object, newdata = NULL, cv = FALSE, ...) {
   model_type <- class(object)[1]
   R2fit <- switch(model_type,
-                  lm = 1 - var(resid(object)) / var(object$model[[1]]),
+                  lm = 1 - stats::var(stats::residuals(object)) /
+                    stats::var(object$model[[1]]),
                   glm = 1 - object$deviance / object$null.deviance,
                   negbin = 1 - object$deviance / object$null.deviance,
                   zeroinfl = predict_metrics(object)$R_squared)
