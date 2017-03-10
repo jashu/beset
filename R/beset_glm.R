@@ -62,7 +62,10 @@
 #'
 #' @name beset_glm
 #' @importFrom utils combn
-#' @import stats
+#' @importFrom purrr at_depth
+#' @importFrom purrr transpose
+#' @importFrom purrr as_vector
+#' @import dplyr
 #'
 #' @seealso \code{\link[caret]{createFolds}}, \code{\link[stats]{glm}},
 #' \code{\link[base]{set.seed}}, \code{\link[MASS]{glm.nb}}
@@ -106,7 +109,7 @@
 #' @return A "beset_glm" object with the following components:
 #' \enumerate{
 #'  \item\describe{
-#'    \item{best_AIC}{an object of class \code{\link[stats]{glm}}
+#'    \item{best_aic}{an object of class \code{\link[stats]{glm}}
 #'    corresponding to the model with the lowest Akaike Information Criterion}
 #'  }
 #'  \item\describe{
@@ -125,14 +128,17 @@
 #'               the number of predictors for a factor variable corresponds to the
 #'               number of factor levels minus 1}
 #'            \item{form}{formula for model}
-#'            \item{AIC}{\eqn{-2*log-likelihood + k*npar}, where \eqn{npar}
+#'            \item{aic}{\eqn{-2*log-likelihood + k*npar}, where \eqn{npar}
 #'              represents the number of parameters in the fitted model, and
 #'              \eqn{k = 2}}
-#'            \item{MCE}{Mean cross entropy, estimated as
+#'            \item{dev}{twice the difference between the log-likelihoods of the
+#'              saturated and fitted models, multiplied by the scale parameter}
+#'            \item{mae}{mean absolute error}
+#'            \item{mce}{mean cross entropy, estimated as
 #'              \eqn{-log-likelihood/N}, where \eqn{N} is the number of
 #'              observations}
-#'            \item{MSE}{Mean squared error}
-#'            \item{R2}{R-squared, calculated as
+#'            \item{mse}{mean squared error}
+#'            \item{r2}{R-squared, calculated as
 #'              \eqn{1 - deviance/null deviance}}
 #'            }
 #'          }
@@ -140,9 +146,7 @@
 #'      for the best model for each \code{n_pred} listed in \code{fit_stats}.
 #'      Each metric is computed using \code{\link{predict_metrics}}, with
 #'      models fit to \eqn{n-1} folds and predictions made on the left-out fold.
-#'      Each metric is followed by its standard error, estimated as the standard
-#'      deviation of 1000 bootstrap replicates of computing the median cross-
-#'      validation statistic across all folds and repetitions. The data frame
+#'      Each metric is followed by its standard error. The data frame
 #'      is otherwise the same as that documented for \code{fit}, except
 #'      AIC is omitted.}
 #'      \item{test_stats}{if \code{test_data} is provided, a data frame
@@ -194,9 +198,9 @@ beset_glm <- function(form, train_data, test_data = NULL, p_max = 10,
   #==================================================================
   # Create model frame and extract response name and vector
   #------------------------------------------------------------------
-  mf <- model.frame(form, data = train_data, na.action = na.omit)
+  mf <- stats::model.frame(form, data = train_data, na.action = stats::na.omit)
   if(!is.null(test_data)){
-    test_data <- model.frame(form, data = test_data, na.action = na.omit)
+    test_data <- stats::model.frame(form, data = test_data, na.action = stats::na.omit)
   }
   n_drop <- nrow(train_data) - nrow(mf)
   if(n_drop > 0)
@@ -209,7 +213,7 @@ beset_glm <- function(form, train_data, test_data = NULL, p_max = 10,
   #==================================================================
   # Screen for linear dependencies among predictors
   #------------------------------------------------------------------
-  mm <- model.matrix(form, data = train_data)
+  mm <- stats::model.matrix(form, data = train_data)
   colinear_vars <- caret::findLinearCombos(mm[, 2:ncol(mm)])
   if(!is.null(colinear_vars$remove)){
     factor_idx <- which(sapply(mf, class) == "factor")
@@ -234,7 +238,7 @@ beset_glm <- function(form, train_data, test_data = NULL, p_max = 10,
   }
   alt_folds <- n / (n - p * 2)
   alt_p <- p
-  while(!dplyr::between(alt_folds, 1, 10)){
+  while(!between(alt_folds, 1, 10)){
     alt_p <- alt_p - 1
     alt_folds <- n / (n - alt_p * 2)
   }
@@ -298,45 +302,51 @@ beset_glm <- function(form, train_data, test_data = NULL, p_max = 10,
   if(family == "negbin"){
     CE <- parallel::parLapplyLB(cl, form_list, function(form){
       fit <- glm_nb(form, mf, link = link, ...)
-      list(AIC = AIC(fit),
-           MCE = -logLik(fit)/nrow(mf),
-           MSE = mean(residuals(fit, type = "response")^2),
-           R2 = 1 - fit$deviance / fit$null.deviance)
+      list(aic = stats::AIC(fit),
+           dev = stats::deviance(fit),
+           mae = mean(abs(stats::residuals(fit, type = "response"))),
+           mce = -stats::logLik(fit)/nrow(mf),
+           mse = mean(stats::residuals(fit, type = "response")^2),
+           r2 = 1 - fit$deviance / fit$null.deviance)
     })
   } else {
     CE <- parallel::parLapplyLB(cl, form_list, function(form){
-      fit <- glm(form, do.call(family, list(link = link)), mf, ...)
-      list(AIC = AIC(fit),
-           MCE = -logLik(fit)/nrow(mf),
-           MSE = mean(residuals(fit, type = "response")^2),
-           R2 = 1 - fit$deviance / fit$null.deviance)
+      fit <- stats::glm(form, do.call(family, list(link = link)), mf, ...)
+      list(aic = stats::AIC(fit),
+           dev = stats::deviance(fit),
+           mae = mean(abs(stats::residuals(fit, type = "response"))),
+           mce = -stats::logLik(fit)/nrow(mf),
+           mse = mean(stats::residuals(fit, type = "response")^2),
+           r2 = 1 - fit$deviance / fit$null.deviance)
     })
   }
-  fit_stats <- dplyr::data_frame(
+  fit_stats <- data_frame(
     n_pred = n_pred,
     form = form_list,
-    AIC = sapply(CE, function(x) x$AIC),
-    MCE = sapply(CE, function(x) x$MCE),
-    MSE = sapply(CE, function(x) x$MSE),
-    R2 = sapply(CE, function(x) round(x$R2,3))
+    aic = sapply(CE, function(x) x$aic),
+    dev = sapply(CE, function(x) x$dev),
+    mae = sapply(CE, function(x) x$mae),
+    mce = sapply(CE, function(x) x$mce),
+    mse = sapply(CE, function(x) x$mse),
+    r2 = sapply(CE, function(x) x$r2)
     )
   #======================================================================
   # Store the fit for the model with the best AIC
   #----------------------------------------------------------------------
-  fit_stats <- dplyr::arrange(fit_stats, AIC)
-  best_AIC <- if(family == "negbin"){
+  fit_stats <- arrange(fit_stats, aic)
+  best_aic <- if(family == "negbin"){
     glm_nb(fit_stats$form[1], mf, link = link, ...)
   } else{
-    glm(fit_stats$form[1], do.call(family, list(link = link)), mf, ...)
+    stats::glm(fit_stats$form[1], do.call(family, list(link = link)), mf, ...)
   }
   #======================================================================
   # Obtain model with maximum likelihood for each number of parameters
   #----------------------------------------------------------------------
-  cv_stats <- dplyr::group_by(fit_stats, n_pred)
-  cv_stats <- dplyr::filter(cv_stats, MCE == min(MCE))
-  cv_stats <- dplyr::ungroup(cv_stats)
-  cv_stats <- dplyr::select(cv_stats, n_pred, form)
-  cv_stats <- dplyr::arrange(cv_stats, n_pred)
+  cv_stats <- group_by(fit_stats, n_pred) %>%
+    filter(mce == min(mce)) %>%
+    ungroup() %>%
+    select(n_pred, form) %>%
+    arrange(n_pred)
 
   #======================================================================
   # Perform cross-validation on best models
@@ -348,37 +358,38 @@ beset_glm <- function(form, train_data, test_data = NULL, p_max = 10,
       fit <- if(family == "negbin"){
         glm_nb(form, mf[i,], link = link, ...)
         } else {
-          glm(form, do.call(family, list(link = link)), mf[i,], ...)
+          stats::glm(form, do.call(family, list(link = link)), mf[i,], ...)
         }
       stats <- try(predict_metrics(fit, test_data = mf[-i,]), silent = TRUE)
       if(class(stats) == "prediction_metrics") stats
-      else list(mean_cross_entropy = NA,
-                mean_squared_error = NA,
-                R_squared = NA)
+      else list(deviance = NA_real_,
+                mean_absolute_error = NA_real_,
+                mean_cross_entropy = NA_real_,
+                mean_squared_error = NA_real_,
+                R_squared = NA_real_)
     })
   }, form_list = cv_stats$form)
   parallel::stopCluster(cl)
+
   #======================================================================
   # Derive cross-validation statistics
   #----------------------------------------------------------------------
-  MCE <- sapply(metrics, function(models)
-    sapply(models, function(x) x$mean_cross_entropy))
-  cv_stats$MCE <- apply(MCE, 1, mean, na.rm = T)
-  cv_stats$MCE_SE <- apply(MCE, 1, function(x){
-    sd(x, na.rm = TRUE)/sqrt(length(x[!is.na(x)]))
-  })
-  MSE <- sapply(metrics, function(models)
-    sapply(models, function(x) x$mean_squared_error))
-  cv_stats$MSE <- apply(MSE, 1, mean, na.rm = T)
-  cv_stats$MSE_SE <- apply(MSE, 1, function(x){
-    sd(x, na.rm = TRUE)/sqrt(length(x[!is.na(x)]))
-  })
-  R2 <- sapply(metrics, function(models)
-    sapply(models, function(x) x$R_squared))
-  cv_stats$R2 <- apply(R2, 1, mean, na.rm = T)
-  cv_stats$R2_SE <- apply(R2, 1, function(x){
-    sd(x, na.rm = TRUE)/sqrt(length(x[!is.na(x)]))
-  })
+  metrics <- lapply(seq_along(cv_stats$n_pred), function(i)
+    transpose(at_depth(metrics, 1, i)))
+  cv_mean <- at_depth(metrics, 2, function(x)
+    mean(as_vector(x), na.rm = TRUE)) %>%
+    transpose() %>%
+    at_depth(1, as_vector) %>%
+    as.data.frame()
+  names(cv_mean) <- c("dev", "mae", "mce", "mse", "r2")
+  cv_se <- at_depth(metrics, 2, function(x){
+    x <- as_vector(x)
+    sd(x, na.rm = TRUE) / sqrt(length(x[!is.na(x)]))
+  }) %>% transpose() %>%
+    at_depth(1, as_vector) %>%
+    as.data.frame()
+  names(cv_se) <- c("dev_SE", "mae_SE", "mce_SE", "mse_SE", "r2_SE")
+  cv_stats <- bind_cols(cv_stats, cv_mean, cv_se)
 
   #======================================================================
   # Compute prediction statistics for independent test set
@@ -389,7 +400,7 @@ beset_glm <- function(form, train_data, test_data = NULL, p_max = 10,
       fit <- if(family == "negbin")
         glm_nb(form, mf, link = link, ...)
       else
-        glm(form, do.call(family, list(link = link)), mf, ...)
+        stats::glm(form, do.call(family, list(link = link)), mf, ...)
       stats <- tryCatch(
         predict_metrics(fit, test_data = test_data),
         error = function(c){
@@ -399,19 +410,22 @@ beset_glm <- function(form, train_data, test_data = NULL, p_max = 10,
           warning(c)
           })
       if(class(stats) == "prediction_metrics") stats
-      else list(mean_cross_entropy = NA,
-                mean_squared_error = NA,
-                R_squared = NA)
+      else list(deviance = NA_real_,
+                mean_absolute_error = NA_real_,
+                mean_cross_entropy = NA_real_,
+                mean_squared_error = NA_real_,
+                R_squared = NA_real_)
       })
-    test_stats <- dplyr::select(cv_stats, n_pred, form)
-    test_stats$MCE <- sapply(metrics, function(x) x$mean_cross_entropy)
-    test_stats$MSE <- sapply(metrics, function(x) x$mean_squared_error)
-    test_stats$R2 <- sapply(metrics, function(x) x$R_squared)
+    metrics <- transpose(metrics) %>%
+      at_depth(1, as_vector) %>%
+      as.data.frame()
+    names(metrics) <- c("dev", "mae", "mce", "mse", "r2")
+    test_stats <- bind_cols(select(cv_stats, n_pred, form), metrics)
   }
   #======================================================================
   # Construct beset_glm object
   #----------------------------------------------------------------------
-  structure(list(best_AIC = best_AIC,
+  structure(list(best_aic = best_aic,
                  cv_params = list(n_folds = n_folds,
                                   n_repeats = n_repeats,
                                   seed = seed),
@@ -432,7 +446,7 @@ beset_lm <- function(form, train_data, test_data = NULL, p_max = 10,
 }
 
 glm_nb <- function (formula, data, weights, subset, na.action, start = NULL,
-                    etastart, mustart, control = glm.control(...),
+                    etastart, mustart, control = stats::glm.control(...),
                     method = "glm.fit", model = TRUE, x = FALSE, y = TRUE,
                     contrasts = NULL, ..., init.theta, link = log){
   loglik <- function(n, th, mu, y, w){
@@ -452,18 +466,18 @@ glm_nb <- function (formula, data, weights, subset, na.action, start = NULL,
   Terms <- attr(mf, "terms")
   if (method == "model.frame")
     return(mf)
-  Y <- model.response(mf, "numeric")
-  X <- if (!is.empty.model(Terms))
-    model.matrix(Terms, mf, contrasts)
+  Y <- stats::model.response(mf, "numeric")
+  X <- if (!stats::is.empty.model(Terms))
+    stats::model.matrix(Terms, mf, contrasts)
   else matrix(nrow = NROW(Y), ncol = 0)
-  w <- model.weights(mf)
+  w <- stats::model.weights(mf)
   if (!length(w))
     w <- rep(1, nrow(mf))
   else if (any(w < 0))
     stop("negative weights not allowed")
-  offset <- model.offset(mf)
-  mustart <- model.extract(mf, "mustart")
-  etastart <- model.extract(mf, "etastart")
+  offset <- stats::model.offset(mf)
+  mustart <- stats::model.extract(mf, "mustart")
+  etastart <- stats::model.extract(mf, "etastart")
   n <- length(Y)
   if (!missing(method)) {
     if (!exists(method, mode = "function"))
@@ -473,7 +487,7 @@ glm_nb <- function (formula, data, weights, subset, na.action, start = NULL,
   }
   else {
     method <- "glm.fit"
-    glm.fitter <- glm.fit
+    glm.fitter <- stats::glm.fit
   }
   if (control$trace > 1)
     message("Initial fit:")
@@ -554,7 +568,7 @@ glm_nb <- function (formula, data, weights, subset, na.action, start = NULL,
   fit$twologlik <- as.vector(2 * Lm)
   fit$aic <- -fit$twologlik + 2 * fit$rank + 2
   fit$contrasts <- attr(X, "contrasts")
-  fit$xlevels <- .getXlevels(Terms, mf)
+  fit$xlevels <- stats::.getXlevels(Terms, mf)
   fit$method <- method
   fit$control <- control
   fit$offset <- offset
@@ -568,9 +582,9 @@ negative.binomial <- function (theta = stop("'theta' must be specified"),
   if (!is.character(linktemp))
     linktemp <- deparse(linktemp)
   if (linktemp %in% c("log", "identity", "sqrt"))
-    stats <- make.link(linktemp)
+    stats <- stats::make.link(linktemp)
   else if (is.character(link)) {
-    stats <- make.link(link)
+    stats <- stats::make.link(link)
     linktemp <- link
   }
   else {
@@ -605,7 +619,7 @@ negative.binomial <- function (theta = stop("'theta' must be specified"),
     mustart <- y + (y == 0)/6
   })
   simfun <- function(object, nsim) {
-    ftd <- fitted(object)
+    ftd <- stats::fitted(object)
     MASS::rnegbin(nsim * length(ftd), ftd, .Theta)
   }
   environment(variance) <- environment(validmu) <- environment(dev.resids) <-

@@ -109,12 +109,11 @@
 #' assigning observations to folds.
 #'
 #' @importFrom utils combn
-#' @import stats
 #'
 #' @return A "beset_zeroinfl" object with the following components:
 #' \enumerate{
 #' \item\describe{
-#'    \item{best_AIC}{an object of class \code{\link[pscl]{zeroinfl}}
+#'    \item{best_aic}{an object of class \code{\link[pscl]{zeroinfl}}
 #'    corresponding to the model with the lowest Akaike Information Criterion}
 #'    }
 #'  \item\describe{
@@ -135,12 +134,12 @@
 #'       the number of predictors for a factor variable corresponds to the
 #'       number of factor levels minus 1}
 #'      \item{form}{formula for model}
-#'      \item{AIC}{\eqn{-2*log-likelihood + k*npar}, where \eqn{npar} represents
+#'      \item{aic}{\eqn{-2*log-likelihood + k*npar}, where \eqn{npar} represents
 #'      the number of parameters in the fitted model, and \eqn{k = 2}}
-#'      \item{MCE}{Mean cross entropy, estimated as \eqn{-log-likelihood/N},
+#'      \item{mce}{Mean cross entropy, estimated as \eqn{-log-likelihood/N},
 #'      where \eqn{N} is the number of observations}
-#'      \item{MSE}{Mean squared error}
-#'      \item{R2}{R-squared, calculated as \eqn{1 - deviance/null deviance}}}
+#'      \item{mse}{Mean squared error}
+#'      \item{r2}{R-squared, calculated as \eqn{1 - deviance/null deviance}}}
 #'     }}
 #'    \describe{
 #'    \item{zero_fit}{a data frame containing the same fit statistics as
@@ -191,7 +190,7 @@ beset_zeroinfl <- function(form, train_data, test_data = NULL,
   #==================================================================
   # Create model frame and extract response name and vector
   #------------------------------------------------------------------
-  mf <- model.frame(form, data = train_data, na.action = na.omit)
+  mf <- stats::model.frame(form, data = train_data, na.action = stats::na.omit)
   n_drop <- nrow(train_data) - nrow(mf)
   if(n_drop > 0)
     warning(paste("Dropping", n_drop, "rows with missing data."),
@@ -201,12 +200,12 @@ beset_zeroinfl <- function(form, train_data, test_data = NULL,
   if(min(y) != 0)
     stop("Observed lower bound does not equal 0.")
   if(!is.null(test_data)){
-    test_data <- model.frame(form, data = test_data, na.action = na.omit)
+    test_data <- stats::model.frame(form, data = test_data, na.action = stats::na.omit)
   }
   #==================================================================
   # Screen for linear dependencies among predictors
   #------------------------------------------------------------------
-  mm <- model.matrix(form, data = mf)
+  mm <- stats::model.matrix(form, data = mf)
   colinear_vars <- caret::findLinearCombos(mm[, 2:ncol(mm)])
   if(!is.null(colinear_vars$remove)){
     factor_idx <- which(sapply(mf, class) == "factor")
@@ -322,33 +321,40 @@ beset_zeroinfl <- function(form, train_data, test_data = NULL,
   #------------------------------------------------------------------
   cl <- parallel::makeCluster(n_cores)
   parallel::clusterExport(cl, c("mf", "family", "link", "test_data",
-                                "predict_metrics", ...), envir=environment())
-  catch <- parallel::clusterEvalQ(cl, library(pscl))
+                                "predict_metrics"#, ...
+                                ), envir=environment())
   CE <- parallel::parLapplyLB(cl, zero_form_list, function(form){
     fit <- try(suppressWarnings(
-      pscl::zeroinfl(formula(form), data = mf, dist = family, link = link, ...)),
+      pscl::zeroinfl(stats::formula(form), data = mf, dist = family,
+                     link = link#, ...
+                     )),
       silent = TRUE)
-    aic <- mce <- mse <- r2 <- NA_real_
+    aic <- dev <- mae <- mce <- mse <- r2 <- NA_real_
     if(class(fit) == "zeroinfl"){
-      aic <- AIC(fit)
+      aic <- stats::AIC(fit)
       metrics <- predict_metrics(fit)
+      dev <- metrics$deviance
+      mae <- metrics$mean_absolute_error
       mce <- metrics$mean_cross_entropy
       mse <- metrics$mean_squared_error
       r2 <- metrics$R_squared
     }
-    list(AIC = aic, MCE = mce, MSE = mse, R2 = r2)
+
+    list(aic = aic, dev = dev, mae = mae, mce = mce, mse = mse, r2 = r2)
   })
   zero_fit_stats <- dplyr::data_frame(
     n_zero_pred = n_zero_pred,
     zero_pred = zero_pred,
-    AIC = sapply(CE, function(x) x$AIC),
-    MCE = sapply(CE, function(x) x$MCE),
-    MSE = sapply(CE, function(x) x$MSE),
-    R2 = sapply(CE, function(x) round(x$R2,3))
+    aic = sapply(CE, function(x) x$aic),
+    dev = sapply(CE, function(x) x$dev),
+    mae = sapply(CE, function(x) x$mae),
+    mce = sapply(CE, function(x) x$mce),
+    mse = sapply(CE, function(x) x$mse),
+    r2 = sapply(CE, function(x) round(x$r2,3))
   )
   best_zero_subsets <- dplyr::group_by(zero_fit_stats, n_zero_pred)
   best_zero_subsets <- dplyr::filter(best_zero_subsets,
-                                     MCE == min(MCE, na.rm = TRUE))
+                                     mce == min(mce, na.rm = TRUE))
   best_zero_subsets <- dplyr::ungroup(best_zero_subsets)
 
   #=========================================================================
@@ -357,29 +363,35 @@ beset_zeroinfl <- function(form, train_data, test_data = NULL,
   #-------------------------------------------------------------------------
   CE <- parallel::parLapplyLB(cl, count_form_list, function(form){
     fit <- try(suppressWarnings(
-      pscl::zeroinfl(formula(form), data = mf, dist = family, link = link, ...)),
+      pscl::zeroinfl(stats::formula(form), data = mf, dist = family,
+                     link = link#, ...
+                     )),
       silent = TRUE)
-    aic <- mce <- mse <- r2 <- NA_real_
+    aic <- dev <- mae <- mce <- mse <- r2 <- NA_real_
     if(class(fit) == "zeroinfl"){
-      aic <- AIC(fit)
+      aic <- stats::AIC(fit)
       metrics <- predict_metrics(fit)
+      dev <- metrics$deviance
+      mae <- metrics$mean_absolute_error
       mce <- metrics$mean_cross_entropy
       mse <- metrics$mean_squared_error
       r2 <- metrics$R_squared
     }
-    list(AIC = aic, MCE = mce, MSE = mse, R2 = r2)
+    list(aic = aic, dev = dev, mae = mae, mce = mce, mse = mse, r2 = r2)
   })
   count_fit_stats <- dplyr::data_frame(
     n_count_pred = n_count_pred,
     count_pred = count_pred,
-    AIC = sapply(CE, function(x) x$AIC),
-    MCE = sapply(CE, function(x) x$MCE),
-    MSE = sapply(CE, function(x) x$MSE),
-    R2 = sapply(CE, function(x) round(x$R2,3))
+    aic = sapply(CE, function(x) x$aic),
+    dev = sapply(CE, function(x) x$dev),
+    mae = sapply(CE, function(x) x$mae),
+    mce = sapply(CE, function(x) x$mce),
+    mse = sapply(CE, function(x) x$mse),
+    r2 = sapply(CE, function(x) x$r2)
   )
   best_count_subsets <- dplyr::group_by(count_fit_stats, n_count_pred)
   best_count_subsets <- dplyr::filter(best_count_subsets,
-                                     MCE == min(MCE, na.rm = TRUE))
+                                     mce == min(mce, na.rm = TRUE))
   best_count_subsets <- dplyr::ungroup(best_count_subsets)
 
   #======================================================================
@@ -398,31 +410,38 @@ beset_zeroinfl <- function(form, train_data, test_data = NULL,
 
   CE <- parallel::parLapplyLB(cl, fit_stats$form, function(form){
     fit <- try(suppressWarnings(
-      pscl::zeroinfl(formula(form), data = mf, dist = family, link = link, ...)),
+      pscl::zeroinfl(stats::formula(form), data = mf, dist = family,
+                     link = link#, ...
+                     )),
       silent = TRUE)
-    aic <- mce <- mse <- r2 <- NA_real_
+    aic <- dev <- mae <- mce <- mse <- r2 <- NA_real_
     if(class(fit) == "zeroinfl"){
-      aic <- AIC(fit)
+      aic <- stats::AIC(fit)
       metrics <- predict_metrics(fit)
+      dev <- metrics$deviance
+      mae <- metrics$mean_absolute_error
       mce <- metrics$mean_cross_entropy
       mse <- metrics$mean_squared_error
       r2 <- metrics$R_squared
     }
-    list(AIC = aic, MCE = mce, MSE = mse, R2 = r2)
+    list(aic = aic, dev = dev, mae = mae, mce = mce, mse = mse, r2 = r2)
   })
 
   fit_stats <- dplyr::mutate(fit_stats,
-    AIC = sapply(CE, function(x) x$AIC),
-    MCE = sapply(CE, function(x) x$MCE),
-    MSE = sapply(CE, function(x) x$MSE),
-    R2 = sapply(CE, function(x) round(x$R2,3))
+    aic = sapply(CE, function(x) x$aic),
+    dev = sapply(CE, function(x) x$dev),
+    mae = sapply(CE, function(x) x$mae),
+    mce = sapply(CE, function(x) x$mce),
+    mse = sapply(CE, function(x) x$mse),
+    r2 = sapply(CE, function(x) x$r2)
   )
   #======================================================================
   # Store the fit for the model with the best AIC
   #----------------------------------------------------------------------
-  fit_stats <- dplyr::arrange(fit_stats, AIC)
-  best_AIC <- pscl::zeroinfl(formula(fit_stats$form[1]), mf, dist = family,
-                             link = link)
+  fit_stats <- dplyr::arrange(fit_stats, aic)
+  best_aic <- pscl::zeroinfl(stats::formula(fit_stats$form[1]), mf,
+                             dist = family, link = link#, ...
+                             )
 
   #======================================================================
   # Perform cross-validation on best models
@@ -445,13 +464,16 @@ beset_zeroinfl <- function(form, train_data, test_data = NULL,
   metrics <- parallel::parLapply(cl, fold_ids, function(i, form_list){
     lapply(form_list, function(form){
       fit <- try(suppressWarnings(
-        pscl::zeroinfl(formula(form), data = mf[i,], dist = family, link = link,
-                 ...)),
+        pscl::zeroinfl(stats::formula(form), data = mf[i,], dist = family,
+                       link = link#, ...
+                       )),
         silent = TRUE)
       if(class(fit) == "zeroinfl"){
         predict_metrics(fit, mf[-i,])
       } else {
-        list(mean_cross_entropy = NA_real_,
+        list(deviance = NA_real_,
+             mean_absolute_error = NA_real_,
+             mean_cross_entropy = NA_real_,
              mean_squared_error = NA_real_,
              R_squared = NA_real_)
       }
@@ -461,24 +483,22 @@ beset_zeroinfl <- function(form, train_data, test_data = NULL,
   #======================================================================
   # Derive cross-validation statistics
   #----------------------------------------------------------------------
-  MCE <- sapply(metrics, function(models)
-    sapply(models, function(x) x$mean_cross_entropy))
-  cv_stats$MCE <- apply(MCE, 1, mean, na.rm = T)
-  cv_stats$MCE_SE <- apply(MCE, 1, function(x){
-    sd(x, na.rm = TRUE)/sqrt(length(x[!is.na(x)]))
-  })
-  MSE <- sapply(metrics, function(models)
-    sapply(models, function(x) x$mean_squared_error))
-  cv_stats$MSE <- apply(MSE, 1, mean, na.rm = T)
-  cv_stats$MSE_SE <- apply(MSE, 1, function(x){
-    sd(x, na.rm = TRUE)/sqrt(length(x[!is.na(x)]))
-  })
-  R2 <- sapply(metrics, function(models)
-    sapply(models, function(x) x$R_squared))
-  cv_stats$R2 <- apply(R2, 1, mean, na.rm = T)
-  cv_stats$R2_SE <- apply(R2, 1, function(x){
-    sd(x, na.rm = TRUE)/sqrt(length(x[!is.na(x)]))
-  })
+  metrics <- lapply(1:nrow(cv_stats), function(i)
+    transpose(at_depth(metrics, 1, i)))
+  cv_mean <- at_depth(metrics, 2, function(x)
+    mean(as_vector(x), na.rm = TRUE)) %>%
+    transpose() %>%
+    at_depth(1, as_vector) %>%
+    as.data.frame()
+  names(cv_mean) <- c("dev", "mae", "mce", "mse", "r2")
+  cv_se <- at_depth(metrics, 2, function(x){
+    x <- as_vector(x)
+    sd(x, na.rm = TRUE) / sqrt(length(x[!is.na(x)]))
+  }) %>% transpose() %>%
+    at_depth(1, as_vector) %>%
+    as.data.frame()
+  names(cv_se) <- c("dev_SE", "mae_SE", "mce_SE", "mse_SE", "r2_SE")
+  cv_stats <- bind_cols(cv_stats, cv_mean, cv_se)
 
   #======================================================================
   # Compute prediction statistics for independent test set
@@ -487,25 +507,30 @@ beset_zeroinfl <- function(form, train_data, test_data = NULL,
   if(!is.null(test_data)){
     metrics <- lapply(cv_stats$form, function(form){
       fit <- try(suppressWarnings(
-        pscl::zeroinfl(formula(form), data = mf, dist = family, link = link,
-                       ...)), silent = TRUE)
+        pscl::zeroinfl(stats::formula(form), data = mf, dist = family,
+                       link = link#, ...
+                       )), silent = TRUE)
       if(class(fit) == "zeroinfl"){
         predict_metrics(fit, test_data)
       } else {
-        list(mean_cross_entropy = NA_real_,
+        list(deviance = NA_real_,
+             mean_absolute_error = NA_real_,
+             mean_cross_entropy = NA_real_,
              mean_squared_error = NA_real_,
              R_squared = NA_real_)
       }
     })
-    test_stats <- dplyr::select(cv_stats, n_count_pred:form)
-    test_stats$MCE <- sapply(metrics, function(x) x$mean_cross_entropy)
-    test_stats$MSE <- sapply(metrics, function(x) x$mean_squared_error)
-    test_stats$R2 <- sapply(metrics, function(x) x$R_squared)
+    metrics <- transpose(metrics) %>%
+      at_depth(1, as_vector) %>%
+      as.data.frame()
+    names(metrics) <- c("dev", "mae", "mce", "mse", "r2")
+    test_stats <- bind_cols(select(cv_stats, n_count_pred, n_zero_pred, form),
+                            metrics)
   }
   #======================================================================
   # Construct beset_zeroinfl object
   #----------------------------------------------------------------------
-  structure(list(best_AIC = best_AIC,
+  structure(list(best_aic = best_aic,
                  cv_params = list(n_folds = n_folds, n_repeats = n_repeats,
                                   seed = seed),
                  model_data = mf,

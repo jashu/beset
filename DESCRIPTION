@@ -28,6 +28,7 @@ Imports:
     MASS,
     parallel,
     pscl,
+    purrr,
     VGAM
 Encoding: UTF-8
 License: GPL-3
