@@ -1,48 +1,84 @@
 library(beset)
 context("Prediction Metrics")
 
-test_that("lm cross-entropy = -logLik/N and R_squared = summary()$r.squared", {
-  object <- lm(Fertility ~ ., data = swiss)
+test_that("lm cross-entropy = -logLik/N", {
+  object <- stats::lm(Fertility ~ ., data = swiss)
   metrics <- predict_metrics(object)
   expect_equal(metrics$mean_cross_entropy,
-               -1 * as.numeric(logLik(object))/nrow(object$model))
+               -1 * as.numeric(stats::logLik(object))/nrow(object$model))
+})
+
+test_that("lm R_squared = summary()$r.squared",{
+  object <- stats::lm(Fertility ~ ., data = swiss)
+  metrics <- predict_metrics(object)
   expect_equal(metrics$R_squared, summary(object)$r.squared)
 })
 
+test_that("lm deviance = deviance()",{
+  object <- stats::lm(Fertility ~ ., data = swiss)
+  metrics <- predict_metrics(object)
+  expect_equal(metrics$deviance, stats::deviance(object))
+})
+
 test_that("gauss metrics = -logLik/N", {
-  object <- glm(Fertility ~ ., data = swiss, family = "gaussian")
+  object <- stats::glm(Fertility ~ ., data = swiss, family = "gaussian")
   metrics <- predict_metrics(object)
   expect_equal(metrics$mean_cross_entropy,
-               -1 * as.numeric(logLik(object))/nrow(object$model))
+               -1 * as.numeric(stats::logLik(object))/nrow(object$model))
+})
+
+test_that("gauss deviance = deviance()",{
+  object <- stats::glm(Fertility ~ ., data = swiss, family = "gaussian")
+  metrics <- predict_metrics(object)
+  expect_equal(metrics$deviance, stats::deviance(object))
 })
 
 test_that("binomial cross entropy = -logLik/N", {
-  object <- glm(Treatment ~ uptake + conc, data = CO2, family = "binomial")
+  object <- stats::glm(Treatment ~ uptake + conc, data = CO2, family = "binomial")
   metrics <- predict_metrics(object)
   expect_equal(metrics$mean_cross_entropy,
-               -1 * as.numeric(logLik(object))/nrow(object$model))
+               -1 * as.numeric(stats::logLik(object))/nrow(object$model))
+})
+
+test_that("binomial deviance = deviance()",{
+  object <- stats::glm(Treatment ~ uptake + conc, data = CO2, family = "binomial")
+  metrics <- predict_metrics(object)
+  expect_equal(metrics$deviance, stats::deviance(object))
 })
 
 test_that("poisson cross entropy = -logLik/N", {
-  object <- glm(count ~ spray, data = InsectSprays, family = "poisson")
+  object <- stats::glm(count ~ spray, data = InsectSprays, family = "poisson")
   metrics <- predict_metrics(object)
   expect_equal(metrics$mean_cross_entropy,
-               -1 * as.numeric(logLik(object))/nrow(object$model))
+               -1 * as.numeric(stats::logLik(object))/nrow(object$model))
+})
+
+test_that("poisson deviance = deviance()",{
+  object <- stats::glm(count ~ spray, data = InsectSprays, family = "poisson")
+  metrics <- predict_metrics(object)
+  metrics <- predict_metrics(object)
+  expect_equal(metrics$deviance, stats::deviance(object))
 })
 
 test_that("neg binomial cross entropy = -logLik/N", {
   object <- MASS::glm.nb(count ~ spray, data = InsectSprays)
   metrics <- predict_metrics(object)
   expect_equal(metrics$mean_cross_entropy,
-               -1 * as.numeric(logLik(object))/nrow(object$model))
+               -1 * as.numeric(stats::logLik(object))/nrow(object$model))
+})
+
+test_that("neg binomial deviance = deviance()",{
+  object <- MASS::glm.nb(count ~ spray, data = InsectSprays)
+  metrics <- predict_metrics(object)
+  metrics <- predict_metrics(object)
+  expect_equal(metrics$deviance, stats::deviance(object))
 })
 
 test_that("zeroinfl poisson cross entropy = -logLik/N", {
-  InsectSprays$count[1:10] <- 0
-  object <- pscl::zeroinfl(count ~ spray, data = InsectSprays)
+  object <- pscl::zeroinfl(art ~ ., data = pscl::bioChemists, dist = "negbin")
   metrics <- predict_metrics(object)
   expect_equal(metrics$mean_cross_entropy,
-               -1 * as.numeric(logLik(object))/nrow(object$model))
+               -1 * as.numeric(stats::logLik(object))/nrow(object$model))
 })
 
 test_that("zeroinfl negbin cross entropy = -logLik/N", {
@@ -50,5 +86,5 @@ test_that("zeroinfl negbin cross entropy = -logLik/N", {
                            dist = "negbin")
   metrics <- predict_metrics(object)
   expect_equal(metrics$mean_cross_entropy,
-               -1 * as.numeric(logLik(object))/nrow(object$model))
+               -1 * as.numeric(stats::logLik(object))/nrow(object$model))
 })
