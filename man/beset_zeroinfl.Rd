@@ -54,7 +54,7 @@ assigning observations to folds.}
 A "beset_zeroinfl" object with the following components:
 \enumerate{
 \item\describe{
-   \item{best_AIC}{an object of class \code{\link[pscl]{zeroinfl}}
+   \item{best_aic}{an object of class \code{\link[pscl]{zeroinfl}}
    corresponding to the model with the lowest Akaike Information Criterion}
    }
  \item\describe{
@@ -75,12 +75,12 @@ A "beset_zeroinfl" object with the following components:
       the number of predictors for a factor variable corresponds to the
       number of factor levels minus 1}
      \item{form}{formula for model}
-     \item{AIC}{\eqn{-2*log-likelihood + k*npar}, where \eqn{npar} represents
+     \item{aic}{\eqn{-2*log-likelihood + k*npar}, where \eqn{npar} represents
      the number of parameters in the fitted model, and \eqn{k = 2}}
-     \item{MCE}{Mean cross entropy, estimated as \eqn{-log-likelihood/N},
+     \item{mce}{Mean cross entropy, estimated as \eqn{-log-likelihood/N},
      where \eqn{N} is the number of observations}
-     \item{MSE}{Mean squared error}
-     \item{R2}{R-squared, calculated as \eqn{1 - deviance/null deviance}}}
+     \item{mse}{Mean squared error}
+     \item{r2}{R-squared, calculated as \eqn{1 - deviance/null deviance}}}
     }}
    \describe{
    \item{zero_fit}{a data frame containing the same fit statistics as

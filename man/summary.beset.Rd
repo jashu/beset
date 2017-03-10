@@ -7,13 +7,13 @@
 \alias{summary.beset_zeroinfl}
 \title{Summary Methods for \code{beset} Objects}
 \usage{
-\method{summary}{beset_elnet}(object, metric = "MCE", oneSE = TRUE,
+\method{summary}{beset_elnet}(object, metric = "mce", oneSE = TRUE,
   n_cores = 2, ...)
 
-\method{summary}{beset_glm}(object, metric = "MCE", n_pred = NULL,
+\method{summary}{beset_glm}(object, metric = NULL, n_pred = NULL,
   oneSE = TRUE, n_cores = 2, ...)
 
-\method{summary}{beset_zeroinfl}(object, metric = "MCE",
+\method{summary}{beset_zeroinfl}(object, metric = "mce",
   n_count_pred = NULL, n_zero_pred = NULL, oneSE = TRUE, n_cores = 2,
   ...)
 }
@@ -22,7 +22,7 @@
 \code{"beset_zeroinfl"}, or \code{"beset_elnet"}}
 
 \item{metric}{Prediction metric on which to based model selection. Can be one
-of "MCE" (mean cross entropy), "MSE" (mean squared error), or "R2"
+of "mce" (mean cross entropy), "mse" (mean squared error), or "r2"
 R-squared).}
 
 \item{oneSE}{Logical flag indicating whether or not the one-standard-error

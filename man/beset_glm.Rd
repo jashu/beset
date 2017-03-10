@@ -54,7 +54,7 @@ assigning observations to folds.}
 A "beset_glm" object with the following components:
 \enumerate{
  \item\describe{
-   \item{best_AIC}{an object of class \code{\link[stats]{glm}}
+   \item{best_aic}{an object of class \code{\link[stats]{glm}}
    corresponding to the model with the lowest Akaike Information Criterion}
  }
  \item\describe{
@@ -73,14 +73,17 @@ A "beset_glm" object with the following components:
               the number of predictors for a factor variable corresponds to the
               number of factor levels minus 1}
            \item{form}{formula for model}
-           \item{AIC}{\eqn{-2*log-likelihood + k*npar}, where \eqn{npar}
+           \item{aic}{\eqn{-2*log-likelihood + k*npar}, where \eqn{npar}
              represents the number of parameters in the fitted model, and
              \eqn{k = 2}}
-           \item{MCE}{Mean cross entropy, estimated as
+           \item{dev}{twice the difference between the log-likelihoods of the
+             saturated and fitted models, multiplied by the scale parameter}
+           \item{mae}{mean absolute error}
+           \item{mce}{mean cross entropy, estimated as
              \eqn{-log-likelihood/N}, where \eqn{N} is the number of
              observations}
-           \item{MSE}{Mean squared error}
-           \item{R2}{R-squared, calculated as
+           \item{mse}{mean squared error}
+           \item{r2}{R-squared, calculated as
              \eqn{1 - deviance/null deviance}}
            }
          }
@@ -88,9 +91,7 @@ A "beset_glm" object with the following components:
      for the best model for each \code{n_pred} listed in \code{fit_stats}.
      Each metric is computed using \code{\link{predict_metrics}}, with
      models fit to \eqn{n-1} folds and predictions made on the left-out fold.
-     Each metric is followed by its standard error, estimated as the standard
-     deviation of 1000 bootstrap replicates of computing the median cross-
-     validation statistic across all folds and repetitions. The data frame
+     Each metric is followed by its standard error. The data frame
      is otherwise the same as that documented for \code{fit}, except
      AIC is omitted.}
      \item{test_stats}{if \code{test_data} is provided, a data frame
