@@ -13,30 +13,30 @@ predict_metrics(object, test_data = NULL)
 predictors that were used to fit the model \code{object}.}
 }
 \value{
-A list giving the mean squared error, mean cross entropy, and
-deviance R-squared between model predictions and actual observations.
+A list giving the deviance, mean absolute error, mean cross entropy,
+mean squared error, and deviance R-squared between model predictions and 
+actual observations.
 }
 \description{
-Calculate mean squared error, mean cross entropy, and R-squared (as fraction
-of deviance explained) to measure how well a generalized linear model
-predicts test data.
+Calculate deviance, mean absolute error, mean cross entropy, mean squared 
+error, and R-squared (as fraction of deviance explained) to measure how well
+a generalized linear model predicts test data.
 }
 \details{
-\code{predict_metrics} uses a generalized linear model (GLM) previously
-fit to a training set to predict responses for a test set. It then computes
-the residual sum of squares and the log-likelihood of the predicted
-responses, as well as the log-likelihoods for the corresponding saturated
-model (a model with one free parameter per observation) and null model (a
-model with only an intercept) fit to the true responses. These quantities
-are used to derive the metrics described below.
+\code{predict_metrics} uses a generalized linear model previously fit to a
+training set to predict responses for a test set. It then computes the 
+residual sum of squares and the log-likelihood of the predicted responses, as
+well as the log-likelihoods for the corresponding saturated model (a model 
+with one free parameter per observation) and null model (a model with only an
+intercept) fit to the true responses. These quantities are used to derive the
+metrics described below.
 }
 \section{Mean squared error (MSE) and mean cross entropy (MCE)}{
 
 MSE is the average of the squared difference between each predicted response
 \eqn{ŷ} and the actual observed response \eqn{y}. MCE is an analagous
 information-theoretic quantity that averages the negative logs of the
-probability density functions for \eqn{ŷ} (predicted by the GLM), evaluated
-at \eqn{y}.
+probability density functions for \eqn{ŷ} evaluated at \eqn{y}.
 
 Note that cross entropy simply parameterizes prediction error in terms of
 relative likelihood; if applied to the training set instead of the test set,

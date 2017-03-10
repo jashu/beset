@@ -7,11 +7,11 @@
 \alias{plot.beset_zeroinfl}
 \title{Plot Methods for \code{beset} Objects}
 \usage{
-\method{plot}{beset_elnet}(x, type = "cv", metric = "MCE", ...)
+\method{plot}{beset_elnet}(x, type = "cv", metric = NULL, ...)
 
-\method{plot}{beset_glm}(x, metric = "MCE", ...)
+\method{plot}{beset_glm}(x, metric = NULL, ...)
 
-\method{plot}{beset_zeroinfl}(x, type = "cv", metric = "MCE", ...)
+\method{plot}{beset_zeroinfl}(x, type = "cv", metric = "mce", ...)
 }
 \arguments{
 \item{x}{An object of class \code{"beset_glm"},
@@ -20,9 +20,9 @@
 \item{type}{Type of error to plot. Can be one of \code{"train"}, \code{"cv"},
 or \code{"test"}.}
 
-\item{metric}{Which error metric to plot. Can be one of \code{"MCE"} for
-mean cross entropy, \code{"MSE"} for mean squared error, or \code{"R2"} for
-R-squared.}
+\item{metric}{Which error metric to plot. Can be one of \code{"dev"} for
+deviance, \code{"mae"} for mean absolute error, \code{"mce"} for mean cross
+entropy, \code{"mse"} for mean squared error, or \code{"r2"} for R-squared.}
 
 \item{...}{Arguments to be passed to methods}
 }

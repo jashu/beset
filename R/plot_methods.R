@@ -6,9 +6,9 @@
 #' @param type Type of error to plot. Can be one of \code{"train"}, \code{"cv"},
 #' or \code{"test"}.
 #'
-#' @param metric Which error metric to plot. Can be one of \code{"MCE"} for
-#' mean cross entropy, \code{"MSE"} for mean squared error, or \code{"R2"} for
-#' R-squared.
+#' @param metric Which error metric to plot. Can be one of \code{"dev"} for
+#' deviance, \code{"mae"} for mean absolute error, \code{"mce"} for mean cross
+#' entropy, \code{"mse"} for mean squared error, or \code{"r2"} for R-squared.
 #'
 #' @param ... Arguments to be passed to methods
 #'
@@ -19,7 +19,16 @@ NULL
 
 #' @export
 #' @rdname plot.beset
-plot.beset_elnet <- function(x, type = "cv", metric = "MCE", ...){
+plot.beset_elnet <- function(x, type = "cv", metric = NULL, ...){
+  # if(is.null(metric)){
+  #   metric <- if(x$best_aic$family$family == "gaussian") "mse" else "mce"
+  # }
+  metric <- tryCatch(match.arg(metric, c("mae", "mce", "mse", "r2")),
+                     error = function(c){
+                       c$message <- gsub("arg", "metric", c$message)
+                       c$call <- NULL
+                       stop(c)
+                     })
   data <- switch(
     type,
     train = dplyr::select(x$stats$fit, alpha, lambda,
@@ -46,9 +55,9 @@ plot.beset_elnet <- function(x, type = "cv", metric = "MCE", ...){
                           cv = "Cross-validation error",
                           test = "Prediction of new data"))
   y_lab <- switch(metric,
-                  MCE = ylab("Mean Cross Entropy"),
-                  MSE = ylab("Mean Squared Error"),
-                  R2 = ylab(bquote(~R^2)))
+                  mce = ylab("Mean Cross Entropy"),
+                  mse = ylab("Mean Squared Error"),
+                  r2 = ylab(bquote(~R^2)))
 
   p <- ggplot(data = data, aes(x = lambda, y = error, color = alpha)) +
     theme_bw() + title + xlab("Regularization parameter") + y_lab +
@@ -63,7 +72,16 @@ plot.beset_elnet <- function(x, type = "cv", metric = "MCE", ...){
 
 #' @export
 #' @rdname plot.beset
-plot.beset_glm <- function(x, metric = "MCE", ...){
+plot.beset_glm <- function(x, metric = NULL, ...){
+  if(is.null(metric)){
+    metric <- if(x$best_aic$family$family == "gaussian") "mse" else "mce"
+  }
+  metric <- tryCatch(match.arg(metric, c("mae", "mce", "mse", "r2")),
+                     error = function(c){
+                       c$message <- gsub("arg", "metric", c$message)
+                       c$call <- NULL
+                       stop(c)
+                     })
   train <- dplyr::select(x$stats$fit, n_pred, form,
                          dplyr::starts_with(metric))
   names(train)[3] <- "train"
@@ -85,13 +103,14 @@ plot.beset_glm <- function(x, metric = "MCE", ...){
   data$cv_upper <- with(data, cv + cv_se)
   xmax <- max(data$n_pred)
   color_legend <- c("Train" = "grey", "CV" = "red", "Test" = "blue")
-  if(metric == "R2" && x$best_AIC$family$family != "gaussian")
-    metric <- "R2D"
+  if(metric == "r2" && x$best_aic$family$family != "gaussian")
+    metric <- "r2d"
   y_lab <- switch(metric,
-                  MCE = ylab("Mean Cross Entropy"),
-                  MSE = ylab("Mean Squared Error"),
-                  R2 = ylab(bquote(~R^2)),
-                  R2D = ylab(bquote(~R[D]^2)))
+                  mae = ylab("Mean Absolute Error"),
+                  mce = ylab("Mean Cross Entropy"),
+                  mse = ylab("Mean Squared Error"),
+                  r2 = ylab(bquote(~R^2)),
+                  r2d = ylab(bquote(~R[D]^2)))
   p <- ggplot(data = data) +
     theme_bw() +
     xlab("Number of Predictors") +
@@ -110,7 +129,13 @@ plot.beset_glm <- function(x, metric = "MCE", ...){
 
 #' @export
 #' @rdname plot.beset
-plot.beset_zeroinfl <- function(x, type = "cv", metric = "MCE", ...){
+plot.beset_zeroinfl <- function(x, type = "cv", metric = "mce", ...){
+  metric <- tryCatch(match.arg(metric, c("mae", "mce", "mse", "r2")),
+                     error = function(c){
+                       c$message <- gsub("arg", "metric", c$message)
+                       c$call <- NULL
+                       stop(c)
+                     })
   data <- switch(
     type,
     train = dplyr::select(x$stats$fit, form, n_count_pred, n_zero_pred,
@@ -136,10 +161,13 @@ plot.beset_zeroinfl <- function(x, type = "cv", metric = "MCE", ...){
                           train = "Fit to training data",
                           cv = "Cross-validation error",
                           test = "Prediction of new data"))
+  if(metric == "r2") metric <- "r2d"
   y_lab <- switch(metric,
-                  MCE = ylab("Mean Cross Entropy (-loglik / N)"),
-                  MSE = ylab("Mean Squared Error"),
-                  R2 = ylab(bquote(~R^2)))
+                  mae = ylab("Mean Absolute Error"),
+                  mce = ylab("Mean Cross Entropy"),
+                  mse = ylab("Mean Squared Error"),
+                  r2 = ylab(bquote(~R^2)),
+                  r2d = ylab(bquote(~R[D]^2)))
   p <- ggplot(data = data,
               aes(x = n_count_pred, y = error, color = n_zero_pred)) +
     theme_bw() + title + xlab("Number of Count-Component Predictors") +

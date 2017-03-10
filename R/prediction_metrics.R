@@ -1,23 +1,22 @@
 #' Prediction Metrics
 #'
-#' Calculate mean squared error, mean cross entropy, and R-squared (as fraction
-#' of deviance explained) to measure how well a generalized linear model
-#' predicts test data.
+#' Calculate deviance, mean absolute error, mean cross entropy, mean squared 
+#' error, and R-squared (as fraction of deviance explained) to measure how well
+#' a generalized linear model predicts test data.
 #'
-#' \code{predict_metrics} uses a generalized linear model (GLM) previously
-#' fit to a training set to predict responses for a test set. It then computes
-#' the residual sum of squares and the log-likelihood of the predicted
-#' responses, as well as the log-likelihoods for the corresponding saturated
-#' model (a model with one free parameter per observation) and null model (a
-#' model with only an intercept) fit to the true responses. These quantities
-#' are used to derive the metrics described below.
+#' \code{predict_metrics} uses a generalized linear model previously fit to a
+#' training set to predict responses for a test set. It then computes the 
+#' residual sum of squares and the log-likelihood of the predicted responses, as
+#' well as the log-likelihoods for the corresponding saturated model (a model 
+#' with one free parameter per observation) and null model (a model with only an
+#' intercept) fit to the true responses. These quantities are used to derive the
+#' metrics described below.
 #'
 #' @section Mean squared error (MSE) and mean cross entropy (MCE):
 #' MSE is the average of the squared difference between each predicted response
 #' \eqn{ŷ} and the actual observed response \eqn{y}. MCE is an analagous
 #' information-theoretic quantity that averages the negative logs of the
-#' probability density functions for \eqn{ŷ} (predicted by the GLM), evaluated
-#' at \eqn{y}.
+#' probability density functions for \eqn{ŷ} evaluated at \eqn{y}.
 #'
 #' Note that cross entropy simply parameterizes prediction error in terms of
 #' relative likelihood; if applied to the training set instead of the test set,
@@ -55,13 +54,13 @@
 #' @param test_data A data frame containing new data for the response and all
 #' predictors that were used to fit the model \code{object}.
 #'
-#' @return A list giving the mean squared error, mean cross entropy, and
-#' deviance R-squared between model predictions and actual observations.
+#' @return A list giving the deviance, mean absolute error, mean cross entropy,
+#' mean squared error, and deviance R-squared between model predictions and 
+#' actual observations.
 #'
 #' @seealso \code{\link{r2d}}, \code{\link[stats]{logLik}},
 #' \code{\link{deviance.zeroinfl}}
 #'
-#' @import stats
 #' @export
 predict_metrics <- function(object, test_data = NULL){
   if(is.null(object$model))
@@ -80,13 +79,13 @@ predict_metrics <- function(object, test_data = NULL){
     stop(paste(family, "family not supported"))
   y <- unlist(test_data[, names(object$model)[1]])
   if(is.factor(y)) y <- as.integer(y) - 1
-  y_hat <- predict(object, test_data, type="response")
+  y_hat <- stats::predict(object, test_data, type="response")
   y <- y[!is.na(y_hat)]
   y_hat <- y_hat[!is.na(y_hat)]
   phi <- theta <- NULL
   if(family %in% c("zip", "zinb")){
-    y_hat <- predict(object, test_data, type = "count")
-    phi <- predict(object, test_data, type = "zero")
+    y_hat <- stats::predict(object, test_data, type = "count")
+    phi <- stats::predict(object, test_data, type = "zero")
   }
   if(family %in% c("negbin","zinb")) theta <- object$theta
   predict_metrics_(y, y_hat, family, phi, theta)
@@ -99,21 +98,21 @@ predict_metrics_ <- function(y, y_hat, family, phi = NULL, theta = NULL){
   ll_null <- sum(
     switch(
       family,
-      gaussian = dnorm(y, mean = y_bar, sd = sigma, log = TRUE),
-      binomial = dbinom(y, size = 1, prob = y_bar, log = TRUE),
-      poisson = dpois(y, lambda = y_bar, log = TRUE),
-      negbin = dnbinom(y, size = theta, mu = y_bar, log = TRUE),
-      zip = dpois(y, lambda = y_bar, log = TRUE),
-      zinb = dnbinom(y, size = theta, mu = y_bar, log = TRUE)
+      gaussian = stats::dnorm(y, mean = y_bar, sd = sigma, log = TRUE),
+      binomial = stats::dbinom(y, size = 1, prob = y_bar, log = TRUE),
+      poisson = stats::dpois(y, lambda = y_bar, log = TRUE),
+      negbin = stats::dnbinom(y, size = theta, mu = y_bar, log = TRUE),
+      zip = stats::dpois(y, lambda = y_bar, log = TRUE),
+      zinb = stats::dnbinom(y, size = theta, mu = y_bar, log = TRUE)
     )
   )
   ll_predicted <- sum(
     switch(
       family,
-      gaussian = dnorm(y, mean = y_hat, sd = sigma, log = TRUE),
-      binomial = dbinom(y, size = 1, prob = y_hat, log = TRUE),
-      poisson = dpois(y, lambda = y_hat, log = TRUE),
-      negbin = dnbinom(y, mu = y_hat, size = theta, log = TRUE),
+      gaussian = stats::dnorm(y, mean = y_hat, sd = sigma, log = TRUE),
+      binomial = stats::dbinom(y, size = 1, prob = y_hat, log = TRUE),
+      poisson = stats::dpois(y, lambda = y_hat, log = TRUE),
+      negbin = stats::dnbinom(y, mu = y_hat, size = theta, log = TRUE),
       zip = VGAM::dzipois(y, lambda = y_hat, pstr0 = phi, log = TRUE),
       zinb = VGAM::dzinegbin(y, size = theta, munb = y_hat, pstr0 = phi,
                              log = TRUE)
@@ -124,17 +123,21 @@ predict_metrics_ <- function(y, y_hat, family, phi = NULL, theta = NULL){
       family,
       gaussian = -N/2 * log(2*pi*sigma^2),
       binomial = 0,
-      poisson = dpois(y, lambda = y, log = TRUE),
-      negbin = dnbinom(y, mu = y, size = theta, log = TRUE),
-      zip = dpois(y, lambda = y, log = TRUE),
-      zinb = dnbinom(y, size = theta, mu = y, log = TRUE)
+      poisson = stats::dpois(y, lambda = y, log = TRUE),
+      negbin = stats::dnbinom(y, mu = y, size = theta, log = TRUE),
+      zip = stats::dpois(y, lambda = y, log = TRUE),
+      zinb = stats::dnbinom(y, size = theta, mu = y, log = TRUE)
     )
   )
   dev_pred <- 2 * (ll_saturated - ll_predicted)
+  if(family == "gaussian") dev_pred <- dev_pred * sigma^2
   dev_null <- 2 * (ll_saturated - ll_null)
-  structure(list(mean_cross_entropy = -ll_predicted / N,
-                 mean_squared_error = mean((y - y_hat)^2),
+  if(family == "gaussian") dev_null <- dev_null * sigma^2
+
+  structure(list(deviance = dev_pred,
+                 mean_absolute_error = mean(abs(y_hat - y)),
+                 mean_cross_entropy = -ll_predicted / N,
+                 mean_squared_error = sigma^2,
                  R_squared = 1 - dev_pred / dev_null),
             class = "prediction_metrics")
 }
-
