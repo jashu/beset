@@ -261,8 +261,11 @@ summary.beset_zeroinfl <- function(object, metric = "mce", n_count_pred = NULL,
   r2_cv <- do.call("cv_r2",
                    args = c(list(object = best_model, n_cores = n_cores),
                             object$cv_params))
-  near_equals <- dplyr::filter(object$stats$fit,
-                               (n_zero_pred + n_count_pred) == (pc + pz))
+  near_equals <- if(is.null(n_zero_pred) || is.null(n_count_pred)){
+    dplyr::filter(object$stats$fit, (n_zero_pred + n_count_pred) == (pc + pz))
+  } else {
+    dplyr::filter(object$stats$fit, n_zero_pred == pz & n_count_pred == pc)
+  }
   best_metric <- max(near_equals$r2, na.rm = T)[1]
   boundary <- best_metric - .01
   near_best <- near_equals$form[near_equals$r2 > boundary]
