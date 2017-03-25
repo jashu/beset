@@ -72,7 +72,7 @@ plot.beset_elnet <- function(x, type = "cv", metric = NULL, ...){
 
 #' @export
 #' @rdname plot.beset
-plot.beset_glm <- function(x, metric = NULL, ...){
+plot.beset_glm <- function(x, metric = NULL, se = TRUE, ...){
   if(is.null(metric)){
     metric <- if(x$best_aic$family$family == "gaussian") "mse" else "mce"
   }
@@ -118,9 +118,11 @@ plot.beset_glm <- function(x, metric = NULL, ...){
     scale_x_continuous(breaks = 0:xmax) +
     scale_color_manual(name = "", values = color_legend) +
     geom_line(aes(x = n_pred, y = train, color = "Train")) +
-    geom_line(aes(x = n_pred, y = cv, color = "CV")) +
-    geom_errorbar(aes(x = n_pred, ymin = cv_lower, ymax = cv_upper),
-                  width = 0.2, color = "red")
+    geom_line(aes(x = n_pred, y = cv, color = "CV"))
+  if(se){
+    p <- p + geom_errorbar(aes(x = n_pred, ymin = cv_lower, ymax = cv_upper),
+                           width = 0.2, color = "red")
+  }
   if(!is.null(test)){
     p <- p + geom_line(aes(x = n_pred, y = test, color = "Test"))
   }
@@ -129,7 +131,7 @@ plot.beset_glm <- function(x, metric = NULL, ...){
 
 #' @export
 #' @rdname plot.beset
-plot.beset_zeroinfl <- function(x, type = "cv", metric = "mce", ...){
+plot.beset_zeroinfl <- function(x, type = "cv", metric = "mce", se = TRUE, ...){
   metric <- tryCatch(match.arg(metric, c("mae", "mce", "mse", "r2")),
                      error = function(c){
                        c$message <- gsub("arg", "metric", c$message)
@@ -173,7 +175,7 @@ plot.beset_zeroinfl <- function(x, type = "cv", metric = "mce", ...){
     theme_bw() + title + xlab("Number of Count-Component Predictors") +
     y_lab + scale_x_continuous(breaks = 0:max(data$n_count_pred)) +
     geom_line() + labs(color = "Number of\nZero-Component\nPredictors")
-  if(type == "cv"){
+  if(type == "cv" && se){
     p <- p +
       geom_errorbar(aes(x = n_count_pred, ymin = cv_lower, ymax = cv_upper),
                     width = 0.2)
