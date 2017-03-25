@@ -9,9 +9,10 @@
 \usage{
 \method{plot}{beset_elnet}(x, type = "cv", metric = NULL, ...)
 
-\method{plot}{beset_glm}(x, metric = NULL, ...)
+\method{plot}{beset_glm}(x, metric = NULL, se = TRUE, ...)
 
-\method{plot}{beset_zeroinfl}(x, type = "cv", metric = "mce", ...)
+\method{plot}{beset_zeroinfl}(x, type = "cv", metric = "mce", se = TRUE,
+  ...)
 }
 \arguments{
 \item{x}{An object of class \code{"beset_glm"},
