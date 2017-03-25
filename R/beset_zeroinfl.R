@@ -139,9 +139,9 @@
 #'      \item{dev}{twice the difference between the log-likelihoods of the
 #'              saturated and fitted models, multiplied by the scale parameter}
 #'      \item{mae}{mean absolute error}
-#'      \item{mce}{Mean cross entropy, estimated as \eqn{-log-likelihood/N},
+#'      \item{mce}{mean cross entropy, estimated as \eqn{-log-likelihood/N},
 #'      where \eqn{N} is the number of observations}
-#'      \item{mse}{Mean squared error}
+#'      \item{mse}{mean squared error}
 #'      \item{r2}{R-squared, calculated as \eqn{1 - deviance/null deviance}}}
 #'     }}
 #'    \describe{
