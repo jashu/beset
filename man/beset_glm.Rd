@@ -55,14 +55,14 @@ A "beset_glm" object with the following components:
 \enumerate{
  \item\describe{
    \item{best_aic}{an object of class \code{\link[stats]{glm}}
-   corresponding to the model with the lowest Akaike Information Criterion}
+   corresponding to the model with the lowest Akaike Information Criterion.}
  }
  \item\describe{
    \item{cv_params}{list of the values of the parameters used for
-   cross-validation, i.e., \code{n_folds}, \code{n_repeats}, \code{seed}}
+   cross-validation, i.e., \code{n_folds}, \code{n_repeats}, \code{seed}.}
  }
   \item\describe{
-    \item{model_data}{data frame used to identify best subsets}
+    \item{model_data}{data frame used to identify best subsets.}
  }
  \item\describe{
    \item{stats}{a list with three data frames:
@@ -162,11 +162,12 @@ number generator as one of its arguments.
    interpretability. If one wishes the model search to include interaction
    and/or non-linear effects, the
    \href{https://cran.r-project.org/web/packages/earth/index.html}{MARS}
-   technique is recommended instead. \item \code{beset_glm} is best suited
-   for searching over a small number of predictors (less than 10). For a
-   large number of predictors (more than 20), \code{\link{beset_elnet}} is
-   recommended instead. However, note that \code{\link{beset_elnet}} only
-   works with a more restricted set of distributions.
+   technique is recommended instead.
+ \item \code{beset_glm} is best suited for searching over a small number of
+ predictors (less than 10). For a large number of predictors (more than 20),
+ \code{\link{beset_elnet}} is recommended instead. However, note that
+ \code{\link{beset_elnet}} only works with a more restricted set of
+ distributions.
 }
 }
 

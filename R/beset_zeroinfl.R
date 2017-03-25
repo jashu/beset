@@ -58,9 +58,9 @@
 #'    that comprise it. At worst, it may return one of these hierarchically
 #'    incomplete models as the best model, an undesirable result if one cares
 #'    about interpretability.
-#'    \item Given the complexity of searching for predictors across two models,
-#'    \code{beset_zeroinfl} limits the size of the model data frame to a maximum
-#'    of 10 predictors.
+#'  \item \code{beset_zeroinfl} can be very slow and memory intensive.
+#'  Attempting to run with more than 10 variables in the model data frame is not
+#'  recommended.
 #' }
 #'
 #' @seealso \code{\link[caret]{createFolds}}, \code{\link{beset_glm}},
@@ -86,11 +86,9 @@
 #'
 #' @param ... Optional named arguments accepted by \code{\link[pscl]{zeroinfl}}.
 #'
-#' @param p_count_max Maximum number of predictors allowed in count model. Must
-#'  be between 1 and 10.
+#' @param p_count_max Maximum number of predictors allowed in count model.
 #'
-#' @param p_zero_max Maximum number of predictors allowed in zero model. Must be
-#'  between 1 and 10.
+#' @param p_zero_max Maximum number of predictors allowed in zero model.
 #'
 #' @param n_folds Integer indicating the number of folds to use for
 #' cross-validation.
@@ -114,15 +112,15 @@
 #' \enumerate{
 #' \item\describe{
 #'    \item{best_aic}{an object of class \code{\link[pscl]{zeroinfl}}
-#'    corresponding to the model with the lowest Akaike Information Criterion}
+#'    corresponding to the model with the lowest Akaike Information Criterion.}
 #'    }
 #'  \item\describe{
 #'    \item{cv_params}{list of the values of the parameters used for
-#'    cross-validation, i.e., \code{n_folds}, \code{n_repeats}, \code{seed}}
+#'    cross-validation, i.e., \code{n_folds}, \code{n_repeats}, \code{seed}.}
 #'  }
 #'   \item\describe{
 #'     \item{model_data}{data frame extracted from \code{data} and used to
-#'      identify best subsets}
+#'      identify best subsets.}
 #'  }
 #'  \item\describe{
 #'    \item{stats}{A list of five data frames, each containing metrics
@@ -145,16 +143,15 @@
 #'      \item{r2}{R-squared, calculated as \eqn{1 - deviance/null deviance}}}
 #'     }}
 #'    \describe{
-#'    \item{zero_fit}{a data frame containing the same fit statistics as
-#'    \code{count_fit} but for every possible combination of predictors of
+#'    \item{zero_fit}{a data frame containing the same fit statistics described
+#'    for \code{count_fit} but for every possible combination of predictors of
 #'    zeroes vs. non-zeroes (\code{n_zero_pred} and \code{zero_pred} replace
-#'    \code{n_count_pred} and \code{count_pred}, respectively)}}
+#'    \code{n_count_pred} and \code{count_pred}, respectively).}}
 #'    \describe{
-#'    \item{fit}{a data frame containing fit statistics for all combinations of
-#'    the best model for each \code{n_count_pred} and the best model for each
-#'    \code{n_zero_pred} listed in \code{count_fit} and \code{zero_fit},
-#'    respectively. The data frame contains the same metrics as described for
-#'    \code{count_fit}}}
+#'    \item{fit}{a data frame containing the same fit statistics described for
+#'    \code{count_fit} but for all combinations of the best model for each
+#'    \code{n_count_pred} and the best model for each \code{n_zero_pred} listed
+#'    in \code{count_fit} and \code{zero_fit}, respectively.}}
 #'    \describe{
 #'    \item{cv}{a data frame containing cross-validation statistics for all
 #'     combinations of the best models for each \code{n_count_pred} and
@@ -204,7 +201,8 @@ beset_zeroinfl <- function(form, data, test_data = NULL,
   if(min(y) != 0)
     stop("Observed lower bound does not equal 0.")
   if(!is.null(test_data)){
-    test_data <- stats::model.frame(form, data = test_data, na.action = stats::na.omit)
+    test_data <- stats::model.frame(form, data = test_data,
+                                    na.action = stats::na.omit)
   }
   #==================================================================
   # Screen for linear dependencies among predictors
