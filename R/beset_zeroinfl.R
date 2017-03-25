@@ -69,11 +69,11 @@
 #'
 #' @param form A model \code{\link[stats]{formula}}.
 #'
-#' @param train_data A \code{\link[base]{data.frame}} with the variables in
-#' \code{form} and the data to be used in model training.
+#' @param data Data frame with the variables in \code{form} and the data
+#' to be used for model fitting.
 #'
-#' @param test_data Optional \code{\link[base]{data.frame}} with the variables
-#' in \code{form} and the data to be used in model testing.
+#' @param test_data Optional data frame with the variables in \code{form} and
+#' the data to be used for model validation.
 #'
 #' @param family Character string naming the count model family. Options are
 #' \code{"poisson"} (default), \code{"negbin"}, or \code{"geometric"}. (Note a
@@ -121,11 +121,11 @@
 #'    cross-validation, i.e., \code{n_folds}, \code{n_repeats}, \code{seed}}
 #'  }
 #'   \item\describe{
-#'     \item{model_data}{data frame extracted from \code{train_data} and used to
+#'     \item{model_data}{data frame extracted from \code{data} and used to
 #'      identify best subsets}
 #'  }
 #'  \item\describe{
-#'    \item{stats}{The following five data frames, each containing metrics
+#'    \item{stats}{A list of five data frames, each containing metrics
 #'    describing model fits or predictions:
 #'    \describe{\item{count_fit}{a data frame containing fit statistics for every
 #'      possible combination of predictors of count data:
@@ -133,9 +133,12 @@
 #'      \item{n_count_pred}{the number of count predictors in model; note that
 #'       the number of predictors for a factor variable corresponds to the
 #'       number of factor levels minus 1}
-#'      \item{form}{formula for model}
+#'      \item{count_pred}{rhs of formula for count model}
 #'      \item{aic}{\eqn{-2*log-likelihood + k*npar}, where \eqn{npar} represents
 #'      the number of parameters in the fitted model, and \eqn{k = 2}}
+#'      \item{dev}{twice the difference between the log-likelihoods of the
+#'              saturated and fitted models, multiplied by the scale parameter}
+#'      \item{mae}{mean absolute error}
 #'      \item{mce}{Mean cross entropy, estimated as \eqn{-log-likelihood/N},
 #'      where \eqn{N} is the number of observations}
 #'      \item{mse}{Mean squared error}
@@ -144,7 +147,8 @@
 #'    \describe{
 #'    \item{zero_fit}{a data frame containing the same fit statistics as
 #'    \code{count_fit} but for every possible combination of predictors of
-#'    zeroes vs. non-zeroes}}
+#'    zeroes vs. non-zeroes (\code{n_zero_pred} and \code{zero_pred} replace
+#'    \code{n_count_pred} and \code{count_pred}, respectively)}}
 #'    \describe{
 #'    \item{fit}{a data frame containing fit statistics for all combinations of
 #'    the best model for each \code{n_count_pred} and the best model for each
@@ -154,8 +158,8 @@
 #'    \describe{
 #'    \item{cv}{a data frame containing cross-validation statistics for all
 #'     combinations of the best models for each \code{n_count_pred} and
-#'     \code{n_zero_pred} listed in \code{fit}. Each metric is followed by its
-#'     standard error.}}
+#'     \code{n_zero_pred} listed in \code{fit}, except AIC is omitted. Each
+#'     metric is followed by its standard error.}}
 #'  \describe{
 #'    \item{test}{if \code{test_data} is provided, a data frame containing
 #'     prediction metrics for the best model for each \code{n_count_pred} and
@@ -165,7 +169,7 @@
 #' }
 #'
 #' @export
-beset_zeroinfl <- function(form, train_data, test_data = NULL,
+beset_zeroinfl <- function(form, data, test_data = NULL,
                            family = "poisson", link = "logit", ...,
                            p_count_max = 10, p_zero_max = 10, n_cores = 2,
                            n_folds = 10, n_repeats = 10, seed = 42){
@@ -190,8 +194,8 @@ beset_zeroinfl <- function(form, train_data, test_data = NULL,
   #==================================================================
   # Create model frame and extract response name and vector
   #------------------------------------------------------------------
-  mf <- stats::model.frame(form, data = train_data, na.action = stats::na.omit)
-  n_drop <- nrow(train_data) - nrow(mf)
+  mf <- stats::model.frame(form, data = data, na.action = stats::na.omit)
+  n_drop <- nrow(data) - nrow(mf)
   if(n_drop > 0)
     warning(paste("Dropping", n_drop, "rows with missing data."),
             immediate. = TRUE)

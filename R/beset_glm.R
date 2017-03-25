@@ -16,9 +16,9 @@
 #' @section Cross-validation details:
 #' \code{beset_glm} uses \code{\link[caret]{createMultiFolds}} to randomly
 #' partition the data set into \code{n_folds} * \code{n_repeats} folds within
-#' strata (factor levels for factor outcomes percentile-based groups for numeric
-#' outcomes). This insures that the folds will be matched in terms of the
-#' outcome's frequency distribution. \code{beset_glm} also insures the
+#' strata (factor levels for factor outcomes, percentile-based groups for
+#' numeric outcomes). This insures that the folds will be matched in terms of
+#' the outcome's frequency distribution. \code{beset_glm} also insures the
 #' reproducibility of your analysis by requiring a \code{seed} to the random
 #' number generator as one of its arguments.
 #'
@@ -72,7 +72,7 @@
 #'
 #' @param form A model \code{\link[stats]{formula}}.
 #'
-#' @param train_data Data frame with the variables in \code{form} and the data
+#' @param data Data frame with the variables in \code{form} and the data
 #' to be used for model fitting.
 #'
 #' @param test_data Optional data frame with the variables in \code{form} and
@@ -160,7 +160,7 @@ NULL
 
 #' @rdname beset_glm
 #' @export
-beset_glm <- function(form, train_data, test_data = NULL, p_max = 10,
+beset_glm <- function(form, data, test_data = NULL, p_max = 10,
                       family = "gaussian", link = NULL,  ...,
                       n_cores = 2, n_folds = 10, n_repeats = 10, seed = 42){
   #==================================================================
@@ -198,11 +198,11 @@ beset_glm <- function(form, train_data, test_data = NULL, p_max = 10,
   #==================================================================
   # Create model frame and extract response name and vector
   #------------------------------------------------------------------
-  mf <- stats::model.frame(form, data = train_data, na.action = stats::na.omit)
+  mf <- stats::model.frame(form, data = data, na.action = stats::na.omit)
   if(!is.null(test_data)){
     test_data <- stats::model.frame(form, data = test_data, na.action = stats::na.omit)
   }
-  n_drop <- nrow(train_data) - nrow(mf)
+  n_drop <- nrow(data) - nrow(mf)
   if(n_drop > 0)
     warning(paste("Dropping", n_drop, "rows with missing data."),
             immediate. = TRUE)
@@ -213,7 +213,7 @@ beset_glm <- function(form, train_data, test_data = NULL, p_max = 10,
   #==================================================================
   # Screen for linear dependencies among predictors
   #------------------------------------------------------------------
-  mm <- stats::model.matrix(form, data = train_data)
+  mm <- stats::model.matrix(form, data = data)
   colinear_vars <- caret::findLinearCombos(mm[, 2:ncol(mm)])
   if(!is.null(colinear_vars$remove)){
     factor_idx <- which(sapply(mf, class) == "factor")
@@ -438,9 +438,9 @@ beset_glm <- function(form, train_data, test_data = NULL, p_max = 10,
 
 #' @export
 #' @rdname beset_glm
-beset_lm <- function(form, train_data, test_data = NULL, p_max = 10,
+beset_lm <- function(form, data, test_data = NULL, p_max = 10,
                      n_cores = 2, n_folds = 10, n_repeats = 10,  seed = 42){
-  beset_glm(form, train_data, test_data = test_data, p_max = p_max,
+  beset_glm(form, data, test_data = test_data, p_max = p_max,
             n_cores = n_cores, n_folds = n_folds, n_repeats = n_repeats,
             seed = seed)
 }

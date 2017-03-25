@@ -6,17 +6,17 @@
 \alias{beset_lm}
 \title{Best Subset Selection for Generalized Linear Models}
 \usage{
-beset_glm(form, train_data, test_data = NULL, p_max = 10,
-  family = "gaussian", link = NULL, ..., n_cores = 2, n_folds = 10,
-  n_repeats = 10, seed = 42)
+beset_glm(form, data, test_data = NULL, p_max = 10, family = "gaussian",
+  link = NULL, ..., n_cores = 2, n_folds = 10, n_repeats = 10,
+  seed = 42)
 
-beset_lm(form, train_data, test_data = NULL, p_max = 10, n_cores = 2,
+beset_lm(form, data, test_data = NULL, p_max = 10, n_cores = 2,
   n_folds = 10, n_repeats = 10, seed = 42)
 }
 \arguments{
 \item{form}{A model \code{\link[stats]{formula}}.}
 
-\item{train_data}{Data frame with the variables in \code{form} and the data
+\item{data}{Data frame with the variables in \code{form} and the data
 to be used for model fitting.}
 
 \item{test_data}{Optional data frame with the variables in \code{form} and
@@ -121,9 +121,9 @@ predicts the left-out fold).
 
 \code{beset_glm} uses \code{\link[caret]{createMultiFolds}} to randomly
 partition the data set into \code{n_folds} * \code{n_repeats} folds within
-strata (factor levels for factor outcomes percentile-based groups for numeric
-outcomes). This insures that the folds will be matched in terms of the
-outcome's frequency distribution. \code{beset_glm} also insures the
+strata (factor levels for factor outcomes, percentile-based groups for
+numeric outcomes). This insures that the folds will be matched in terms of
+the outcome's frequency distribution. \code{beset_glm} also insures the
 reproducibility of your analysis by requiring a \code{seed} to the random
 number generator as one of its arguments.
 }
