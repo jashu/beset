@@ -1,6 +1,6 @@
-#' \code{data_partition} Constructor
+#' "data_partition" Constructor
 #'
-#' Constructs an object of class {data_partition}.
+#' Constructs an object of class \code{data_partition}.
 #'
 #' A \code{data_partition} object is a list containing exactly two data frames
 #' (\code{train} and \code{test}) and a list detailing the name, class, and (if

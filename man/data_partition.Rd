@@ -2,7 +2,7 @@
 % Please edit documentation in R/data_partition.R
 \name{data_partition}
 \alias{data_partition}
-\title{\code{data_partition} Constructor}
+\title{"data_partition" Constructor}
 \usage{
 data_partition(train, test, y)
 }
@@ -15,7 +15,7 @@ data_partition(train, test, y)
 predicted}
 }
 \description{
-Constructs an object of class {data_partition}.
+Constructs an object of class \code{data_partition}.
 }
 \details{
 A \code{data_partition} object is a list containing exactly two data frames
