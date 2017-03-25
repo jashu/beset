@@ -10,6 +10,9 @@
 #' deviance, \code{"mae"} for mean absolute error, \code{"mce"} for mean cross
 #' entropy, \code{"mse"} for mean squared error, or \code{"r2"} for R-squared.
 #'
+#' @param se Logical flag indicating whether standard error bars should be
+#' plotted for cross-validation curves.
+#'
 #' @param ... Arguments to be passed to methods
 #'
 #' @name plot.beset

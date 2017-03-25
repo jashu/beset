@@ -26,6 +26,9 @@ deviance, \code{"mae"} for mean absolute error, \code{"mce"} for mean cross
 entropy, \code{"mse"} for mean squared error, or \code{"r2"} for R-squared.}
 
 \item{...}{Arguments to be passed to methods}
+
+\item{se}{Logical flag indicating whether standard error bars should be
+plotted for cross-validation curves.}
 }
 \description{
 Plot Methods for \code{beset} Objects
