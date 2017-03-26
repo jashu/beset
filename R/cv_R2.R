@@ -29,15 +29,30 @@ cv_r2 <- function(object, n_cores = 2, n_folds = 10, n_repeats = 10, seed = 42){
   fold_ids <- caret::createMultiFolds(y, k = n_folds, times = n_repeats)
   cl <- parallel::makeCluster(n_cores)
   r2 <- parallel::parSapply(cl, fold_ids, function(i, object){
+    form <- object$terms; fam <- object$family; link <- object$family$link
+    if(class(object)[1] == "zeroinfl"){
+      form <- object$terms$full
+      link <- object$link
+    }
+    dat <- object$model[i,]; wts <- object$weights[i]
+    if(is.null(wts)){
+      dat$wts <- rep(1, nrow(dat))
+    } else {
+      dat$wts <- wts
+    }
+    dist <- object$dist; ctrl <- object$control; method <- object$method
+    ctrst <- object$contrasts; theta <- object$theta
     fit <- switch(
       class(object)[1],
-      lm = stats::lm(object$terms, data = object$model[i,]),
-      glm = stats::glm(object$terms, data = object$model[i,],
-                family = object$family$family),
-      negbin = MASS::glm.nb(object$terms, data = object$model[i,]),
-      zeroinfl = pscl::zeroinfl(object$terms$full,
-                                data = object$model[i,],
-                                dist = object$dist)
+      lm = stats::lm(formula = form, data = dat, weights = wts,
+                     contrasts = ctrst),
+      glm = stats::glm(formula = form, family = fam, data = dat, weights = wts,
+                       control = ctrl, method = method, contrasts = ctrst),
+      negbin = glm_nb(formula = form, data = dat, weights = wts, control = ctrl,
+                      method = method, contrasts = ctrst, init.theta = theta,
+                      link = "log"),
+      zeroinfl = pscl::zeroinfl(formula = form, data = dat, weights = wts,
+                                dist = dist, link = link, control = ctrl)
     )
     stats <- try(predict_metrics(fit, test_data = object$model[-i,]),
                  silent = TRUE)
