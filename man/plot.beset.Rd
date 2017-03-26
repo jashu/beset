@@ -7,7 +7,7 @@
 \alias{plot.beset_zeroinfl}
 \title{Plot Methods for \code{beset} Objects}
 \usage{
-\method{plot}{beset_elnet}(x, type = "cv", metric = NULL, ...)
+\method{plot}{beset_elnet}(x, type = "cv", metric = NULL, se = TRUE, ...)
 
 \method{plot}{beset_glm}(x, metric = NULL, se = TRUE, ...)
 
@@ -25,10 +25,10 @@ or \code{"test"}.}
 deviance, \code{"mae"} for mean absolute error, \code{"mce"} for mean cross
 entropy, \code{"mse"} for mean squared error, or \code{"r2"} for R-squared.}
 
-\item{...}{Arguments to be passed to methods}
-
 \item{se}{Logical flag indicating whether standard error bars should be
 plotted for cross-validation curves.}
+
+\item{...}{Arguments to be passed to methods}
 }
 \description{
 Plot Methods for \code{beset} Objects

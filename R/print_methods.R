@@ -165,7 +165,7 @@ print.summary_beset_elnet <- function(x, ...){
   if(nrow(best_coef) > 1){
     print(best_coef, quote = FALSE)
     cat(paste("\nTrain-sample R-squared =", round(x$r2,2)))
-    if(!is.null(x$r2test)){
+    if(!is.null(x$r2_test)){
       cat(paste(", Test-sample R-squared =", round(x$r2_test, 2)))
     }
     cat("\n")

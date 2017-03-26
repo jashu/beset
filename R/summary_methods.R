@@ -35,29 +35,29 @@ summary.beset_elnet <- function(object, metric = "mce", oneSE = TRUE,
   if(is.na(metric)) stop("invalid 'metric' argument")
   best_metric <- switch(
     metric,
-    mce = min(object$stats$xval$mce, na.rm = T)[1],
-    mse = min(object$stats$xval$mse, na.rm = T)[1],
-    r2 = max(object$stats$xval$r2, na.rm = T)[1]
+    mce = min(object$stats$cv$mce, na.rm = T)[1],
+    mse = min(object$stats$cv$mse, na.rm = T)[1],
+    r2 = max(object$stats$cv$r2, na.rm = T)[1]
   )
   best_idx <- switch(
     metric,
-    mce = which.min(object$stats$xval$mce),
-    mse = which.min(object$stats$xval$mse),
-    r2 = which.max(object$stats$xval$r2)
+    mce = which.min(object$stats$cv$mce),
+    mse = which.min(object$stats$cv$mse),
+    r2 = which.max(object$stats$cv$r2)
   )
-  best_alpha <- object$stats$xval$alpha[best_idx]
-  best_lambda <- object$stats$xval$lambda[best_idx]
+  best_alpha <- object$stats$cv$alpha[best_idx]
+  best_lambda <- object$stats$cv$lambda[best_idx]
   if(oneSE){
     boundary <- switch(
       metric,
-      mce = best_metric + object$stats$xval$mce_SE[best_idx],
-      mse = best_metric + object$stats$xval$mse_SE[best_idx],
-      r2 = best_metric - object$stats$xval$r2_SE[best_idx])
+      mce = best_metric + object$stats$cv$mce_SE[best_idx],
+      mse = best_metric + object$stats$cv$mse_SE[best_idx],
+      r2 = best_metric - object$stats$cv$r2_SE[best_idx])
     best_1SE <- switch(
       metric,
-      mce = object$stats$xval[object$stats$xval$mce < boundary,],
-      mse = object$stats$xval[object$stats$xval$mse < boundary,],
-      r2 = object$stats$xval[object$stats$xval$r2 > boundary,]
+      mce = object$stats$cv[object$stats$cv$mce < boundary,],
+      mse = object$stats$cv[object$stats$cv$mse < boundary,],
+      r2 = object$stats$cv[object$stats$cv$r2 > boundary,]
     )
     best_alpha <- max(best_1SE$alpha)
     best_1SE <- dplyr::filter(best_1SE, alpha == best_alpha)
@@ -66,7 +66,7 @@ summary.beset_elnet <- function(object, metric = "mce", oneSE = TRUE,
                         object$stats$fit$lambda == best_lambda)
   }
   best_model <- object$model_fits[[as.character(best_alpha)]]
-  coefs <- stats::coef(best_model, s = best_lambda)
+  coefs <- glmnet::coef.glmnet(best_model, s = best_lambda)
   var_imp <- dplyr::data_frame(variable = rownames(coefs)[-1], stand.coef = 0)
   var_imp$stand.coef[coefs@i[-1]] <- coefs@x[-1]
   var_imp <- dplyr::arrange(var_imp, dplyr::desc(abs(stand.coef)))
@@ -74,8 +74,9 @@ summary.beset_elnet <- function(object, metric = "mce", oneSE = TRUE,
   r2_test <- object$stats$test$r2[best_idx]
   x <- object$model_params$x
   y <- object$model_params$y
+  if(is.factor(y)) y <- as.integer(y) - 1
   family <- object$model_params$family
-  cv_r2 <- sapply(object$xval_params$fold_ids, function(i){
+  cv_r2 <- sapply(object$cv_params$fold_ids, function(i){
     fit <- stats::update(best_model, x = x[i,], y = y[i], family = family,
                   alpha = best_alpha)
     y_hat <- stats::predict(fit, x[-i,], best_lambda, "response")
@@ -84,8 +85,8 @@ summary.beset_elnet <- function(object, metric = "mce", oneSE = TRUE,
   r2_boot <- boot::boot(cv_r2, function(x,i) mean(x[i]), 1000)
   boot_CI <- boot::boot.ci(r2_boot, type = "bca")
   r2_cv <- structure(
-    list(cv_r2 = mean(cv_r2, na.rm = TRUE), `95% CI` = boot_CI$bca[4:5],
-         r2 = cv_r2), class = "cv_r2")
+    list(cv_R2 = mean(cv_r2, na.rm = TRUE), `95% CI` = boot_CI$bca[4:5],
+         r2 = cv_r2), class = "cv_R2")
 
   structure(list(best = best_model, best_alpha = best_alpha,
                  best_lambda = best_lambda, var_imp = var_imp,

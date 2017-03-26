@@ -52,31 +52,32 @@
 #'
 #' @export
 
-beset_elnet <- function(form, train_data, test_data = NULL,
-                        family = "gaussian", alpha = c(.05, .5, .95),
+beset_elnet <- function(form, data, test_data = NULL,
+                        family = "gaussian", alpha = c(.01, .5, .99),
                         standard_coef = TRUE, ...,
                         n_folds = 10, n_repeats = 10,
                         seed = 42, n_cores = 2){
   #==================================================================
   # Create model frame and extract response name and vector
   #------------------------------------------------------------------
-  mf <- stats::model.frame(form, data = train_data, na.action = stats::na.omit)
+  mf <- stats::model.frame(form, data = data, na.action = stats::na.omit)
   if(!is.null(test_data)){
-    test_data <- stats::model.frame(form, data = test_data, na.action = stats::na.omit)
+    test_data <- stats::model.frame(form, data = test_data,
+                                    na.action = stats::na.omit)
   }
-  n_drop <- nrow(train_data) - nrow(mf)
+  n_drop <- nrow(data) - nrow(mf)
   if(n_drop > 0)
     warning(paste("Dropping", n_drop, "rows with missing data."),
             immediate. = TRUE)
-  if(standard_coef) mf <- dplyr::mutate_if(mf, is.numeric, scale)
   y <- mf[,1]
   if(grepl("binomial", family)) y <- as.factor(y)
+  if(standard_coef) mf <- dplyr::mutate_if(mf, is.numeric, scale)
   x <- stats::model.matrix(form, data = mf)[,-1]
 
   #======================================================================
   # Obtain fit statistics
   #----------------------------------------------------------------------
-  fits <- lapply(alpha, function(a){
+  fits <- lapply(alpha, function(a, ...){
     glmnet::glmnet(x, y, family, alpha = a, ...)
    })
   names(fits) <- alpha
@@ -86,14 +87,15 @@ beset_elnet <- function(form, train_data, test_data = NULL,
   fit_stats <- data.frame(alpha = unlist(alpha_seq),
                           lambda = unlist(lambda_seq))
   metrics <- mapply(function(fit, lambda){
-    y_hat <- stats::predict(fit, x, lambda, type = "response")
-    apply(y_hat, 2, function(x) predict_metrics_(y, x, family))
+    y_hats <- stats::predict(fit, x, lambda, type = "response")
+    y_obs <- if(is.factor(y)) as.integer(y) - 1 else y
+    apply(y_hats, 2, function(y_hat) predict_metrics_(y_obs, y_hat, family))
   }, fit = fits, lambda = lambda_seq)
-  fit_stats$MCE <- unlist(sapply(metrics, function(x)
+  fit_stats$mce <- unlist(sapply(metrics, function(x)
     sapply(x, function(s) s$mean_cross_entropy)))
-  fit_stats$MSE <- unlist(sapply(metrics, function(x)
+  fit_stats$mse <- unlist(sapply(metrics, function(x)
     sapply(x, function(s) s$mean_squared_error)))
-  fit_stats$R2 <- unlist(sapply(metrics, function(x)
+  fit_stats$r2 <- unlist(sapply(metrics, function(x)
     sapply(x, function(s) round(s$R_squared, 3))))
 
   #==================================================================
@@ -103,21 +105,22 @@ beset_elnet <- function(form, train_data, test_data = NULL,
   if(!is.null(test_data)){
     test_stats <- data.frame(alpha = unlist(alpha_seq),
                              lambda = unlist(lambda_seq))
+    y_test <- test_data[,1]
     if(standard_coef){
       test_data <- dplyr::mutate_if(test_data, is.numeric, scale)
     }
-    y_test <- test_data[,1]
     if(grepl("binomial", family)) y_test <- factor(y_test)
     x_test <- stats::model.matrix(form, data = test_data)[,-1]
     metrics <- mapply(function(fit, lambda){
       y_hats <- stats::predict(fit, x_test, lambda, type = "response")
-      apply(y_hats, 2, function(y_hat) predict_metrics_(y_test, y_hat, family))
+      y_obs <- if(is.factor(y_test)) as.integer(y_test) - 1 else y_test
+      apply(y_hats, 2, function(y_hat) predict_metrics_(y_obs, y_hat, family))
     }, fit = fits, lambda = lambda_seq)
-    test_stats$MCE <- unlist(sapply(metrics, function(x)
+    test_stats$mce <- unlist(sapply(metrics, function(x)
       sapply(x, function(s) s$mean_cross_entropy)))
-    test_stats$MSE <- unlist(sapply(metrics, function(x)
+    test_stats$mse <- unlist(sapply(metrics, function(x)
       sapply(x, function(s) s$mean_squared_error)))
-    test_stats$R2 <- unlist(sapply(metrics, function(x)
+    test_stats$r2 <- unlist(sapply(metrics, function(x)
       sapply(x, function(s) round(s$R_squared, 3))))
   }
 
@@ -130,12 +133,12 @@ beset_elnet <- function(form, train_data, test_data = NULL,
   alpha_list <- rep(alpha, each = n_folds * n_repeats)
   lambda_list <- rep(lambda_seq, each = n_folds * n_repeats)
   cl <- parallel::makeCluster(n_cores)
-  parallel::clusterExport(cl, "predict_metrics_")
   metrics <- parallel::clusterMap(
     cl, function(i, alpha, lambda, predictors, response, ...){
       fit <- glmnet::glmnet(x = predictors[i,], y = response[i], alpha = alpha,
                             ...)
       y <- response[-i]
+      if(is.factor(y)) y <- as.integer(y) - 1
       y_hat <- stats::predict(fit, predictors[-i,], lambda, "response")
       apply(y_hat, 2, function(x) predict_metrics_(y, x, "gaussian"))
       }, i = fold_list, alpha = alpha_list, lambda = lambda_list,
@@ -158,15 +161,15 @@ beset_elnet <- function(form, train_data, test_data = NULL,
   }
   cv_stats <- dplyr::group_by(cv_stats, alpha, lambda)
   cv_stats <- dplyr::summarize(cv_stats,
-                                 MCE_SE = get_se(MCE),
-                                 MSE_SE = get_se(MSE),
-                                 R2_SE = get_se(R2),
-                                 MCE = mean(MCE),
-                                 MSE = mean(MSE),
-                                 R2 = mean(R2))
+                                 mce_SE = get_se(MCE),
+                                 mse_SE = get_se(MSE),
+                                 r2_SE = get_se(R2),
+                                 mce = mean(MCE),
+                                 mse = mean(MSE),
+                                 r2 = mean(R2))
   cv_stats <- dplyr::ungroup(cv_stats)
   cv_stats <- dplyr::select(cv_stats, alpha, lambda,
-                              MCE, MCE_SE, MSE, MSE_SE, R2, R2_SE)
+                              mce, mce_SE, mse, mse_SE, r2, r2_SE)
   cv_stats <- dplyr::arrange(cv_stats, alpha, dplyr::desc(lambda))
 
   #======================================================================

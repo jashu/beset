@@ -22,10 +22,10 @@ NULL
 
 #' @export
 #' @rdname plot.beset
-plot.beset_elnet <- function(x, type = "cv", metric = NULL, ...){
-  # if(is.null(metric)){
-  #   metric <- if(x$best_aic$family$family == "gaussian") "mse" else "mce"
-  # }
+plot.beset_elnet <- function(x, type = "cv", metric = NULL, se = TRUE, ...){
+  if(is.null(metric)){
+    metric <- if(x$model_params$family == "gaussian") "mse" else "mce"
+  }
   metric <- tryCatch(match.arg(metric, c("mae", "mce", "mse", "r2")),
                      error = function(c){
                        c$message <- gsub("arg", "metric", c$message)
@@ -46,6 +46,7 @@ plot.beset_elnet <- function(x, type = "cv", metric = NULL, ...){
                     })
   )
   data$alpha <- factor(data$alpha)
+  data <- dplyr::filter(data, lambda > 0)
   if(type == "cv"){
     names(data)[3:4] <- c("error", "se")
     data$cv_lower <- with(data, error - se)
@@ -65,7 +66,7 @@ plot.beset_elnet <- function(x, type = "cv", metric = NULL, ...){
   p <- ggplot(data = data, aes(x = lambda, y = error, color = alpha)) +
     theme_bw() + title + xlab("Regularization parameter") + y_lab +
     scale_x_log10() + geom_line() + labs(color = "Mixing parameter")
-  if(type == "cv"){
+  if(type == "cv" && se){
     p <- p +
       geom_errorbar(aes(x = lambda, ymin = cv_lower, ymax = cv_upper),
                     width = 0.1)

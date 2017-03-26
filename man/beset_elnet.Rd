@@ -4,14 +4,14 @@
 \alias{beset_elnet}
 \title{Beset GLM with Elasticnet Regularization}
 \usage{
-beset_elnet(form, train_data, test_data = NULL, family = "gaussian",
-  alpha = c(0.05, 0.5, 0.95), standard_coef = TRUE, ..., n_folds = 10,
+beset_elnet(form, data, test_data = NULL, family = "gaussian",
+  alpha = c(0.01, 0.5, 0.99), standard_coef = TRUE, ..., n_folds = 10,
   n_repeats = 10, seed = 42, n_cores = 2)
 }
 \arguments{
 \item{form}{A model \code{\link[stats]{formula}}.}
 
-\item{train_data}{Data frame with the variables in \code{form} and the data
+\item{data}{Data frame with the variables in \code{form} and the data
 to be used for model fitting.}
 
 \item{test_data}{Optional data frame with the variables in \code{form} and
