@@ -7,7 +7,7 @@
 #'
 #' @param form A model \code{\link[stats]{formula}}.
 #'
-#' @param train_data Data frame with the variables in \code{form} and the data
+#' @param data Data frame with the variables in \code{form} and the data
 #' to be used for model fitting.
 #'
 #' @param test_data Optional data frame with the variables in \code{form} and
