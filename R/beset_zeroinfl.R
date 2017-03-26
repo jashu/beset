@@ -323,13 +323,11 @@ beset_zeroinfl <- function(form, data, test_data = NULL,
   #------------------------------------------------------------------
   cl <- parallel::makeCluster(n_cores)
   parallel::clusterExport(cl, c("mf", "family", "link", "test_data",
-                                "predict_metrics"#, ...
-                                ), envir=environment())
+                                "predict_metrics", ...), envir=environment())
   CE <- parallel::parLapplyLB(cl, zero_form_list, function(form){
     fit <- try(suppressWarnings(
       pscl::zeroinfl(stats::formula(form), data = mf, dist = family,
-                     link = link#, ...
-                     )),
+                     link = link, ...)),
       silent = TRUE)
     aic <- dev <- mae <- mce <- mse <- r2 <- NA_real_
     if(class(fit) == "zeroinfl"){
@@ -366,8 +364,7 @@ beset_zeroinfl <- function(form, data, test_data = NULL,
   CE <- parallel::parLapplyLB(cl, count_form_list, function(form){
     fit <- try(suppressWarnings(
       pscl::zeroinfl(stats::formula(form), data = mf, dist = family,
-                     link = link#, ...
-                     )),
+                     link = link, ...)),
       silent = TRUE)
     aic <- dev <- mae <- mce <- mse <- r2 <- NA_real_
     if(class(fit) == "zeroinfl"){
@@ -413,8 +410,7 @@ beset_zeroinfl <- function(form, data, test_data = NULL,
   CE <- parallel::parLapplyLB(cl, fit_stats$form, function(form){
     fit <- try(suppressWarnings(
       pscl::zeroinfl(stats::formula(form), data = mf, dist = family,
-                     link = link#, ...
-                     )),
+                     link = link, ...)),
       silent = TRUE)
     aic <- dev <- mae <- mce <- mse <- r2 <- NA_real_
     if(class(fit) == "zeroinfl"){
@@ -467,8 +463,7 @@ beset_zeroinfl <- function(form, data, test_data = NULL,
     lapply(form_list, function(form){
       fit <- try(suppressWarnings(
         pscl::zeroinfl(stats::formula(form), data = mf[i,], dist = family,
-                       link = link#, ...
-                       )),
+                       link = link, ...)),
         silent = TRUE)
       if(class(fit) == "zeroinfl"){
         predict_metrics(fit, mf[-i,])
@@ -510,8 +505,7 @@ beset_zeroinfl <- function(form, data, test_data = NULL,
     metrics <- lapply(cv_stats$form, function(form){
       fit <- try(suppressWarnings(
         pscl::zeroinfl(stats::formula(form), data = mf, dist = family,
-                       link = link#, ...
-                       )), silent = TRUE)
+                       link = link, ...)), silent = TRUE)
       if(class(fit) == "zeroinfl"){
         predict_metrics(fit, test_data)
       } else {
