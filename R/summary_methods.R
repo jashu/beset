@@ -6,8 +6,10 @@
 #' \code{"beset_zeroinfl"}, or \code{"beset_elnet"}
 #'
 #' @param metric Prediction metric on which to based model selection. Can be one
-#' of "mce" (mean cross entropy), "mse" (mean squared error), or "r2"
-#' R-squared).
+#' of \code{"aic"} (Akaike information criterion), \code{"mae"} (mean absolute
+#' error), \code{"mce"} (mean cross entropy), \code{"mse"} (mean squared error),
+#' or \code{"r2"} (R-squared). If not specified, \code{"mse"} will be used for
+#' Gaussian-family models and \code{"mce"} will be used for all other families.
 #'
 #' @param n_pred Optional: number of predictors that the best model should
 #' contain
@@ -119,13 +121,6 @@ summary.beset_glm <- function(object, metric = NULL, n_pred = NULL,
     }
   }
   if(metric != "aic" && is.null(n_pred)){
-    best_metric <- switch(
-      metric,
-      mae = min(object$stats$cv$mae, na.rm = T)[1],
-      mce = min(object$stats$cv$mce, na.rm = T)[1],
-      mse = min(object$stats$cv$mse, na.rm = T)[1],
-      r2 = max(object$stats$cv$r2, na.rm = T)[1]
-    )
     best_idx <- switch(
       metric,
       mae = which.min(object$stats$cv$mae),
@@ -134,6 +129,13 @@ summary.beset_glm <- function(object, metric = NULL, n_pred = NULL,
       r2 = which.max(object$stats$cv$r2)
     )
     best_form <- object$stats$cv$form[best_idx]
+    best_metric <- switch(
+      metric,
+      mae = object$stats$cv$mae[best_idx],
+      mce = object$stats$cv$mce[best_idx],
+      mse = object$stats$cv$mse[best_idx],
+      r2 = object$stats$cv$r2[best_idx]
+    )
     if(oneSE){
       boundary <- switch(
         metric,
