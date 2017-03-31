@@ -169,10 +169,12 @@ summary.beset_glm <- function(object, metric = NULL, n_pred = NULL,
                    args = c(list(object = best_model, n_cores = n_cores),
                             object$cv_params))
   near_equals <- dplyr::filter(object$stats$fit, n_pred == p)
+  near_equals <- dplyr::arrange(near_equals, dplyr::desc(r2))
   best_metric <- max(near_equals$r2, na.rm = T)[1]
   boundary <- c(best_metric - .01)
   near_best <- near_equals$form[near_equals$r2 > boundary]
   near_best <- near_best[near_best != best_form]
+
 
   structure(list(best = best, best_form = best_form, near_best = near_best,
                  r2 = r2, r2_cv = r2_cv, r2_test = r2_test),
