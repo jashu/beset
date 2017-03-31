@@ -22,8 +22,10 @@
 \code{"beset_zeroinfl"}, or \code{"beset_elnet"}}
 
 \item{metric}{Prediction metric on which to based model selection. Can be one
-of "mce" (mean cross entropy), "mse" (mean squared error), or "r2"
-R-squared).}
+of \code{"aic"} (Akaike information criterion), \code{"mae"} (mean absolute
+error), \code{"mce"} (mean cross entropy), \code{"mse"} (mean squared error),
+or \code{"r2"} (R-squared). If not specified, \code{"mse"} will be used for
+Gaussian-family models and \code{"mce"} will be used for all other families.}
 
 \item{oneSE}{Logical flag indicating whether or not the one-standard-error
 rule should be applied when determining the best model from the model metric}
