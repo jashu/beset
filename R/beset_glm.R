@@ -164,6 +164,7 @@ NULL
 beset_glm <- function(form, data, test_data = NULL, p_max = 10,
                       family = "gaussian", link = NULL,  ...,
                       n_cores = 2, n_folds = 10, n_repeats = 10, seed = 42){
+
   #==================================================================
   # Check family argument and set up link function if specified
   #------------------------------------------------------------------
@@ -200,8 +201,14 @@ beset_glm <- function(form, data, test_data = NULL, p_max = 10,
   # Create model frame and extract response name and vector
   #------------------------------------------------------------------
   mf <- stats::model.frame(form, data = data, na.action = stats::na.omit)
+  # Correct non-standard column names
+  names(mf) <- make.names(names(mf))
   if(!is.null(test_data)){
-    test_data <- stats::model.frame(form, data = test_data, na.action = stats::na.omit)
+    test_data <- stats::model.frame(form, data = test_data,
+                                    na.action = stats::na.omit)
+    names(test_data) <- make.names(names(test_data))
+    if(!all(names(mf) %in% names(test_data)))
+      stop("'test_data' must contain same variables as 'data'")
   }
   n_drop <- nrow(data) - nrow(mf)
   if(n_drop > 0)
