@@ -1,0 +1,385 @@
+---
+title: "Best subset selection"
+author: "Jason Shumake"
+date: "`r Sys.Date()`"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Vignette Title}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, echo = FALSE}
+suppressPackageStartupMessages(library(beset))
+suppressPackageStartupMessages(library(ggplot2))
+```
+
+# Linear Regression
+
+To illustrate best subset selection with linear models, we will use the [Swiss Fertility and Socioeconomic Indicators (1888) Data](https://stat.ethz.ch/R-manual/R-devel/library/datasets/html/swiss.html) from the `datasets` package, adding 5 random noise variables:
+
+```{r}
+data("swiss", package = "datasets")
+train_data <- swiss
+set.seed(42)
+train_data <- cbind(train_data, 
+                    matrix(replicate(5, rnorm(nrow(train_data))), ncol = 5))
+names(train_data)[7:11] <- paste0("noise", names(train_data)[7:11])
+```
+
+To perform best subset selection with linear models, use `beset_lm` (or equivalently `beset_glm` with default `family = "gaussian"` and `link = "identity"` args). Only 2 arguments are required: a model formula and training data:
+
+```{r, eval = FALSE}
+mod <- beset_lm(Fertility ~ ., train_data)
+```
+
+There are several optional arguments that can be used to provide test data, set a cap on the number of predictors, and control parallel processing and cross-validation. The below function call is equivalent to the one above, but makes the default parameters for these optional arguments explicit:
+
+```{r, eval = FALSE}
+mod <- beset_lm(Fertility ~ ., train_data, test_data = NULL, p_max = 10,
+                n_cores = 2, n_folds = 10, n_repeats = 10, seed = 42)
+```
+
+This is also equivalent to 
+
+```{r, eval = FALSE}
+mod <- beset_glm(Fertility ~ ., train_data)
+```
+
+with the following default parameters:
+
+```{r}
+mod <- beset_glm(Fertility ~ ., train_data, test_data = NULL, p_max = 10,
+                 family = "gaussian", link = "identity", n_cores = 2, 
+                 n_folds = 10, n_repeats = 10, seed = 42)
+```
+
+We will explore the optional parameters in greater detail later on, but I suggest you go ahead and increase the `n_cores` parameter to the number of available CPUs on your machine for this and subsequent function calls. `n_cores` sets the limit on the number of processes that can run in parallel, so increasing it will speed up run time (provided the number you provide does not exceed the number of processors that are actually available).
+
+## Plotting cross-validation error curves
+
+The plot method for `beset_lm` and `beset_glm` allows one to plot any of the following prediction metrics: mean absolute error (`"mae"`), mean cross entropy (`"mce"`), mean squared error (`"mse"`), or $R^2$ (`"r2"`)). For linear models (or GLMs that use a normal error distribution), mean squared error (`"mse"`) will be plotted by default if no metric is specified:
+
+```{r}
+plot(mod)
+```
+
+In the above plot, `Train` refers to how well the model fits the training data. For linear models, train `MSE` is guaranteed to always decrease with the addition of more predictors, even if the predictors being added are completely useless (as we know to be the case here for at least the 5 random noise predictors). This graph shows a typical pattern in which the training error continues to decrease, while the cross-validation error (`CV`, plotted in red, which estimates how well the model will predict new data) decreases to a point and then begins to level off or increase with the addition of more predictors. The `CV` curves are plotted with standard errors based on the variance in the errors when predicting the left-out folds. A plot of $R^2$ (`"r2"`) shows the opposite pattern: `Train` $R^2$ will continuously increase with the addition of more predictors, while `CV` $R^2$ will increase to a point and then level off or begin decreasing:
+
+```{r}
+plot(mod, "r2")
+```
+
+Note that unlike Train $R^2$, which is bounded between 0 and 1, it is possible for CV $R^2$ to be negative, as is the case when the number of predictors is 0, which corresponds to the null, or intercept-only, model, which is simply the mean of the train sample. Given that the train sample's mean cannot predict the test sample better than the test sample's own mean, the predictive $R^2$ for the null model will almost always be negative and can never be positive. More generally, the predictive $R^2$ will be negative whenever a model is bad, i.e., instead of reducing uncertainty, the model adds to it. This can also happen with non-null models if they include too many useless predictors. Thus, the CV statistic leads to a more meaningful criterion for a model's real-world "significance": if the 95% confidence interval of the cross-validated $R^2$ includes 0, then the model offers no predictive utility.
+
+## Summarizing the best model
+
+Once the `beset_lm` object has been constructed, it can be queried with the
+summary method to return the best model conditioned on specific criteria. By default, `summary` will return the model with the smallest number of parameters that is within one standard error of the model with the lowest cross-validation error (the "1-SE rule").
+
+```{r, eval = FALSE}
+summary(mod)
+```
+
+is equivalent to
+
+```{r}
+summary(mod, metric = "mse", n_pred = NULL, oneSE = TRUE, n_cores = 2)
+```
+
+This suggests that the best model for predicting fertility is a 4-predictor model that includes percent education beyond primary school for draftees (`Education`), percent ‘catholic’ (`Catholic`), live births who live less than 1 year (`Infant.Mortality`), and percent of males involved in agriculture as occupation (`Agriculture`).
+
+To turn off the 1-SE rule and obtain the model with the absolute best cross-validation performance, set `oneSE` to `FALSE`:
+
+```{r}
+summary(mod, oneSE = FALSE)
+```
+
+Note that the model that achieves the absolute best cross-validation error is a 5-predictor model, but the predictor that is added is one of the random noise variables! This underscores why the 1-SE rule is a good idea, particularly for small sample sizes.
+
+## Manually specifying number of predictors
+
+After inspecting the cross-validation curves, one may sometimes conclude that the best subset should be even more conservative than what the 1SE rule would indicate, or somewhere in between the 1SE model and the absolute minimum of the curve. For example, one might decide that, although the MSE for the 3-predictor model lies just outside 1 standard error of the 5-predictor model, the reduction in prediction error past 3 predictors is negligible. In this case, one can obtain the best model by specifying the number of desired predictors with the `n_pred` parameter: 
+
+```{r}
+summary(mod, n_pred = 3)
+```
+
+This shows that the best 3-predictor model is `Education`, `Catholic`, and `Infant.Mortaility`. Notably the cross-validated $R^2$ is essentially the same between the 3- and 4- predictor models. Indeed, if one selects the best model based on maximizing $R^2$ (with the 1-SE rule) rather than minimizing MSE, one obtains the same 3-predictor model:
+
+```{r}
+summary(mod, metric = "r2")
+```
+
+## Validation using an independent test set
+
+`beset_lm` and `beset_glm` also accept a `test_data` frame, which, if provided, will be used to calculate prediction error on an independent set. Given that cross-validation error is used to select the best model, it may provide a somewhat biased estimate of the true test error of the model that is selected This bias should be mitigated by using the 1SE rule, but, if you have a large data set, you may wish to set aside a portion of your data to serve as an additional estimate of prediction error that is truly independent of both the training and selection procedures.
+
+To illustrate the construction and use of `test_data`, we will use the ["Housing Values in Suburbs of Boston"](https://stat.ethz.ch/R-manual/R-devel/library/MASS/html/Boston.html) data set from the `MASS` package.
+
+```{r}
+data("Boston", package = "MASS")
+```
+
+Use `beset`'s **`partition`** function to easily create test/train splits. In the following examples, `y` is the (unquoted) name of the response variable on which to stratify the randomization, and `seed` is passed to the random number generator to enforce reproducibility. `p` is the proportion of data that should be allocated to the training set. I have created three partition objects to illustrate the effect of increasing training sample size (and decreasing test sample size) on best subset selection: a 10/90, a 30/70, and a 50/50 train/test split. 
+
+```{r}
+Boston.1 <- partition(data = Boston, y = medv, p = 0.1, seed = 42)
+Boston.3 <- partition(data = Boston, y = medv, p = 0.3, seed = 42)
+Boston.5 <- partition(data = Boston, y = medv, p = 0.5, seed = 42)
+```
+
+The train set is then referenced by the name assigned to the partition object followed by `$train`. The test set is likewise referenced with `$test`.  So, a basic call to `beset_lm` would be as follows:
+
+```{r}
+mod.1 <- beset_lm(medv ~ ., Boston.1$train, Boston.1$test)
+mod.3 <- beset_lm(medv ~ ., Boston.3$train, Boston.3$test)
+mod.5 <- beset_lm(medv ~ ., Boston.5$train, Boston.5$test)
+```
+
+There are 13 predictors of housing prices in the `Boston` data set. By default, `beset` limits the size of models to 10 predictors. So, if you wanted to consider a model that uses all 13 predictors, you would need to increase the `p_max` value as in the following example:
+
+```{r, eval = FALSE}
+mod.5 <- beset_lm(medv ~ ., Boston.5$train, Boston.5$test, p_max = 13)
+```
+
+(But note that compute time for best subset selection scales at $2^p$, so beware of setting this value too high.)
+
+Now we can plot prediction error curves for each data set. Note that you can append the plot commands with additional `ggplot` syntax. In this example, I will add a meaningful title to each plot:
+
+```{r}
+plot(mod.1) + ggtitle("Train sample = 52, Test sample = 454")
+plot(mod.3) + ggtitle("Train sample = 154, Test sample = 352")
+plot(mod.5) + ggtitle("Train sample = 254, Test sample = 252")
+```
+
+Note that with smaller training sample sizes, the discrepancy between the train and test errors grows wider; but, when the sample size is much, much larger than the number of parameters in the model, the train and test errors closely match. And note that, even with the smallest sample size, the cross-validation error from resampling the training set provides a good estimate of the test error.
+
+Examining the summary of the model with the smallest training sample (N = 52) illustrates two new features:
+
+```{r}
+summary(mod.1)
+```
+
+1. In addition to the best model (a 5-predictor model that includes `lstat`, `dis`, `zn`, `ptratio`, and `black`), note the appearance of two other 5-predictor models that `beset` has identified as `Nearly Equivalent Models`, defined as models with less than a 0.01 difference in the fraction of deviance explained. For example, the first model in the list is identical to the best model, except that it exchanges `age` for `black`. However, it appears that all of the best models include `lstat`, `dis`, and `zn`.
+
+2. Note the appearance of a "Test-sample R squared" next to the "Train-sample R-squared". In this case, the cross-validated $R^2$ underestimates the test-sample $R^2$ a bit (but the 95% confidence interval contains it--barely), but it is closer than the train-sample $R^2$, which overestimates it.
+
+Also note that increased sample size buys one the ability to fit more complicated models without overfitting, as we can also see by extracting the best model based on the largest training sample (N = 254):
+
+```{r}
+summary(mod.5)
+```
+
+This yields an 8-predictor model with multiple near-equivalent models, suggesting that many of these variables are likely highly correlated and thus their selection is largely arbitrary, with many different combinations capable of achieving comparable predictions. 
+
+And note that with the larger sample size there is a near convergence for the train, test, and CV estimates of $R^2$.
+
+# Binary classification
+
+To illustrate how to apply `beset_glm` to binary classification with logistic regression, we will use the [Biopsy Data on Breast Cancer Patients](https://stat.ethz.ch/R-manual/R-devel/library/MASS/html/biopsy.html) data from the `MASS` package, omitting the `ID` variable.
+
+```{r}
+data("biopsy", package = "MASS")
+biopsy <- biopsy[,-1]
+```
+
+Here we will set up a partition with 75% training / 25% test data (the default split if `p` is omitted).
+
+```{r}
+biopsy <- partition(data = biopsy, y = class)
+```
+
+The syntax for fitting a logistic model with `beset_glm` is much the same as you would use with `glm`:
+
+```{r}
+mod <- beset_glm(class ~ ., biopsy$train, biopsy$test, family = "binomial")
+```
+
+Note that `beset` issues a warning that 10 rows with missing data are being dropped. As with `lm` and `glm`, missing values are not allowed and listwise deletion of missing values is performed, but `beset` does you the courtesy of letting you know that this is happening.
+
+```{r}
+summary(mod)
+```
+
+`beset_glm` identifies the best model as having five predictors: 
+
+1. `V1`: clump thickness
+2. `V3`: uniformity of cell shape
+3. `V4`: marginal adhesion
+4. `V6`: bare nuclei
+5. `V7`: bland chromatin
+
+Seven additional models were identified as nearly equivalent. All of them include clump thickness and bare nuclei, but all of the predictors in the data frame appear at least once with the exception of single epithelia cell size, which is never selected.
+
+Note one key difference between `glm` and `beset_glm` syntax is that the `family` argument must be passed as a string, not as a function call. For example, this will not work:
+
+```{r, eval = FALSE}
+# Incorrect syntax
+beset_glm(class ~ ., biopsy$train, biopsy$test,
+          family = binomial("probit"))
+```
+
+If you want to use a non-default link function (e.g., `"probit"`), this will also be passed as a string via a separate `link` parameter:
+
+```{r, eval = FALSE}
+# Correct syntax
+beset_glm(class ~ ., biopsy$train, biopsy$test,
+          family = "binomial", link = "probit")
+```
+
+For logistic models (and any model that uses a non-Gaussian error distribution), mean cross entropy `mce` is plotted by default:
+
+```{r}
+plot(mod)
+```
+
+For binomial classification, mean cross entropy is also known as "log-loss". Given that the plot objects returned by `beset` are `ggplot` objects, you can modify any plot aesthetic by appending `ggplot` commands. For example, we can change the y-axis label of the above plot to read "log-loss" instead:
+
+```{r}
+plot(mod) + ylab("Log-loss")
+```
+
+Ordinary $R^2$ can show undesirable properties when applied to GLMs with non-normal error distributions, such as the training $R^2$ not uniformly increasing as more predictors are added. However, `beset` calculates the deviance-based $R_D^2$, which can be reliably used with all of the model families it supports to indicate the fraction of uncertainty in the outcome that the model is explaining. This is labeled explicitly when you ask for a plot of `"r2"`, but the $R^2$s that appear in the summary output are calculated in the same way. See the help file for `beset`'s `r2d` function for more info.
+
+```{r}
+plot(mod, metric = "r2")
+```
+
+# Count data
+
+All of the remaining examples will use the [article production by graduate students in biochemistry Ph.D. programs](https://www.rdocumentation.org/packages/pscl/versions/1.4.9/topics/bioChemists) data from the `pscl` package. Here is the plot of the outcome variable we wish to predict, `art`, which is the number of articles produced during the last 3 years of the Ph.D. program.
+
+```{r}
+data("bioChemists", package = "pscl")
+qplot(art, data = bioChemists, binwidth = 1) + theme_bw()
+```
+
+Given that the response variable follows a count distribution, linear models, which assume that prediction errors are normally distributed, cannot hope to fit the data very well. After creating a train/test partition as before, the first option one might consider is a **Poisson regression**, which can be performed as follows:
+
+```{r}
+bioChemists <- partition(bioChemists, art)
+mod <- beset_glm(art ~ ., bioChemists$train, bioChemists$test,
+                 family = "poisson")
+summary(mod)
+```
+
+This suggests a two predictor model is best: male gender (or, nearly equivalent, having children under the age of 5) + a greater number of publications by the Ph.D. mentor predict a greater number of publications by the student. 
+
+Of course, the Poisson distribution, which has a variance equal to its mean, does not describe these data very well either. The publication counts show too much *overdispersion*. A potentially better way to fit the data is with a **negative binomial regression**, which `beset_glm` will perform if `family` is set to `"negbin"`. Note that this is not a family supported by the `glm` function in R; rather, `beset_glm` calls a modified version of the `glm.nb` function from the `MASS` package to fit an extra parameter called *theta* to model overdispersion.
+
+```{r}
+mod <- beset_glm(art ~ ., bioChemists$train, bioChemists$test,
+                 family = "negbin")
+summary(mod)
+```
+
+This also chooses the same two predictor model, but suggests that a number of predictors (prestige of the department, marital status, and number of young children) can yield more or less equivalent predictions when combined with mentor publications. The AIC is a small improvement over the Poisson model.
+
+```{r}
+plot(mod, metric = "r2") + 
+  ggtitle("Cross-validated subsets for negative binomial regression")
+```
+
+## `beset_zeroinfl`
+
+The counts of publications by graduate students have an additional feature that none of the models so far have addressed: in addition to being an overdispersed count distribution, they also show *zero inflation*, i.e., more zeros than would be expected based on either a Poisson or negative binomial distribution. (This is of course why this data set is included in the `pscl` package, which provides model-fitting functions that address this issue.)
+
+`beset_zeroinfl` implements a pseudo-best-subsets algorithm for finding the best predictors for zero-inflated regression models. It is "pseudo" because zero-inflation models actually contain two models: one that describes the process that generates zeros and one that describes the process that generates counts. Each model can use any combination of predictors, which amounts to $(2^p)^2$, which renders a breadth-firth search impractical as one moves beyond 5 predictors. Instead, `best_zeroinfl` performs an exhaustive search for *each* of the two components in the model, identifying the best model for each number of predictors for each component; but it only searches over the combinations of these best component models, rather than all possible combinations of component models. Thus it will run in $2(2^p) + p^2$ time, which scales similarly to regular best subsets. 
+
+## Zero-inflated Poisson regression
+
+Here is the simplest function call for running best subsets on a zero-inflated Poisson (ZIP) model:
+
+```{r}
+mod <- beset_zeroinfl(art ~ ., bioChemists$train, bioChemists$test)
+```
+
+The below function call is equivalent to the one above, but with the default parameters made explicit:
+
+```{r, eval = FALSE}
+mod <- beset_zeroinfl(art ~ ., bioChemists$train, bioChemists$test, 
+                      family = "poisson", link = "logit", p_count_max = 10,
+                      p_zero_max = 10, n_cores = 2, n_folds = 10, 
+                      n_repeats = 10, seed = 42)
+```
+
+Once the `beset_zeroinfl` object has been constructed, it can be queried with the same summary method that was documented for `beset_glm` objects. The default method here likewise returns the best model within one standard error of the minimum cross-validation error using the mean cross entropy metric.
+
+```{r}
+summary(mod)
+```
+
+This suggests a 2-predictor model of the count process (gender + mentor publications) and an intercept-only model to account for zero inflation, or alternatively, a 1-predictor model (mentor publications) for both the count and zero-inflation models. Note the $R^2$s and the AIC have been further improved.
+
+To obtain the best model according to AIC (the Akaike Information Criterion) as opposed to cross-validation, change the `metric` argument to `"aic"`:
+
+```{r}
+summary(mod, metric = "aic")
+```
+
+This suggests the best model is a 3-predictor model of the count process (gender + mentor pubs + number of children) and a 1-predictor model of zero inflation, which is the mentor's publication record. Or alternatively, one can use both gender and mentor publications to predict both the zero inflation and counts.
+
+To turn off the 1SE rule and obtain the model with the absolute best cross-validation performance, set `oneSE` to `FALSE`:
+
+```{r}
+summary(mod, oneSE = FALSE)
+```
+
+This yields the same result as the best AIC model. If we want to obtain the summary stats for the best model that uses 2 predictors for both model components, we can specify this as we did for `beset_glm`, except here you must specify a separate number for the zero component and the count component:
+
+```{r}
+summary(mod, n_count_pred = 2, n_zero_pred = 2)
+```
+
+If you only specify either `n_count_pred` or `n_zero_pred` but not both, your request will be ignored.
+
+## Plotting error curves
+
+The plot method for `beset_zeroinfl` is similar to that for `beset_glm`, but here one must also select the `type` of error that one wants to plot (`train`, `cv`, or `test`) given that the color coding of different curves will be used to distinguish the number of zero predictors. First we will plot the training error:
+
+```{r}
+plot(mod, type = "train")
+```
+
+Note that unlike the above plot of cross entropy, the following plot of train MSE will not capture the improved fit as predictors are added to the zero-component model; in fact, the model with no predictors of the zero component actually shows the lowest mean-square error:
+
+```{r}
+plot(mod, type = "train", metric = "mse")
+```
+
+Of course the most important thing to plot is the cross-validation error:
+
+```{r}
+plot(mod, type = "cv", metric = "r2")
+```
+
+Note that here the 0-predictors model does not have a negative $R_D^2$ as it has up until this point. This is because the null model used as a reference for the zero-inflated Poisson model is a Poisson model without zero inflation, i.e., a model with one parameter, which is the sample mean. Whereas the "0" predictors model in fact contains two parameters: an intercept for the Poisson count model plus an intercept for the zero-inflation model. Thus, the fact that the $R_D^2$ for the 0-predictors model is positive can be interpreted as saying that a model that attempts to account for zero inflation (even with just an intercept) reduces more uncertainty when making predictions than a model that ignores zero inflation.
+
+To see the above curve without error bars, you can turn them off by setting `se = FALSE`:
+
+```{r}
+plot(mod, type = "cv", metric = "r2", se = FALSE)
+```
+
+## Zero-inflated negative binomial (ZINB)
+
+Finally, we can also fit a ZINB model, which will account for both overdispersion AND zero inflation. In this example, I will also illustrate how to restrict the maximum number of predictors for each component of the model using the `p_count_max` and `p_zero_max` arguments. In this case, I will set the count component to use no more than 3 predictors and the zero component to use no more than 2 predictor:
+
+```{r}
+mod <- beset_zeroinfl(art ~ ., bioChemists$train, bioChemists$test,
+                      family = "negbin", p_count_max = 3, p_zero_max = 2)
+summary(mod)
+```
+
+This suggests a two-predictor model (gender and mentor publication counts) for either the count or zero components, with just the mentor publications for the other component. 
+
+```{r}
+plot(mod, type = "cv", metric = "r2")
+```
+
+For ZINB regression, the null model used for comparison is a negative binomial regression without zero inflation, which contains 2 parameters: the mean and dispersion (theta) of the count distribution. Whereas the "0" predictors model here contains 3 parameters: the previous 2 parameters plus an intercept for the zero inflation model. Thus, the fact that the $R_D^2$ for the 0-predictors model is negative can be interpreted as saying that a model that attempts to account for zero inflation with just an intercept does not improve upon a model that ignores zero inflation, provided that it contains a dispersion parameter.
+
+```{r}
+plot(mod, type = "test", metric = "r2")
+```
