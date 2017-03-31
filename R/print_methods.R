@@ -28,7 +28,18 @@ print.summary_beset_glm <- function(x,
   cat("\n=======================================================",
       "\nBest Model:\n ", object$best_form, "\n")
   if(length(object$near_best) > 0){
-    cat("\nNearly Equivalent Models:", object$near_best, sep = "\n  ")
+    if(length(object$near_best) == 1){
+      cat("\nNearly Equivalent Model:\n  ")
+    } else {
+      cat("\n", length(object$near_best), " Nearly Equivalent Models:\n  ",
+          sep = "")
+    }
+    if(length(object$near_best) < 10){
+      cat(object$near_best, sep = "\n  ")
+    } else {
+      cat(object$near_best[1:5], sep = "\n  ")
+      cat("  ...\n   +", length(object$near_best) - 5, "more\n  ...\n")
+    }
   }
   x <- object$best
   cat("\nDeviance Residuals: \n")
