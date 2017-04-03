@@ -1,4 +1,4 @@
-## ------------------------------------------------------------------------
+## ---- echo = FALSE-------------------------------------------------------
 suppressPackageStartupMessages(library(beset))
 suppressPackageStartupMessages(library(ggplot2))
 
@@ -25,10 +25,10 @@ mod <- beset_glm(Fertility ~ ., train_data, test_data = NULL, p_max = 10,
                  family = "gaussian", link = "identity", n_cores = 2, 
                  n_folds = 10, n_repeats = 10, seed = 42)
 
-## ------------------------------------------------------------------------
+## ---- fig.height=4, fig.width=5------------------------------------------
 plot(mod)
 
-## ------------------------------------------------------------------------
+## ---- fig.height=4, fig.width=5------------------------------------------
 plot(mod, "r2")
 
 ## ---- eval = FALSE-------------------------------------------------------
@@ -62,7 +62,7 @@ mod.5 <- beset_lm(medv ~ ., Boston.5$train, Boston.5$test)
 ## ---- eval = FALSE-------------------------------------------------------
 #  mod.5 <- beset_lm(medv ~ ., Boston.5$train, Boston.5$test, p_max = 13)
 
-## ------------------------------------------------------------------------
+## ---- fig.height=4, fig.width=5------------------------------------------
 plot(mod.1) + ggtitle("Train sample = 52, Test sample = 454")
 plot(mod.3) + ggtitle("Train sample = 154, Test sample = 352")
 plot(mod.5) + ggtitle("Train sample = 254, Test sample = 252")
@@ -96,13 +96,13 @@ summary(mod)
 #  beset_glm(class ~ ., biopsy$train, biopsy$test,
 #            family = "binomial", link = "probit")
 
-## ------------------------------------------------------------------------
+## ---- fig.height=4, fig.width=5------------------------------------------
 plot(mod)
 
-## ------------------------------------------------------------------------
+## ---- fig.height=4, fig.width=5------------------------------------------
 plot(mod) + ylab("Log-loss")
 
-## ------------------------------------------------------------------------
+## ---- fig.height=4, fig.width=5------------------------------------------
 plot(mod, metric = "r2")
 
 ## ------------------------------------------------------------------------
@@ -120,7 +120,7 @@ mod <- beset_glm(art ~ ., bioChemists$train, bioChemists$test,
                  family = "negbin")
 summary(mod)
 
-## ------------------------------------------------------------------------
+## ---- fig.height=4, fig.width=5------------------------------------------
 plot(mod, metric = "r2") + 
   ggtitle("Cross-validated subsets for negative binomial regression")
 
@@ -145,16 +145,16 @@ summary(mod, oneSE = FALSE)
 ## ------------------------------------------------------------------------
 summary(mod, n_count_pred = 2, n_zero_pred = 2)
 
-## ------------------------------------------------------------------------
+## ---- fig.height=4, fig.width=5------------------------------------------
 plot(mod, type = "train")
 
-## ------------------------------------------------------------------------
+## ---- fig.height=4, fig.width=5------------------------------------------
 plot(mod, type = "train", metric = "mse")
 
-## ------------------------------------------------------------------------
+## ---- fig.height=4, fig.width=5------------------------------------------
 plot(mod, type = "cv", metric = "r2")
 
-## ------------------------------------------------------------------------
+## ---- fig.height=4, fig.width=5------------------------------------------
 plot(mod, type = "cv", metric = "r2", se = FALSE)
 
 ## ------------------------------------------------------------------------
@@ -162,9 +162,9 @@ mod <- beset_zeroinfl(art ~ ., bioChemists$train, bioChemists$test,
                       family = "negbin", p_count_max = 3, p_zero_max = 2)
 summary(mod)
 
-## ------------------------------------------------------------------------
+## ---- fig.height=4, fig.width=5------------------------------------------
 plot(mod, type = "cv", metric = "r2")
 
-## ------------------------------------------------------------------------
+## ---- fig.height=4, fig.width=5------------------------------------------
 plot(mod, type = "test", metric = "r2")
 

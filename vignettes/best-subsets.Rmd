@@ -60,13 +60,13 @@ We will explore the optional parameters in greater detail later on, but I sugges
 
 The plot method for `beset_lm` and `beset_glm` allows one to plot any of the following prediction metrics: mean absolute error (`"mae"`), mean cross entropy (`"mce"`), mean squared error (`"mse"`), or $R^2$ (`"r2"`)). For linear models (or GLMs that use a normal error distribution), mean squared error (`"mse"`) will be plotted by default if no metric is specified:
 
-```{r}
+```{r, fig.height=4, fig.width=5}
 plot(mod)
 ```
 
 In the above plot, `Train` refers to how well the model fits the training data. For linear models, train `MSE` is guaranteed to always decrease with the addition of more predictors, even if the predictors being added are completely useless (as we know to be the case here for at least the 5 random noise predictors). This graph shows a typical pattern in which the training error continues to decrease, while the cross-validation error (`CV`, plotted in red, which estimates how well the model will predict new data) decreases to a point and then begins to level off or increase with the addition of more predictors. The `CV` curves are plotted with standard errors based on the variance in the errors when predicting the left-out folds. A plot of $R^2$ (`"r2"`) shows the opposite pattern: `Train` $R^2$ will continuously increase with the addition of more predictors, while `CV` $R^2$ will increase to a point and then level off or begin decreasing:
 
-```{r}
+```{r, fig.height=4, fig.width=5}
 plot(mod, "r2")
 ```
 
@@ -147,7 +147,7 @@ mod.5 <- beset_lm(medv ~ ., Boston.5$train, Boston.5$test, p_max = 13)
 
 Now we can plot prediction error curves for each data set. Note that you can append the plot commands with additional `ggplot` syntax. In this example, I will add a meaningful title to each plot:
 
-```{r}
+```{r, fig.height=4, fig.width=5}
 plot(mod.1) + ggtitle("Train sample = 52, Test sample = 454")
 plot(mod.3) + ggtitle("Train sample = 154, Test sample = 352")
 plot(mod.5) + ggtitle("Train sample = 254, Test sample = 252")
@@ -230,19 +230,19 @@ beset_glm(class ~ ., biopsy$train, biopsy$test,
 
 For logistic models (and any model that uses a non-Gaussian error distribution), mean cross entropy `mce` is plotted by default:
 
-```{r}
+```{r, fig.height=4, fig.width=5}
 plot(mod)
 ```
 
 For binomial classification, mean cross entropy is also known as "log-loss". Given that the plot objects returned by `beset` are `ggplot` objects, you can modify any plot aesthetic by appending `ggplot` commands. For example, we can change the y-axis label of the above plot to read "log-loss" instead:
 
-```{r}
+```{r, fig.height=4, fig.width=5}
 plot(mod) + ylab("Log-loss")
 ```
 
 Ordinary $R^2$ can show undesirable properties when applied to GLMs with non-normal error distributions, such as the training $R^2$ not uniformly increasing as more predictors are added. However, `beset` calculates the deviance-based $R_D^2$, which can be reliably used with all of the model families it supports to indicate the fraction of uncertainty in the outcome that the model is explaining. This is labeled explicitly when you ask for a plot of `"r2"`, but the $R^2$s that appear in the summary output are calculated in the same way. See the help file for `beset`'s `r2d` function for more info.
 
-```{r}
+```{r, fig.height=4, fig.width=5}
 plot(mod, metric = "r2")
 ```
 
@@ -276,7 +276,7 @@ summary(mod)
 
 This also chooses the same two predictor model, but suggests that a number of predictors (prestige of the department, marital status, and number of young children) can yield more or less equivalent predictions when combined with mentor publications. The AIC is a small improvement over the Poisson model.
 
-```{r}
+```{r, fig.height=4, fig.width=5}
 plot(mod, metric = "r2") + 
   ggtitle("Cross-validated subsets for negative binomial regression")
 ```
@@ -338,19 +338,19 @@ If you only specify either `n_count_pred` or `n_zero_pred` but not both, your re
 
 The plot method for `beset_zeroinfl` is similar to that for `beset_glm`, but here one must also select the `type` of error that one wants to plot (`train`, `cv`, or `test`) given that the color coding of different curves will be used to distinguish the number of zero predictors. First we will plot the training error:
 
-```{r}
+```{r, fig.height=4, fig.width=5}
 plot(mod, type = "train")
 ```
 
 Note that unlike the above plot of cross entropy, the following plot of train MSE will not capture the improved fit as predictors are added to the zero-component model; in fact, the model with no predictors of the zero component actually shows the lowest mean-square error:
 
-```{r}
+```{r, fig.height=4, fig.width=5}
 plot(mod, type = "train", metric = "mse")
 ```
 
 Of course the most important thing to plot is the cross-validation error:
 
-```{r}
+```{r, fig.height=4, fig.width=5}
 plot(mod, type = "cv", metric = "r2")
 ```
 
@@ -358,7 +358,7 @@ Note that here the 0-predictors model does not have a negative $R_D^2$ as it has
 
 To see the above curve without error bars, you can turn them off by setting `se = FALSE`:
 
-```{r}
+```{r, fig.height=4, fig.width=5}
 plot(mod, type = "cv", metric = "r2", se = FALSE)
 ```
 
@@ -374,12 +374,12 @@ summary(mod)
 
 This suggests a two-predictor model (gender and mentor publication counts) for either the count or zero components, with just the mentor publications for the other component. 
 
-```{r}
+```{r, fig.height=4, fig.width=5}
 plot(mod, type = "cv", metric = "r2")
 ```
 
 For ZINB regression, the null model used for comparison is a negative binomial regression without zero inflation, which contains 2 parameters: the mean and dispersion (theta) of the count distribution. Whereas the "0" predictors model here contains 3 parameters: the previous 2 parameters plus an intercept for the zero inflation model. Thus, the fact that the $R_D^2$ for the 0-predictors model is negative can be interpreted as saying that a model that attempts to account for zero inflation with just an intercept does not improve upon a model that ignores zero inflation, provided that it contains a dispersion parameter.
 
-```{r}
+```{r, fig.height=4, fig.width=5}
 plot(mod, type = "test", metric = "r2")
 ```
