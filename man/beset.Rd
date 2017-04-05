@@ -11,6 +11,8 @@ objective of this package: to improve prediction accuracy and
 interpretability of generalized linear models by automatically performing
 variable selection, either explicitly (e.g., with subset selection) or
 implicitly (e.g., with coefficient shrinkage), based on cross-validation.
+To learn more about \code{beset}, start with the vignettes:
+\code{browseVignettes(package = "beset")}
 }
 \section{Overarching goals}{
 
