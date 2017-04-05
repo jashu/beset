@@ -363,7 +363,7 @@ beset_glm <- function(form, data, test_data = NULL, p_max = 10,
   #----------------------------------------------------------------------
   set.seed(seed)
   fold_ids <- caret::createMultiFolds(y, k = n_folds, times = n_repeats)
-  metrics <- parallel::parLapply(cl, fold_ids, function(i, form_list){
+  metrics <- parallel::parLapplyLB(cl, fold_ids, function(i, form_list){
     lapply(form_list, function(form){
       fit <- if(family == "negbin"){
         glm_nb(form, mf[i,], link = link, ...)
