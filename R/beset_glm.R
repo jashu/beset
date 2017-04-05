@@ -224,10 +224,12 @@ beset_glm <- function(form, data, test_data = NULL, p_max = 10,
   mm <- stats::model.matrix(form, data = data)
   colinear_vars <- caret::findLinearCombos(mm[, 2:ncol(mm)])
   if(!is.null(colinear_vars$remove)){
-    factor_idx <- which(sapply(mf, class) == "factor")
-    factor_exp <- sapply(mf[, factor_idx], function(x) length(levels(x))) - 1
     mf_to_mm <- rep(1, ncol(mf))
-    mf_to_mm[factor_idx] <- factor_exp
+    factor_idx <- which(sapply(mf, class) == "factor")
+    if(length(factor_idx) != 0){
+      factor_exp <- sapply(mf[, factor_idx], function(x) length(levels(x))) - 1
+      mf_to_mm[factor_idx] <- factor_exp
+    }
     mf_to_mm <- cumsum(mf_to_mm) - 1
     to_remove <- names(mf)[mf_to_mm %in% colinear_vars$remove]
     stop(paste(length(to_remove), " linear dependencies found. ",

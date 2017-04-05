@@ -192,6 +192,15 @@ beset_zeroinfl <- function(form, data, test_data = NULL,
   # Create model frame and extract response name and vector
   #------------------------------------------------------------------
   mf <- stats::model.frame(form, data = data, na.action = stats::na.omit)
+  # Correct non-standard column names
+  names(mf) <- make.names(names(mf))
+  if(!is.null(test_data)){
+    test_data <- stats::model.frame(form, data = test_data,
+                                    na.action = stats::na.omit)
+    names(test_data) <- make.names(names(test_data))
+    if(!all(names(mf) %in% names(test_data)))
+      stop("'test_data' must contain same variables as 'data'")
+  }
   n_drop <- nrow(data) - nrow(mf)
   if(n_drop > 0)
     warning(paste("Dropping", n_drop, "rows with missing data."),
@@ -207,13 +216,15 @@ beset_zeroinfl <- function(form, data, test_data = NULL,
   #==================================================================
   # Screen for linear dependencies among predictors
   #------------------------------------------------------------------
-  mm <- stats::model.matrix(form, data = mf)
+  mm <- stats::model.matrix(form, data = data)
   colinear_vars <- caret::findLinearCombos(mm[, 2:ncol(mm)])
   if(!is.null(colinear_vars$remove)){
-    factor_idx <- which(sapply(mf, class) == "factor")
-    factor_exp <- sapply(mf[, factor_idx], function(x) length(levels(x))) - 1
     mf_to_mm <- rep(1, ncol(mf))
-    mf_to_mm[factor_idx] <- factor_exp
+    factor_idx <- which(sapply(mf, class) == "factor")
+    if(length(factor_idx) != 0){
+      factor_exp <- sapply(mf[, factor_idx], function(x) length(levels(x))) - 1
+      mf_to_mm[factor_idx] <- factor_exp
+    }
     mf_to_mm <- cumsum(mf_to_mm) - 1
     to_remove <- names(mf)[mf_to_mm %in% colinear_vars$remove]
     stop(paste(length(to_remove), " linear dependencies found. ",
