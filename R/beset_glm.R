@@ -349,12 +349,8 @@ beset_glm <- function(form, data, test_data = NULL, p_max = 10,
   fold_ids <- caret::createMultiFolds(y, k = n_folds, times = n_repeats)
   metrics <- parallel::parLapplyLB(cl, fold_ids, function(i, form_list){
     lapply(form_list, function(form){
-      fit <- if(family == "negbin"){
-        glm_nb(form, mf[i,], link = link, ...)
-        } else {
-          stats::glm(form, do.call(family, list(link = link)), mf[i,], ...)
-        }
-      stats <- try(predict_metrics(fit, test_data = mf[-i,]), silent = TRUE)
+      fit <- fit_glm(mf[i,], form, family, link)
+      stats <- try(predict_metrics(fit, test_data = mf[-i,]), silent = FALSE)
       if(class(stats) == "prediction_metrics") stats
       else list(deviance = NA_real_,
                 mean_absolute_error = NA_real_,
