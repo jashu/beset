@@ -332,7 +332,7 @@ This yields the same result as the best AIC model. If we want to obtain the summ
 summary(mod, n_count_pred = 2, n_zero_pred = 2)
 ```
 
-If you only specify either `n_count_pred` or `n_zero_pred` but not both, your request will be ignored.
+**If you only specify either `n_count_pred` or `n_zero_pred` but not both, your request will be ignored.**
 
 ## Plotting error curves
 
@@ -364,7 +364,7 @@ plot(mod, type = "cv", metric = "r2", se = FALSE)
 
 ## Zero-inflated negative binomial (ZINB)
 
-Finally, we can also fit a ZINB model, which will account for both overdispersion AND zero inflation. In this example, I will also illustrate how to restrict the maximum number of predictors for each component of the model using the `p_count_max` and `p_zero_max` arguments. In this case, I will set the count component to use no more than 3 predictors and the zero component to use no more than 2 predictor:
+Finally, we can also fit a ZINB model, which will account for both overdispersion AND zero inflation. In this example, I will also illustrate how to restrict the maximum number of predictors for each component of the model using the `p_count_max` and `p_zero_max` arguments. In this case, I will set the count component to use no more than 3 predictors and the zero component to use no more than 2 predictors:
 
 ```{r}
 mod <- beset_zeroinfl(art ~ ., bioChemists$train, bioChemists$test,
@@ -379,7 +379,3 @@ plot(mod, type = "cv", metric = "r2")
 ```
 
 For ZINB regression, the null model used for comparison is a negative binomial regression without zero inflation, which contains 2 parameters: the mean and dispersion (theta) of the count distribution. Whereas the "0" predictors model here contains 3 parameters: the previous 2 parameters plus an intercept for the zero inflation model. Thus, the fact that the $R_D^2$ for the 0-predictors model is negative can be interpreted as saying that a model that attempts to account for zero inflation with just an intercept does not improve upon a model that ignores zero inflation, provided that it contains a dispersion parameter.
-
-```{r, fig.height=4, fig.width=5}
-plot(mod, type = "test", metric = "r2")
-```

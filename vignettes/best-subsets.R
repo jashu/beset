@@ -165,6 +165,3 @@ summary(mod)
 ## ---- fig.height=4, fig.width=5------------------------------------------
 plot(mod, type = "cv", metric = "r2")
 
-## ---- fig.height=4, fig.width=5------------------------------------------
-plot(mod, type = "test", metric = "r2")
-
