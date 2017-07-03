@@ -108,15 +108,12 @@
 #' @return A "beset_glm" object with the following components:
 #' \enumerate{
 #'  \item\describe{
-#'    \item{best_aic}{an object of class \code{\link[stats]{glm}}
-#'    corresponding to the model with the lowest Akaike Information Criterion.}
-#'  }
-#'  \item\describe{
-#'    \item{cv_params}{list of the values of the parameters used for
-#'    cross-validation, i.e., \code{n_folds}, \code{n_repeats}, \code{seed}.}
-#'  }
+#'    \item{params}{list of parameters used in function call that will be
+#'    needed to reproduce results}
+#'    }
 #'   \item\describe{
-#'     \item{model_data}{data frame used to identify best subsets.}
+#'     \item{model_data}{data frame containing training data used to identify
+#'      best subsets.}
 #'  }
 #'  \item\describe{
 #'    \item{stats}{a list with three data frames:

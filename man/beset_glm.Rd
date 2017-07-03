@@ -7,8 +7,7 @@
 \title{Best Subset Selection for Generalized Linear Models}
 \usage{
 beset_glm(form, data, test_data = NULL, p_max = 10, family = "gaussian",
-  link = NULL, ..., n_cores = 2, n_folds = 10, n_repeats = 10,
-  seed = 42)
+  link = NULL, n_cores = 2, n_folds = 10, n_repeats = 10, seed = 42)
 
 beset_lm(form, data, test_data = NULL, p_max = 10, n_cores = 2,
   n_folds = 10, n_repeats = 10, seed = 42)
@@ -32,8 +31,6 @@ and link functions'.}
 the model. Available links and their defaults differ by \code{family} and are
 listed under 'List of available families and link functions'.}
 
-\item{...}{Additional arguments to be passed to \code{\link[stats]{glm}}}
-
 \item{n_cores}{Integer value indicating the number of workers to run in
 parallel during subset search and cross-validation. By default, this will
 be set to 2. To determine the theoretical maximum number of cores you have
@@ -54,15 +51,12 @@ assigning observations to folds.}
 A "beset_glm" object with the following components:
 \enumerate{
  \item\describe{
-   \item{best_aic}{an object of class \code{\link[stats]{glm}}
-   corresponding to the model with the lowest Akaike Information Criterion.}
- }
- \item\describe{
-   \item{cv_params}{list of the values of the parameters used for
-   cross-validation, i.e., \code{n_folds}, \code{n_repeats}, \code{seed}.}
- }
+   \item{params}{list of parameters used in function call that will be
+   needed to reproduce results}
+   }
   \item\describe{
-    \item{model_data}{data frame used to identify best subsets.}
+    \item{model_data}{data frame containing training data used to identify
+     best subsets.}
  }
  \item\describe{
    \item{stats}{a list with three data frames:
