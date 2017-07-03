@@ -65,7 +65,10 @@
 #'
 #' @export
 cv_r2 <- function(object, n_cores = 2, n_folds = 10, n_repeats = 10, seed = 42){
-  y <- object$model[,1]
+  y <- as_vector(object$model[1])
+  if(is.null(y)) y <- as_vector(object$data[all.vars(object$terms)[1]])
+  if(is.null(y)) stop(paste("Model data not found in model object.",
+                            "Try refitting model with `model = TRUE` arg."))
   set.seed(seed)
   fold_ids <- caret::createMultiFolds(y, k = n_folds, times = n_repeats)
   cl <- parallel::makeCluster(n_cores)
@@ -75,28 +78,36 @@ cv_r2 <- function(object, n_cores = 2, n_folds = 10, n_repeats = 10, seed = 42){
       form <- object$terms$full
       link <- object$link
     }
-    dat <- object$model[i,]; wts <- object$weights[i]
-    if(is.null(wts)){
-      dat$wts <- rep(1, nrow(dat))
+    if(!is.null(object$model)){
+      train_data <- object$model[i,]
+      test_data <- object$model[-i,]
     } else {
-      dat$wts <- wts
+      train_data <- object$data[i,]
+      test_data <- object$data[-i,]
+    }
+    wts <- object$prior.weights[i]
+    if(is.null(wts)){
+      train_data$wts <- rep(1, nrow(train_data))
+    } else {
+      train_data$wts <- wts
     }
     dist <- object$dist; ctrl <- object$control; method <- object$method
     ctrst <- object$contrasts; theta <- object$theta
     fit <- switch(
       class(object)[1],
-      lm = stats::lm(formula = form, data = dat, weights = wts,
+      lm = stats::lm(formula = form, data = train_data, weights = wts,
                      contrasts = ctrst),
-      glm = stats::glm(formula = form, family = fam, data = dat, weights = wts,
-                       control = ctrl, method = method, contrasts = ctrst),
-      negbin = glm_nb(formula = form, data = dat, weights = wts, control = ctrl,
-                      method = method, contrasts = ctrst, init.theta = theta,
-                      link = "log"),
-      zeroinfl = pscl::zeroinfl(formula = form, data = dat, weights = wts,
-                                dist = dist, link = link, control = ctrl)
+      glm = stats::glm(formula = form, family = fam, data = train_data,
+                       weights = wts, control = ctrl, method = method,
+                       contrasts = ctrst),
+      negbin = glm_nb(formula = form, data = train_data, weights = wts,
+                      control = ctrl, method = method, contrasts = ctrst,
+                      init.theta = theta, link = "log"),
+      zeroinfl = pscl::zeroinfl(formula = form, data = train_data,
+                                weights = wts, dist = dist, link = link,
+                                control = ctrl)
     )
-    stats <- try(predict_metrics(fit, test_data = object$model[-i,]),
-                 silent = TRUE)
+    stats <- try(predict_metrics(fit, test_data), silent = TRUE)
     if(class(stats) == "prediction_metrics") stats$R_squared else NA
   }, object = object)
   boot_r2 <- boot::boot(r2, function(x, i) mean(x[i], na.rm = TRUE), 1000,

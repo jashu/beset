@@ -5,11 +5,16 @@
 \title{Best Subset Selection for Zero-inflated Count Data Regression}
 \usage{
 beset_zeroinfl(form, data, test_data = NULL, family = "poisson",
-  link = "logit", ..., p_count_max = 10, p_zero_max = 10, n_cores = 2,
+  link = "logit", p_count_max = 10, p_zero_max = 10, n_cores = 2,
   n_folds = 10, n_repeats = 10, seed = 42)
 }
 \arguments{
-\item{form}{A model \code{\link[stats]{formula}}.}
+\item{form}{A model \code{\link[stats]{formula}}. Note that you cannot
+specify a separate model formula for count and zero components as when
+calling \code{\link[pscl]{zeroinfl}} directly. Instead use a single formula
+that would equal or nest the maximum complexity desired for both components,
+and use the \code{p_count_max} and \code{p_zero_max} arguments if you want
+to impose differential constraints on the complexity of each component.}
 
 \item{data}{Data frame with the variables in \code{form} and the data
 to be used for model fitting.}
@@ -25,8 +30,6 @@ log link is always used with the count model).}
 zero-inflation model. Options are \code{"logit"} (default), \code{"probit"},
 \code{"cloglog"}, \code{"cauchit"}, or \code{"log"}. (Note a binomial family
 is always used with the zero-inflation model).}
-
-\item{...}{Optional named arguments accepted by \code{\link[pscl]{zeroinfl}}.}
 
 \item{p_count_max}{Maximum number of predictors allowed in count model.}
 
@@ -51,13 +54,9 @@ assigning observations to folds.}
 \value{
 A "beset_zeroinfl" object with the following components:
 \enumerate{
-\item\describe{
-   \item{best_aic}{an object of class \code{\link[pscl]{zeroinfl}}
-   corresponding to the model with the lowest Akaike Information Criterion.}
-   }
  \item\describe{
-   \item{cv_params}{list of the values of the parameters used for
-   cross-validation, i.e., \code{n_folds}, \code{n_repeats}, \code{seed}.}
+   \item{params}{list of parameters used in function call that will be
+   needed to reproduce results}
  }
   \item\describe{
     \item{model_data}{data frame extracted from \code{data} and used to

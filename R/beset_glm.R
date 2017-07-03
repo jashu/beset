@@ -414,10 +414,11 @@ beset_glm <- function(form, data, test_data = NULL, p_max = 10,
   #======================================================================
   # Construct beset_glm object
   #----------------------------------------------------------------------
-  structure(list(best_aic = best_aic,
-                 cv_params = list(n_folds = n_folds,
-                                  n_repeats = n_repeats,
-                                  seed = seed),
+  structure(list(params = list(family = family,
+                               link = link,
+                               n_folds = n_folds,
+                               n_repeats = n_repeats,
+                               seed = seed),
                  model_data = mf,
                  stats = list(fit = fit_stats,
                               cv = cv_stats,

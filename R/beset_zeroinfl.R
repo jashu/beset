@@ -67,7 +67,12 @@
 #' \code{\link[pscl]{zeroinfl}}, \code{\link[base]{set.seed}},
 #' \code{\link{predict_metrics}}
 #'
-#' @param form A model \code{\link[stats]{formula}}.
+#' @param form A model \code{\link[stats]{formula}}. Note that you cannot
+#' specify a separate model formula for count and zero components as when
+#' calling \code{\link[pscl]{zeroinfl}} directly. Instead use a single formula
+#' that would equal or nest the maximum complexity desired for both components,
+#' and use the \code{p_count_max} and \code{p_zero_max} arguments if you want
+#' to impose differential constraints on the complexity of each component.
 #'
 #' @param data Data frame with the variables in \code{form} and the data
 #' to be used for model fitting.
@@ -83,8 +88,6 @@
 #' zero-inflation model. Options are \code{"logit"} (default), \code{"probit"},
 #' \code{"cloglog"}, \code{"cauchit"}, or \code{"log"}. (Note a binomial family
 #' is always used with the zero-inflation model).
-#'
-#' @param ... Optional named arguments accepted by \code{\link[pscl]{zeroinfl}}.
 #'
 #' @param p_count_max Maximum number of predictors allowed in count model.
 #'
@@ -110,13 +113,9 @@
 #'
 #' @return A "beset_zeroinfl" object with the following components:
 #' \enumerate{
-#' \item\describe{
-#'    \item{best_aic}{an object of class \code{\link[pscl]{zeroinfl}}
-#'    corresponding to the model with the lowest Akaike Information Criterion.}
-#'    }
 #'  \item\describe{
-#'    \item{cv_params}{list of the values of the parameters used for
-#'    cross-validation, i.e., \code{n_folds}, \code{n_repeats}, \code{seed}.}
+#'    \item{params}{list of parameters used in function call that will be
+#'    needed to reproduce results}
 #'  }
 #'   \item\describe{
 #'     \item{model_data}{data frame extracted from \code{data} and used to
@@ -167,7 +166,7 @@
 #'
 #' @export
 beset_zeroinfl <- function(form, data, test_data = NULL,
-                           family = "poisson", link = "logit", ...,
+                           family = "poisson", link = "logit",
                            p_count_max = 10, p_zero_max = 10, n_cores = 2,
                            n_folds = 10, n_repeats = 10, seed = 42){
   #==================================================================
@@ -341,34 +340,34 @@ beset_zeroinfl <- function(form, data, test_data = NULL,
   #------------------------------------------------------------------
   cl <- parallel::makeCluster(n_cores)
   parallel::clusterExport(cl, c("mf", "family", "link", "test_data",
-                                "predict_metrics", ...), envir=environment())
-  CE <- parallel::parLapplyLB(cl, zero_form_list, function(form){
+                                "predict_metrics"), envir=environment())
+  zero_fit_stats <- parallel::parLapplyLB(cl, zero_form_list, function(form){
     fit <- try(suppressWarnings(
       pscl::zeroinfl(stats::formula(form), data = mf, dist = family,
-                     link = link, ...)),
+                     link = link)),
       silent = TRUE)
     aic <- dev <- mae <- mce <- mse <- r2 <- NA_real_
     if(class(fit) == "zeroinfl"){
       aic <- stats::AIC(fit)
-      metrics <- predict_metrics(fit)
+      metrics <- predict_metrics(fit, mf)
       dev <- metrics$deviance
       mae <- metrics$mean_absolute_error
       mce <- metrics$mean_cross_entropy
       mse <- metrics$mean_squared_error
       r2 <- metrics$R_squared
     }
-
     list(aic = aic, dev = dev, mae = mae, mce = mce, mse = mse, r2 = r2)
   })
-  zero_fit_stats <- dplyr::data_frame(
+  stat_names <- names(zero_fit_stats[[1]])
+  get_stat <- function(stat_name, stat_list){
+    vapply(stat_list, function(x) x[[stat_name]], 0.0)
+  }
+  zero_fit_stats <- lapply(stat_names, get_stat, stat_list = zero_fit_stats)
+  names(zero_fit_stats) <- stat_names
+  zero_fit_stats <- dplyr::bind_cols(
     n_zero_pred = n_zero_pred,
     zero_pred = zero_pred,
-    aic = sapply(CE, function(x) x$aic),
-    dev = sapply(CE, function(x) x$dev),
-    mae = sapply(CE, function(x) x$mae),
-    mce = sapply(CE, function(x) x$mce),
-    mse = sapply(CE, function(x) x$mse),
-    r2 = sapply(CE, function(x) round(x$r2,3))
+    tibble::as_data_frame(zero_fit_stats)
   )
   best_zero_subsets <- dplyr::group_by(zero_fit_stats, n_zero_pred)
   best_zero_subsets <- dplyr::filter(best_zero_subsets,
@@ -379,15 +378,15 @@ beset_zeroinfl <- function(form, data, test_data = NULL,
   # Obtain fit for every model predicting counts, with a constant predicting
   # zero vs. non-zero values.
   #-------------------------------------------------------------------------
-  CE <- parallel::parLapplyLB(cl, count_form_list, function(form){
+  count_fit_stats <- parallel::parLapplyLB(cl, count_form_list, function(form){
     fit <- try(suppressWarnings(
       pscl::zeroinfl(stats::formula(form), data = mf, dist = family,
-                     link = link, ...)),
+                     link = link)),
       silent = TRUE)
     aic <- dev <- mae <- mce <- mse <- r2 <- NA_real_
     if(class(fit) == "zeroinfl"){
       aic <- stats::AIC(fit)
-      metrics <- predict_metrics(fit)
+      metrics <- predict_metrics(fit, mf)
       dev <- metrics$deviance
       mae <- metrics$mean_absolute_error
       mce <- metrics$mean_cross_entropy
@@ -396,15 +395,12 @@ beset_zeroinfl <- function(form, data, test_data = NULL,
     }
     list(aic = aic, dev = dev, mae = mae, mce = mce, mse = mse, r2 = r2)
   })
-  count_fit_stats <- dplyr::data_frame(
+  count_fit_stats <- lapply(stat_names, get_stat, stat_list = count_fit_stats)
+  names(count_fit_stats) <- stat_names
+  count_fit_stats <- dplyr::bind_cols(
     n_count_pred = n_count_pred,
     count_pred = count_pred,
-    aic = sapply(CE, function(x) x$aic),
-    dev = sapply(CE, function(x) x$dev),
-    mae = sapply(CE, function(x) x$mae),
-    mce = sapply(CE, function(x) x$mce),
-    mse = sapply(CE, function(x) x$mse),
-    r2 = sapply(CE, function(x) x$r2)
+    tibble::as_data_frame(count_fit_stats)
   )
   best_count_subsets <- dplyr::group_by(count_fit_stats, n_count_pred)
   best_count_subsets <- dplyr::filter(best_count_subsets,
@@ -414,26 +410,25 @@ beset_zeroinfl <- function(form, data, test_data = NULL,
   #======================================================================
   # Make formulas for all combinations of best zero and best count pred
   #----------------------------------------------------------------------
-  fit_stats <- cbind(
+  fit_info <- cbind(
     expand.grid(n_count_pred = best_count_subsets$n_count_pred,
                 n_zero_pred = best_zero_subsets$n_zero_pred),
     expand.grid(count_pred = best_count_subsets$count_pred,
                 zero_pred = best_zero_subsets$zero_pred,
                 stringsAsFactors = FALSE),
     stringsAsFactors = FALSE)
-  fit_stats$form <- paste(response, "~", fit_stats$count_pred,
-                             "|", fit_stats$zero_pred)
-  fit_stats <- dplyr::select(fit_stats, -count_pred, -zero_pred)
-
-  CE <- parallel::parLapplyLB(cl, fit_stats$form, function(form){
+  fit_info$form <- paste(response, "~", fit_info$count_pred,
+                             "|", fit_info$zero_pred)
+  fit_info <- dplyr::select(fit_info, -count_pred, -zero_pred)
+  fit_stats <- parallel::parLapplyLB(cl, fit_info$form, function(form){
     fit <- try(suppressWarnings(
       pscl::zeroinfl(stats::formula(form), data = mf, dist = family,
-                     link = link, ...)),
+                     link = link)),
       silent = TRUE)
     aic <- dev <- mae <- mce <- mse <- r2 <- NA_real_
     if(class(fit) == "zeroinfl"){
       aic <- stats::AIC(fit)
-      metrics <- predict_metrics(fit)
+      metrics <- predict_metrics(fit, mf)
       dev <- metrics$deviance
       mae <- metrics$mean_absolute_error
       mce <- metrics$mean_cross_entropy
@@ -442,22 +437,12 @@ beset_zeroinfl <- function(form, data, test_data = NULL,
     }
     list(aic = aic, dev = dev, mae = mae, mce = mce, mse = mse, r2 = r2)
   })
-
-  fit_stats <- dplyr::mutate(fit_stats,
-    aic = sapply(CE, function(x) x$aic),
-    dev = sapply(CE, function(x) x$dev),
-    mae = sapply(CE, function(x) x$mae),
-    mce = sapply(CE, function(x) x$mce),
-    mse = sapply(CE, function(x) x$mse),
-    r2 = sapply(CE, function(x) x$r2)
+  fit_stats <- lapply(stat_names, get_stat, stat_list = fit_stats)
+  names(fit_stats) <- stat_names
+  fit_stats <- dplyr::bind_cols(
+    fit_info,
+    tibble::as_data_frame(fit_stats)
   )
-  #======================================================================
-  # Store the fit for the model with the best AIC
-  #----------------------------------------------------------------------
-  fit_stats <- dplyr::arrange(fit_stats, aic)
-  best_aic <- pscl::zeroinfl(stats::formula(fit_stats$form[1]), mf,
-                             dist = family, link = link#, ...
-                             )
 
   #======================================================================
   # Perform cross-validation on best models
@@ -481,7 +466,7 @@ beset_zeroinfl <- function(form, data, test_data = NULL,
     lapply(form_list, function(form){
       fit <- try(suppressWarnings(
         pscl::zeroinfl(stats::formula(form), data = mf[i,], dist = family,
-                       link = link, ...)),
+                       link = link)),
         silent = TRUE)
       if(class(fit) == "zeroinfl"){
         predict_metrics(fit, mf[-i,])
@@ -499,19 +484,21 @@ beset_zeroinfl <- function(form, data, test_data = NULL,
   # Derive cross-validation statistics
   #----------------------------------------------------------------------
   metrics <- lapply(1:nrow(cv_stats), function(i)
-    transpose(at_depth(metrics, 1, i)))
-  cv_mean <- at_depth(metrics, 2, function(x)
-    mean(as_vector(x), na.rm = TRUE)) %>%
+    metrics %>% at_depth(1, i) %>% transpose()
+  )
+  cv_mean <- metrics %>%
+    at_depth(2, function(x) mean.default(as_vector(x), na.rm = TRUE)) %>%
     transpose() %>%
     at_depth(1, as_vector) %>%
-    as.data.frame()
+    as_data_frame()
   names(cv_mean) <- c("dev", "mae", "mce", "mse", "r2")
-  cv_se <- at_depth(metrics, 2, function(x){
-    x <- as_vector(x)
-    sd(x, na.rm = TRUE) / sqrt(length(x[!is.na(x)]))
-  }) %>% transpose() %>%
+  cv_se <- metrics %>%
+    at_depth(2, function(x){
+      x <- as_vector(x)
+      sd(x, na.rm = TRUE) / sqrt(length(x[!is.na(x)]))
+    }) %>% transpose() %>%
     at_depth(1, as_vector) %>%
-    as.data.frame()
+    as_data_frame()
   names(cv_se) <- c("dev_SE", "mae_SE", "mce_SE", "mse_SE", "r2_SE")
   cv_stats <- bind_cols(cv_stats, cv_mean, cv_se)
 
@@ -523,7 +510,7 @@ beset_zeroinfl <- function(form, data, test_data = NULL,
     metrics <- lapply(cv_stats$form, function(form){
       fit <- try(suppressWarnings(
         pscl::zeroinfl(stats::formula(form), data = mf, dist = family,
-                       link = link, ...)), silent = TRUE)
+                       link = link)), silent = TRUE)
       if(class(fit) == "zeroinfl"){
         predict_metrics(fit, test_data)
       } else {
@@ -544,9 +531,11 @@ beset_zeroinfl <- function(form, data, test_data = NULL,
   #======================================================================
   # Construct beset_zeroinfl object
   #----------------------------------------------------------------------
-  structure(list(best_aic = best_aic,
-                 cv_params = list(n_folds = n_folds, n_repeats = n_repeats,
-                                  seed = seed),
+  structure(list(params = list(family = family,
+                               link = link,
+                               n_folds = n_folds,
+                               n_repeats = n_repeats,
+                               seed = seed),
                  model_data = mf,
                  stats = list(count_fit = count_fit_stats,
                               zero_fit = zero_fit_stats,

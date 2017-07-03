@@ -101,7 +101,7 @@ summary.beset_elnet <- function(object, metric = "mce", oneSE = TRUE,
 summary.beset_glm <- function(object, metric = NULL, n_pred = NULL,
                               oneSE = TRUE, n_cores = 2, ...){
   if(is.null(metric)){
-    metric <- if(object$best_aic$family$family == "gaussian") "mse" else "mce"
+    metric <- if(object$params$family == "gaussian") "mse" else "mce"
   }
   metric <- tryCatch(match.arg(metric, c("aic", "mae", "mce", "mse", "r2")),
                      error = function(c){
@@ -109,18 +109,10 @@ summary.beset_glm <- function(object, metric = NULL, n_pred = NULL,
                        c$call <- NULL
                        stop(c)
                      })
-  best_model <- object$best_aic
-  best_form <- object$stats$fit$form[1]
+  best_form <- object$stats$fit$form[which.min(object$stats$fit$aic)]
   if(!is.null(n_pred)){
     best_form <- object$stats$cv$form[object$stats$cv$n_pred == n_pred]
-    best_model <- if(class(best_model)[1] == "negbin"){
-      stats::update(best_model, best_form, data = object$model_data)
-    } else {
-      stats::update(best_model, best_form, family = best_model$family,
-             data = object$model_data)
-    }
-  }
-  if(metric != "aic" && is.null(n_pred)){
+  } else if (metric != "aic"){
     best_idx <- switch(
       metric,
       mae = which.min(object$stats$cv$mae),
@@ -152,30 +144,26 @@ summary.beset_glm <- function(object, metric = NULL, n_pred = NULL,
       )
       best_form <- best_1SE$form[which.min(best_1SE$n_pred)]
     }
-    best_model <- if(class(best_model)[1] == "negbin"){
-      stats::update(best_model, best_form, data = object$model_data)
-    } else {
-      stats::update(best_model, best_form, family = best_model$family,
-             data = object$model_data)
-    }
   }
+  best_model <- fit_glm(mf = object$model_data, form = best_form,
+                        family = object$params$family,
+                        link = object$params$link)
   p <- object$stats$fit$n_pred[object$stats$fit$form == best_form]
   loglik <- stats::logLik(best_model)
   best <- c(summary(best_model), loglik = loglik,
             loglik_df = attr(loglik, "df"))
   r2 <- object$stats$fit$r2[object$stats$fit$form == best_form]
   r2_test <- object$stats$test$r2[object$stats$test$form == best_form]
-  r2_cv <- do.call("cv_r2",
-                   args = c(list(object = best_model, n_cores = n_cores),
-                            object$cv_params))
+  r2_cv <- cv_r2(best_model, n_cores = n_cores,
+                 n_folds = object$params$n_folds,
+                 n_repeats = object$params$n_repeats,
+                 seed = object$params$seed)
   near_equals <- dplyr::filter(object$stats$fit, n_pred == p)
   near_equals <- dplyr::arrange(near_equals, dplyr::desc(r2))
   best_metric <- max(near_equals$r2, na.rm = T)[1]
   boundary <- c(best_metric - .01)
   near_best <- near_equals$form[near_equals$r2 > boundary]
   near_best <- near_best[near_best != best_form]
-
-
   structure(list(best = best, best_form = best_form, near_best = near_best,
                  r2 = r2, r2_cv = r2_cv, r2_test = r2_test),
             class = "summary_beset_glm")
@@ -192,21 +180,12 @@ summary.beset_zeroinfl <- function(object, metric = "mce", n_count_pred = NULL,
                        c$call <- NULL
                        stop(c)
                      })
-  best_model <- object$best_aic
-  best_form <- object$stats$fit$form[1]
+  best_form <- object$stats$fit$form[which.min(object$stats$fit$aic)]
   if(!is.null(n_count_pred) && !is.null(n_zero_pred)){
     best_idx <- object$stats$cv$n_count_pred == n_count_pred &
       object$stats$cv$n_zero_pred == n_zero_pred
     best_form <- object$stats$cv$form[best_idx]
-    best_model <- pscl::zeroinfl(formula = stats::formula(best_form),
-                                 data = object$model_data,
-                                 weights = best_model$weights,
-                                 offset = best_model$offset$count,
-                                 dist = best_model$dist,
-                                 link = best_model$link,
-                                 control = best_model$control)
-  }
-  if(metric != "aic" && is.null(n_zero_pred) && is.null(n_count_pred)){
+  } else if (metric != "aic"){
     best_metric <- switch(
       metric,
       mae = min(object$stats$cv$mae, na.rm = T)[1],
@@ -248,14 +227,11 @@ summary.beset_zeroinfl <- function(object, metric = "mce", n_count_pred = NULL,
       )
       best_form <- best_1SE$form[best_idx]
     }
-    best_model <- pscl::zeroinfl(formula = stats::formula(best_form),
-                                 data = object$model_data,
-                                 weights = best_model$weights,
-                                 offset = best_model$offset$count,
-                                 dist = best_model$dist,
-                                 link = best_model$link,
-                                 control = best_model$control)
   }
+  best_model <- pscl::zeroinfl(formula = stats::formula(best_form),
+                               data = object$model_data,
+                               dist = object$params$family,
+                               link = object$params$link)
   pz <- object$stats$fit$n_zero_pred[object$stats$fit$form == best_form]
   pc <- object$stats$fit$n_count_pred[object$stats$fit$form == best_form]
   loglik <- stats::logLik(best_model)
@@ -263,9 +239,10 @@ summary.beset_zeroinfl <- function(object, metric = "mce", n_count_pred = NULL,
             loglik_df = attr(loglik, "df"), aic = stats::AIC(best_model))
   r2 <- object$stats$fit$r2[object$stats$fit$form == best_form]
   r2_test <- object$stats$test$r2[object$stats$test$form == best_form]
-  r2_cv <- do.call("cv_r2",
-                   args = c(list(object = best_model, n_cores = n_cores),
-                            object$cv_params))
+  r2_cv <- cv_r2(best_model, n_cores = n_cores,
+                 n_folds = object$params$n_folds,
+                 n_repeats = object$params$n_repeats,
+                 seed = object$params$seed)
   near_equals <- if(is.null(n_zero_pred) || is.null(n_count_pred)){
     dplyr::filter(object$stats$fit, (n_zero_pred + n_count_pred) == (pc + pz))
   } else {

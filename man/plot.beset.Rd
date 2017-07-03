@@ -7,12 +7,11 @@
 \alias{plot.beset_zeroinfl}
 \title{Plot Methods for \code{beset} Objects}
 \usage{
-\method{plot}{beset_elnet}(x, type = "cv", metric = NULL, se = TRUE, ...)
+plot.beset_elnet(x, type = "cv", metric = NULL, se = TRUE, ...)
 
-\method{plot}{beset_glm}(x, metric = NULL, se = TRUE, ...)
+plot.beset_glm(x, metric = NULL, se = TRUE, ...)
 
-\method{plot}{beset_zeroinfl}(x, type = "cv", metric = "mce", se = TRUE,
-  ...)
+plot.beset_zeroinfl(x, type = "cv", metric = "mce", se = TRUE, ...)
 }
 \arguments{
 \item{x}{An object of class \code{"beset_glm"},

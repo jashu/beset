@@ -1,13 +1,13 @@
 #' Prediction Metrics
 #'
-#' Calculate deviance, mean absolute error, mean cross entropy, mean squared 
+#' Calculate deviance, mean absolute error, mean cross entropy, mean squared
 #' error, and R-squared (as fraction of deviance explained) to measure how well
 #' a generalized linear model predicts test data.
 #'
 #' \code{predict_metrics} uses a generalized linear model previously fit to a
-#' training set to predict responses for a test set. It then computes the 
+#' training set to predict responses for a test set. It then computes the
 #' residual sum of squares and the log-likelihood of the predicted responses, as
-#' well as the log-likelihoods for the corresponding saturated model (a model 
+#' well as the log-likelihoods for the corresponding saturated model (a model
 #' with one free parameter per observation) and null model (a model with only an
 #' intercept) fit to the true responses. These quantities are used to derive the
 #' metrics described below.
@@ -55,29 +55,28 @@
 #' predictors that were used to fit the model \code{object}.
 #'
 #' @return A list giving the deviance, mean absolute error, mean cross entropy,
-#' mean squared error, and deviance R-squared between model predictions and 
+#' mean squared error, and deviance R-squared between model predictions and
 #' actual observations.
 #'
 #' @seealso \code{\link{r2d}}, \code{\link[stats]{logLik}},
 #' \code{\link{deviance.zeroinfl}}
 #'
 #' @export
-predict_metrics <- function(object, test_data = NULL){
-  if(is.null(object$model))
-    stop("Model frame missing. Refit model with arg 'model = TRUE'")
-  if(is.null(test_data)) test_data <- object$model
+predict_metrics <- function(object, test_data){
   model_type <- class(object)[1]
-  family <- NULL
-  if(model_type == "lm") family <- "gaussian"
-  if(model_type == "glm") family <- object$family$family
-  if(model_type == "negbin") family <- "negbin"
-  if(model_type == "zeroinfl"){
-    family <- if(object$dist == "poisson") "zip" else "zinb"
-  }
+  family <- switch(model_type,
+                   lm = "gaussian",
+                   glm = object$family$family,
+                   negbin = "negbin",
+                   zeroinfl = if(object$dist == "poisson") "zip" else "zinb")
   if(is.null(family)) stop(paste(model_type, "class not supported"))
   if(model_type == "glm" && !family %in% c("gaussian", "binomial", "poisson"))
     stop(paste(family, "family not supported"))
-  y <- unlist(test_data[, names(object$model)[1]])
+  y <- if(model_type == "zeroinfl"){
+    as_vector(test_data[[all.vars(object$terms$full)[1]]])
+  } else {
+    as_vector(test_data[[all.vars(object$terms)[1]]])
+  }
   if(is.factor(y)) y <- as.integer(y) - 1
   y_hat <- stats::predict(object, test_data, type="response")
   y <- y[!is.na(y_hat)]

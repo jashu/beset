@@ -78,7 +78,7 @@ plot.beset_elnet <- function(x, type = "cv", metric = NULL, se = TRUE, ...){
 #' @rdname plot.beset
 plot.beset_glm <- function(x, metric = NULL, se = TRUE, ...){
   if(is.null(metric)){
-    metric <- if(x$best_aic$family$family == "gaussian") "mse" else "mce"
+    metric <- if(x$params$family == "gaussian") "mse" else "mce"
   }
   metric <- tryCatch(match.arg(metric, c("mae", "mce", "mse", "r2")),
                      error = function(c){
@@ -107,7 +107,7 @@ plot.beset_glm <- function(x, metric = NULL, se = TRUE, ...){
   data$cv_upper <- with(data, cv + cv_se)
   xmax <- max(data$n_pred)
   color_legend <- c("Train" = "grey", "CV" = "red", "Test" = "blue")
-  if(metric == "r2" && x$best_aic$family$family != "gaussian")
+  if(metric == "r2" && x$params$family != "gaussian")
     metric <- "r2d"
   y_lab <- switch(metric,
                   mae = ylab("Mean Absolute Error"),

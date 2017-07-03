@@ -4,7 +4,7 @@
 \alias{predict_metrics}
 \title{Prediction Metrics}
 \usage{
-predict_metrics(object, test_data = NULL)
+predict_metrics(object, test_data)
 }
 \arguments{
 \item{object}{A model object of class "glm", "negbin", or "zeroinfl".}
@@ -14,19 +14,19 @@ predictors that were used to fit the model \code{object}.}
 }
 \value{
 A list giving the deviance, mean absolute error, mean cross entropy,
-mean squared error, and deviance R-squared between model predictions and 
+mean squared error, and deviance R-squared between model predictions and
 actual observations.
 }
 \description{
-Calculate deviance, mean absolute error, mean cross entropy, mean squared 
+Calculate deviance, mean absolute error, mean cross entropy, mean squared
 error, and R-squared (as fraction of deviance explained) to measure how well
 a generalized linear model predicts test data.
 }
 \details{
 \code{predict_metrics} uses a generalized linear model previously fit to a
-training set to predict responses for a test set. It then computes the 
+training set to predict responses for a test set. It then computes the
 residual sum of squares and the log-likelihood of the predicted responses, as
-well as the log-likelihoods for the corresponding saturated model (a model 
+well as the log-likelihoods for the corresponding saturated model (a model
 with one free parameter per observation) and null model (a model with only an
 intercept) fit to the true responses. These quantities are used to derive the
 metrics described below.
