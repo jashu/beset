@@ -364,20 +364,22 @@ beset_glm <- function(form, data, test_data = NULL, p_max = 10,
   #======================================================================
   # Derive cross-validation statistics
   #----------------------------------------------------------------------
-  metrics <- lapply(seq_along(cv_stats$n_pred), function(i)
-    transpose(at_depth(metrics, 1, i)))
-  cv_mean <- at_depth(metrics, 2, function(x)
-    mean(as_vector(x), na.rm = TRUE)) %>%
+  metrics <- lapply(1:nrow(cv_stats), function(i)
+    metrics %>% at_depth(1, i) %>% transpose()
+  )
+  cv_mean <- metrics %>%
+    at_depth(2, function(x) mean.default(as_vector(x), na.rm = TRUE)) %>%
     transpose() %>%
     at_depth(1, as_vector) %>%
-    as.data.frame()
+    as_data_frame()
   names(cv_mean) <- c("dev", "mae", "mce", "mse", "r2")
-  cv_se <- at_depth(metrics, 2, function(x){
-    x <- as_vector(x)
-    sd(x, na.rm = TRUE) / sqrt(length(x[!is.na(x)]))
-  }) %>% transpose() %>%
+  cv_se <- metrics %>%
+    at_depth(2, function(x){
+      x <- as_vector(x)
+      sd(x, na.rm = TRUE) / sqrt(length(x[!is.na(x)]))
+    }) %>% transpose() %>%
     at_depth(1, as_vector) %>%
-    as.data.frame()
+    as_data_frame()
   names(cv_se) <- c("dev_SE", "mae_SE", "mce_SE", "mse_SE", "r2_SE")
   cv_stats <- bind_cols(cv_stats, cv_mean, cv_se)
 
@@ -387,10 +389,7 @@ beset_glm <- function(form, data, test_data = NULL, p_max = 10,
   test_stats <- NULL
   if(!is.null(test_data)){
     metrics <- lapply(cv_stats$form, function(form){
-      fit <- if(family == "negbin")
-        glm_nb(form, mf, link = link, ...)
-      else
-        stats::glm(form, do.call(family, list(link = link)), mf, ...)
+      fit <- fit_glm(test_data, form, family, link)
       stats <- tryCatch(
         predict_metrics(fit, test_data = test_data),
         error = function(c){
