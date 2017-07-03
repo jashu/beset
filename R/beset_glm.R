@@ -87,8 +87,6 @@
 #' the model. Available links and their defaults differ by \code{family} and are
 #' listed under 'List of available families and link functions'.
 #'
-#' @param ... Additional arguments to be passed to \code{\link[stats]{glm}}
-#'
 #' @param p_max Maximum number of predictors to attempt to fit.
 #'
 #' @param n_cores Integer value indicating the number of workers to run in
