@@ -216,7 +216,7 @@ beset_glm <- function(form, data, test_data = NULL, p_max = 10,
   #==================================================================
   # Screen for linear dependencies among predictors
   #------------------------------------------------------------------
-  mm <- stats::model.matrix(form, data = data)
+  mm <- stats::model.matrix(form, data = mf)
   colinear_vars <- caret::findLinearCombos(mm)
   if(!is.null(colinear_vars$remove)){
     mf_to_mm <- rep(1, ncol(mf))
