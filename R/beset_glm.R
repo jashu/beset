@@ -157,7 +157,7 @@ NULL
 #' @rdname beset_glm
 #' @export
 beset_glm <- function(form, data, test_data = NULL, p_max = 10,
-                      family = "gaussian", link = NULL,  ...,
+                      family = "gaussian", link = NULL,
                       n_cores = 2, n_folds = 10, n_repeats = 10, seed = 42){
 
   #==================================================================
