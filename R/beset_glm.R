@@ -309,48 +309,30 @@ beset_glm <- function(form, data, test_data = NULL, p_max = 10,
   #----------------------------------------------------------------------
   cl <- parallel::makeCluster(n_cores)
   parallel::clusterExport(cl, c("mf", "family", "dist", "link", "test_data",
-                                "glm_nb", "predict_metrics", ...),
+                                "glm_nb", "predict_metrics",
+                                "predict_metrics_", "fit_glm"),
                           envir=environment())
-  if(family == "negbin"){
-    CE <- parallel::parLapplyLB(cl, form_list, function(form){
-      fit <- glm_nb(form, mf, link = link, ...)
-      list(aic = stats::AIC(fit),
-           dev = stats::deviance(fit),
-           mae = mean(abs(stats::residuals(fit, type = "response"))),
-           mce = -stats::logLik(fit)/nrow(mf),
-           mse = mean(stats::residuals(fit, type = "response")^2),
-           r2 = 1 - fit$deviance / fit$null.deviance)
+  fit_stats <- parallel::parLapplyLB(cl, form_list, function(form){
+    fit <- fit_glm(mf, form, family, link)
+    list(aic = stats::AIC(fit),
+         dev = stats::deviance(fit),
+         mae = mean(abs(stats::residuals(fit, type = "response"))),
+         mce = -stats::logLik(fit)/nrow(mf),
+         mse = mean(stats::residuals(fit, type = "response")^2),
+         r2 = 1 - fit$deviance / fit$null.deviance)
     })
-  } else {
-    CE <- parallel::parLapplyLB(cl, form_list, function(form){
-      fit <- stats::glm(form, do.call(family, list(link = link)), mf, ...)
-      list(aic = stats::AIC(fit),
-           dev = stats::deviance(fit),
-           mae = mean(abs(stats::residuals(fit, type = "response"))),
-           mce = -stats::logLik(fit)/nrow(mf),
-           mse = mean(stats::residuals(fit, type = "response")^2),
-           r2 = 1 - fit$deviance / fit$null.deviance)
-    })
+  stat_names <- names(fit_stats[[1]])
+  get_stat <- function(stat_name){
+    vapply(fit_stats, function(x) x[[stat_name]], 0.0)
   }
-  fit_stats <- data_frame(
+  fit_stats <- lapply(stat_names, get_stat)
+  names(fit_stats) <- stat_names
+  fit_stats <- dplyr::bind_cols(
     n_pred = n_pred,
     form = form_list,
-    aic = sapply(CE, function(x) x$aic),
-    dev = sapply(CE, function(x) x$dev),
-    mae = sapply(CE, function(x) x$mae),
-    mce = sapply(CE, function(x) x$mce),
-    mse = sapply(CE, function(x) x$mse),
-    r2 = sapply(CE, function(x) x$r2)
+    tibble::as_data_frame(fit_stats)
     )
-  #======================================================================
-  # Store the fit for the model with the best AIC
-  #----------------------------------------------------------------------
-  fit_stats <- arrange(fit_stats, aic)
-  best_aic <- if(family == "negbin"){
-    glm_nb(fit_stats$form[1], mf, link = link, ...)
-  } else{
-    stats::glm(fit_stats$form[1], do.call(family, list(link = link)), mf, ...)
-  }
+
   #======================================================================
   # Obtain model with maximum likelihood for each number of parameters
   #----------------------------------------------------------------------
