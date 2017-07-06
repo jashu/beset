@@ -29,7 +29,7 @@ data_partition <- function(train, test, y){
     stop(paste("All of the variables in the training data must also be",
                "included in the test data."))
   }
-  response <- unlist(test[,y])
+  response <- test[[y]]
   y <- list(name = y, class = class(response))
   if(y$class == "factor") y$levels <- levels(response)
   structure(list(train = train, test = test, y = y), class = "data_partition")
