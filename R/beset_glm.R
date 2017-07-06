@@ -355,12 +355,10 @@ beset_glm <- function(form, data, test_data = NULL, p_max = 10,
                 mean_cross_entropy = NA_real_,
                 mean_squared_error = NA_real_,
                 R_squared = NA_real_)
-      })
-    metrics <- transpose(metrics) %>%
-      at_depth(1, as_vector) %>%
-      as.data.frame()
-    names(metrics) <- c("dev", "mae", "mce", "mse", "r2")
-    test_stats <- bind_cols(select(cv_stats, n_pred, form), metrics)
+      }) %>% transpose() %>% map(flatten_dbl) %>% as_data_frame() %>%
+      mutate_all(function(x) case_when(abs(x) < 1e-6 ~ 0, TRUE ~ x))
+    names(metrics) <- stat_names[-1]
+    test_stats <- cv_stats %>% select(n_pred, form) %>% bind_cols(metrics)
   }
   #======================================================================
   # Construct beset_glm object
