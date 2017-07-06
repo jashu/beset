@@ -1,14 +1,14 @@
-#' Fit a Negative Binomial Generalized Linear Model
-#'
-#' A modification of \code{\link[MASS]{glm.nb}} that can be programmed with.
-#' The main change is to avoid non-standard evaluation of the link argument so
-#' that this argument is passed as a "quoted" string, which requires the
-#' removal of the line `link <- substitute(link)`. This in turn enables the
-#' removal of `do.call` syntax. Other edits were done to define the namespaces
-#' of other MASS functions that are called by `glm.nb`, to change the default
-#' arguments to avoid returning copies of the model data and the response
-#' vector, and to return $data to maintain consistency with the object returned
-#' by \code{\link[stats]{glm}}.
+# Fit a Negative Binomial Generalized Linear Model
+#
+# A modification of \code{\link[MASS]{glm.nb}} that can be programmed with.
+# The main change is to avoid non-standard evaluation of the link argument so
+# that this argument is passed as a "quoted" string, which requires the
+# removal of the line `link <- substitute(link)`. This in turn enables the
+# removal of `do.call` syntax. Other edits were done to define the namespaces
+# of other MASS functions that are called by `glm.nb`, to change the default
+# arguments to avoid returning copies of the model data and the response
+# vector, and to return $data to maintain consistency with the object returned
+# by \code{\link[stats]{glm}}.
 
 glm_nb <- function (formula, data, weights, subset, na.action, start = NULL,
                     etastart, mustart, control = stats::glm.control(...),
@@ -138,4 +138,15 @@ glm_nb <- function (formula, data, weights, subset, na.action, start = NULL,
   fit$offset <- offset
   fit$data <- data
   fit
+}
+
+logLik.negbin <- function (object, ...) {
+  if (nargs() > 1L)
+    warning("extra arguments discarded")
+  p <- object$rank + 1L
+  val <- object$twologlik/2
+  attr(val, "df") <- p
+  attr(val, "nobs") <- sum(!is.na(object$residuals))
+  class(val) <- "logLik"
+  val
 }
