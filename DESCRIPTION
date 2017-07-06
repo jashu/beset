@@ -11,24 +11,32 @@ Description: Provides a friendly user interface, summary, and plotting methods
 Depends:
     R (>= 3.2),
     stats,
-    utils,
     graphics
 Imports:
+    assertthat,
+    bindrcpp (>= 0.2),
     boot,
-    pROC,
     car,
     caret,
-    dplyr,
+    dplyr (>= 0.7.1),
     foreach,
     iterators,
-    ggplot2,
     glmnet,
+    glue (>= 1.1.0),
     grid,
     gridExtra,
+    magrittr,
     MASS,
+    methods,
     parallel,
+    pkgconfig,
     pscl,
     purrr,
+    R6,
+    Rcpp (>= 0.12.6),
+    rlang (>= 0.1),
+    tibble (>= 1.3.1),
+    utils,
     VGAM
 Encoding: UTF-8
 License: GPL-3
