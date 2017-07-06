@@ -257,36 +257,34 @@ beset_glm <- function(form, data, test_data = NULL, p_max = 10,
   # Obtain fit statistics for every model
   #----------------------------------------------------------------------
   cl <- parallel::makeCluster(n_cores)
-  parallel::clusterExport(cl, c("mf", "family", "dist", "link", "test_data",
-                                "glm_nb", "predict_metrics",
-                                "predict_metrics_", "fit_glm"),
-                          envir=environment())
+  parallel::clusterExport(cl, c("mf", "family", "link", "test_data", "glm_nb",
+                                "fit_glm"), envir = environment())
   fit_stats <- parallel::parLapplyLB(cl, form_list, function(form){
-    fit <- fit_glm(mf, form, family, link)
-    list(aic = stats::AIC(fit),
-         dev = stats::deviance(fit),
-         mae = mean(abs(stats::residuals(fit, type = "response"))),
-         mce = -stats::logLik(fit)/nrow(mf),
-         mse = mean(stats::residuals(fit, type = "response")^2),
-         r2 = 1 - fit$deviance / fit$null.deviance)
-    })
-  stat_names <- names(fit_stats[[1]])
-  get_stat <- function(stat_name){
-    vapply(fit_stats, function(x) x[[stat_name]], 0.0)
-  }
-  fit_stats <- lapply(stat_names, get_stat)
-  names(fit_stats) <- stat_names
-  fit_stats <- dplyr::bind_cols(
+    fit <- try(fit_glm(mf, form, family, link), silent = TRUE)
+    aic <- dev <- mae <- mce <- mse <- r2 <- NA_real_
+    if(!inherits(fit, "try-error")){
+       aic <- stats::AIC(fit)
+       dev <- stats::deviance(fit)
+       mae <- mean(abs(stats::residuals(fit, type = "response")))
+       mce <- -1 * as.numeric(stats::logLik(fit)) / nrow(mf)
+       mse <- mean(stats::residuals(fit, type = "response")^2)
+       r2 <- 1 - fit$deviance / fit$null.deviance
+    }
+    list(aic = aic, dev = dev, mae = mae, mce = mce, mse = mse, r2 = r2)
+    }) %>% transpose() %>% map(flatten_dbl) %>% as_data_frame() %>%
+    mutate_all(function(x) case_when(abs(x) < 1e-6 ~ 0, TRUE ~ x))
+  stat_names <- names(fit_stats)
+  fit_stats <- bind_cols(
     n_pred = n_pred,
     form = form_list,
-    tibble::as_data_frame(fit_stats)
+    as_data_frame(fit_stats)
     )
 
   #======================================================================
-  # Obtain model with maximum likelihood for each number of parameters
+  # Obtain model with best fit for each number of parameters
   #----------------------------------------------------------------------
   cv_stats <- group_by(fit_stats, n_pred) %>%
-    filter(mce == min(mce)) %>%
+    filter(r2 == max(r2)) %>%
     ungroup() %>%
     select(n_pred, form) %>%
     arrange(n_pred)
@@ -297,15 +295,17 @@ beset_glm <- function(form, data, test_data = NULL, p_max = 10,
   set.seed(seed)
   fold_ids <- caret::createMultiFolds(y, k = n_folds, times = n_repeats)
   metrics <- parallel::parLapplyLB(cl, fold_ids, function(i, form_list){
-    lapply(form_list, function(form){
       fit <- fit_glm(mf[i,], form, family, link)
       stats <- try(predict_metrics(fit, test_data = mf[-i,]), silent = FALSE)
-      if(class(stats) == "prediction_metrics") stats
-      else list(deviance = NA_real_,
-                mean_absolute_error = NA_real_,
-                mean_cross_entropy = NA_real_,
-                mean_squared_error = NA_real_,
-                R_squared = NA_real_)
+      if(inherits(stats, "prediction_metrics")){
+        stats
+      } else {
+        list(deviance = NA_real_,
+             mean_absolute_error = NA_real_,
+             mean_cross_entropy = NA_real_,
+             mean_squared_error = NA_real_,
+             R_squared = NA_real_)
+      }
     })
   }, form_list = cv_stats$form)
   parallel::stopCluster(cl)
@@ -313,23 +313,23 @@ beset_glm <- function(form, data, test_data = NULL, p_max = 10,
   #======================================================================
   # Derive cross-validation statistics
   #----------------------------------------------------------------------
-  metrics <- lapply(1:nrow(cv_stats), function(i)
-    metrics %>% at_depth(1, i) %>% transpose()
-  )
-  cv_mean <- metrics %>%
-    at_depth(2, function(x) mean.default(as_vector(x), na.rm = TRUE)) %>%
-    transpose() %>%
-    at_depth(1, as_vector) %>%
-    as_data_frame()
-  names(cv_mean) <- c("dev", "mae", "mce", "mse", "r2")
-  cv_se <- metrics %>%
-    at_depth(2, function(x){
-      x <- as_vector(x)
-      sd(x, na.rm = TRUE) / sqrt(length(x[!is.na(x)]))
-    }) %>% transpose() %>%
-    at_depth(1, as_vector) %>%
-    as_data_frame()
-  names(cv_se) <- c("dev_SE", "mae_SE", "mce_SE", "mse_SE", "r2_SE")
+
+  cv_mean <-  map(1:nrow(cv_stats), function(i)
+    metrics %>% map(i) %>% transpose() %>% map(flatten_dbl) %>%
+      map(mean, na.rm = TRUE)
+  ) %>% transpose() %>% map(flatten_dbl) %>% as_data_frame()
+  names(cv_mean) <- stat_names[-1]
+
+  se <- function(x){
+    sd(x, na.rm = TRUE) / sqrt(length(x[!is.na(x)]))
+  }
+
+  cv_se <-  map(1:nrow(cv_stats), function(i)
+    metrics %>% map(i) %>% transpose() %>% map(flatten_dbl) %>% map(se)
+  ) %>% transpose() %>% map(flatten_dbl) %>% as_data_frame() %>%
+    mutate_all(function(x) case_when(abs(x) < 1e-6 ~ 0, TRUE ~ x))
+  names(cv_se) <- paste(stat_names[-1], "SE", sep = "_")
+
   cv_stats <- bind_cols(cv_stats, cv_mean, cv_se)
 
   #======================================================================
