@@ -144,19 +144,15 @@ number generator as one of its arguments.
   No other options for handling missing data are provided at this time. The
   user is encouraged to deal with missing values prior to running this
   function.
- \item \code{beset_glm} is intended for use with additive models only.
-   While there is no prohibition against the inclusion of interaction or
-   polynomial terms, this practice is strongly discouraged. At best, this
-   will result in an inefficient search because \code{beset_glm} performs an
-   exhaustive search over all possible variable subsets, including subsets
-   that are hierarchically incomplete, i.e., subsets that contain an
-   interaction term but are missing one or more of the subterms that comprise
-   it. At worst, it may return one of these hierarchically incomplete models
-   as the best model, an undesirable result if one cares about
-   interpretability. If one wishes the model search to include interaction
-   and/or non-linear effects, the
+ \item \code{beset_glm} is intended for use with additive models only. If you
+  include interaction terms in the model formula passed to \code{form}, they
+  will be ignored (e.g. \code{A * B * C} will be treated as \code{A + B + C}
+  and \code{A + B + A:B} will be treated as \code{A + B}). An exhaustive
+  search over the space of possible interactions and/or non-linear effects is
+  computationally prohibitive, but I hope to offer a greedy search option in
+  the future. In the meantime and in general, I would recommend the
    \href{https://cran.r-project.org/web/packages/earth/index.html}{MARS}
-   technique is recommended instead.
+   technique.
  \item \code{beset_glm} is best suited for searching over a small number of
  predictors (less than 10). For a large number of predictors (more than 20),
  \code{\link{beset_elnet}} is recommended instead. However, note that
