@@ -61,6 +61,8 @@
 #' @seealso \code{\link{r2d}}, \code{\link[stats]{logLik}},
 #' \code{\link{deviance.zeroinfl}}
 #'
+#' @importFrom purrr as_vector
+#'
 #' @export
 predict_metrics <- function(object, test_data){
   model_type <- class(object)[1]
