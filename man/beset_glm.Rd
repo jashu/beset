@@ -106,10 +106,10 @@ families of generalized linear models.
 models, fitting a separate model for each possible combination of predictors
 (all models that contain exactly 1 predictor, all models that contain
 exactly 2 predictors, and so forth). For each number of predictors,
-\code{beset_glm} picks the model with the maximum likelihood and then
+\code{beset_glm} first picks the model with the best fit and then
 estimates how well this model predicts new data using \code{k}-fold
-cross-validation (how well a model trained using \eqn{k - 1} folds
-predicts the left-out fold).
+cross-validation (how well, on average, a model trained using \eqn{k - 1}
+folds predicts the left-out fold).
 }
 \section{Cross-validation details}{
 
