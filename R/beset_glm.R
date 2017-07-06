@@ -59,6 +59,7 @@
 #'
 #' @name beset_glm
 #' @importFrom purrr at_depth
+#' @importFrom purrr map
 #' @importFrom purrr map_chr
 #' @importFrom purrr map_int
 #' @importFrom purrr flatten_dbl
@@ -295,6 +296,7 @@ beset_glm <- function(form, data, test_data = NULL, p_max = 10,
   set.seed(seed)
   fold_ids <- caret::createMultiFolds(y, k = n_folds, times = n_repeats)
   metrics <- parallel::parLapplyLB(cl, fold_ids, function(i, form_list){
+    lapply(form_list, function(form){
       fit <- fit_glm(mf[i,], form, family, link)
       stats <- try(predict_metrics(fit, test_data = mf[-i,]), silent = FALSE)
       if(inherits(stats, "prediction_metrics")){
