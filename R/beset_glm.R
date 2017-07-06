@@ -163,28 +163,9 @@ beset_glm <- function(form, data, test_data = NULL, p_max = 10,
   #==================================================================
   # Check family argument and set up link function if specified
   #------------------------------------------------------------------
-  family <- tryCatch(match.arg(family, c("binomial", "gaussian", "poisson",
-                                         "negbin")),
-                     error = function(c){
-                       c$message <- gsub("arg", "family", c$message)
-                       c$call <- NULL
-                       stop(c)
-                     })
+  family <- check_family(family)
   link <- if(!is.null(link)){
-    tryCatch(
-      if(family == "binomial"){
-        match.arg(link, c("logit", "probit", "cauchit", "log", "cloglog"))
-        } else if(family == "gaussian"){
-          match.arg(link, c("identity", "log", "inverse"))
-          } else if(family %in% c("negbin", "poisson")){
-            match.arg(link, c("log", "sqrt", "identity"))
-          },
-      error = function(c){
-        c$message <- gsub("'arg'", paste("'link' for", family, "family"),
-                          c$message)
-        c$call <- NULL
-        stop(c)
-      })
+    check_link(family, link)
   } else {
     switch(family,
            binomial = "logit",
@@ -195,80 +176,52 @@ beset_glm <- function(form, data, test_data = NULL, p_max = 10,
   #==================================================================
   # Create model frame and extract response name and vector
   #------------------------------------------------------------------
-  mf <- stats::model.frame(form, data = data, na.action = stats::na.omit)
+  mf <- model_frame(form, data)
   # Correct non-standard column names
   names(mf) <- make.names(names(mf))
+  # Do the same for test_data if it exists
   if(!is.null(test_data)){
-    test_data <- stats::model.frame(form, data = test_data,
-                                    na.action = stats::na.omit)
+    test_data <- model_frame(form, data = test_data)
     names(test_data) <- make.names(names(test_data))
     if(!all(names(mf) %in% names(test_data)))
       stop("'test_data' must contain same variables as 'data'")
   }
+  # Warn user if any rows were dropped
   n_drop <- nrow(data) - nrow(mf)
-  if(n_drop > 0)
+  if(n_drop > 0){
     warning(paste("Dropping", n_drop, "rows with missing data."),
             immediate. = TRUE)
+  }
+  # cache name of the response variable
   response <- names(mf)[1]
-  y <- mf[,1]
-  if(family == "binomial") y <- factor(y)
+  # extract response vector
+  y <- mf[[1]]
+  # insure y is a factor if family is binomial
+  if(family == "binomial" && !is.factor(y)) y <- factor(y)
 
   #==================================================================
   # Screen for linear dependencies among predictors
   #------------------------------------------------------------------
-  mm <- stats::model.matrix(form, data = mf)
-  colinear_vars <- caret::findLinearCombos(mm)
-  if(!is.null(colinear_vars$remove)){
-    mf_to_mm <- rep(1, ncol(mf))
-    factor_idx <- which(sapply(mf, class) == "factor")
-    if(length(factor_idx) != 0){
-      factor_exp <- sapply(mf[, factor_idx], function(x) length(levels(x)))
-      mf_to_mm[factor_idx] <- factor_exp
-    }
-    mf_to_mm <- cumsum(mf_to_mm)
-    to_remove <- names(mf)[mf_to_mm %in% colinear_vars$remove]
-    stop(
-      if(length(to_remove) == 1){
-        paste("Linear dependency found. Consider removing predictor `",
-              to_remove, "`.", sep = "")
-      } else {
-        paste(length(to_remove), " linear dependencies found. ",
-               "Consider removing the following predictors:\n\t",
-               paste0(to_remove, collapse = "\n\t"),
-               sep = "")
-      }
-    )
-  }
+  mf <- check_lindep(form, mf)
+
   #==================================================================
   # Check that number of predictors and cv folds is acceptable
   #------------------------------------------------------------------
-  p <- min(ncol(mf) - 1, p_max)
-  if(family == "binomial"){
-    n <- min(sum(y == levels(y)[1]), sum(y == levels(y)[2]))
+  p <- min(ncol(mf) - 1L, p_max)
+  n <- if(family == "binomial"){
+    min(sum(y == levels(y)[1]), sum(y == levels(y)[2]))
   } else {
-    n <- nrow(mf)
+    nrow(mf)
   }
-  alt_folds <- n / (n - p * 2)
-  alt_p <- p
-  while(!between(alt_folds, 1, 10)){
-    alt_p <- alt_p - 1
-    alt_folds <- n / (n - alt_p * 2)
-  }
-  if(alt_p < 1){
-    if(family == "binomial"){
-      stop("Your sample size for the minority class is too small.")
-    } else {
-      stop("Your sample size is too small.")
-    }
-  }
-  if(alt_p < p){
-    p <- alt_p
+  alt <- check_cv(n, p, family == "binomial", n_folds)
+  if(alt$p < p){
+    p <- alt$p
     warning(paste("'p_max' argument too high for your sample size",
                   ".\n  Reducing maximum subset size to ", p, ".",
                   sep = ""), immediate. = TRUE)
   }
-  if(n_folds < alt_folds){
-    n_folds <- as.integer(alt_folds)
+  if(n_folds < alt$folds){
+    n_folds <- as.integer(alt$folds)
     warning(paste("'n_folds' argument too low for your sample size ",
                   "and choice of 'p_max'",
                   ".\n  Increasing number of cv folds to ", n_folds, ".",
@@ -279,24 +232,20 @@ beset_glm <- function(form, data, test_data = NULL, p_max = 10,
   #----------------------------------------------------------------------
   pred <- lapply(1:p, function(x)
     combn(names(mf)[2:ncol(mf)], x, simplify = FALSE))
-  pred <- unlist(sapply(pred, function(vars){
-    sapply(vars, function(x) paste0(x, collapse = " + "))}))
-  pred <- c("1", pred)
-  form_list <- paste(response, "~", pred)
+  pred <- reduce(pred, c)
+  form_list <- map_chr(pred, ~ paste0(.x, collapse = " + "))
+  form_list <- c("1", form_list)
+  form_list <- paste(response, "~", form_list)
 
   #======================================================================
   # Determine number of predictors for each model in list
   #----------------------------------------------------------------------
-  n_pred <- sapply(pred[-1], function(x){
-    x <- unlist(strsplit(x, split = " + ", fixed = TRUE))
-    sum(sapply(x, function(y){
-      if(is.factor(mf[,y]))
-        length(levels(mf[,y])) - 1
-      else
-        1
-    }))
-  })
-  n_pred <- c(intercept = 0, n_pred)
+  get_npred <- function(pred_name){
+    pred_data <- mf[[pred_name]]
+    if(is.factor(pred_data)) length(levels(pred_data)) - 1L else 1L
+  }
+  n_pred <- pred %>% at_depth(2, get_npred) %>% map_int(reduce, `+`)
+  n_pred <- c(0L, n_pred)
 
   #======================================================================
   # Eliminate formulae that exceed p_max
