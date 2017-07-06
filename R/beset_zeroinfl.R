@@ -49,15 +49,15 @@
 #'    this function. A warning message will be issued indicating how much
 #'    data are being deleted.
 #'  \item \code{beset_zeroinfl} is intended for use with additive models only.
-#'    While there is no prohibition against the inclusion of interaction or
-#'    polynomial terms, this practice is strongly discouraged. At best, this
-#'    will result in an inefficient search because \code{beset_zeroinfl}
-#'    performs an exhaustive search over all possible variable subsets,
-#'    including subsets that are hierarchically incomplete, i.e., subsets that
-#'    contain an interaction term but are missing one or more of the subterms
-#'    that comprise it. At worst, it may return one of these hierarchically
-#'    incomplete models as the best model, an undesirable result if one cares
-#'    about interpretability.
+#'    If you include interaction terms in the model formula passed to
+#'    \code{form}, they will be ignored (e.g. \code{A * B * C} will be treated
+#'    as \code{A + B + C} and \code{A + B + A:B} will be treated as
+#'    \code{A + B}). An exhaustive search over the space of possible
+#'    interactions and/or non-linear effects is computationally prohibitive, but
+#'    I hope to offer a greedy search option in the future. In the meantime and
+#'    in general, I would recommend the
+#'    \href{https://cran.r-project.org/web/packages/earth/index.html}{MARS}
+#'    technique.
 #'  \item \code{beset_zeroinfl} can be very slow and memory intensive.
 #'  Attempting to run with more than 10 variables in the model data frame is not
 #'  recommended.
