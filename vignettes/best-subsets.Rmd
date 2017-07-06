@@ -163,7 +163,7 @@ summary(mod.1)
 
 1. In addition to the best model (a 5-predictor model that includes `lstat`, `dis`, `zn`, `ptratio`, and `black`), note the appearance of two other 5-predictor models that `beset` has identified as `Nearly Equivalent Models`, defined as models with less than a 0.01 difference in the fraction of deviance explained. For example, the first model in the list is identical to the best model, except that it exchanges `age` for `black`. However, it appears that all of the best models include `lstat`, `dis`, and `zn`.
 
-2. Note the appearance of a "Test-sample R squared" next to the "Train-sample R-squared". In this case, the cross-validated $R^2$ underestimates the test-sample $R^2$ a bit (but the 95% confidence interval contains it--barely), but it is closer than the train-sample $R^2$, which overestimates it.
+2. Note the appearance of a "Test-sample R squared" next to the "Train-sample R-squared". In this case, the cross-validated $R^2$ underestimates the test-sample $R^2$ a bit, but it is closer than the train-sample $R^2$, which overestimates it.
 
 Also note that increased sample size buys one the ability to fit more complicated models without overfitting, as we can also see by extracting the best model based on the largest training sample (N = 254):
 
@@ -212,7 +212,7 @@ summary(mod)
 
 Seven additional models were identified as nearly equivalent. All of them include clump thickness and bare nuclei, but all of the predictors in the data frame appear at least once with the exception of single epithelia cell size, which is never selected.
 
-Note one key difference between `glm` and `beset_glm` syntax is that the `family` argument must be passed as a string, not as a function call. For example, this will not work:
+**Note one key difference between `glm` and `beset_glm` syntax is that the `family` argument must be passed as a string, not as a function call.** For example, this will not work:
 
 ```{r, eval = FALSE}
 # Incorrect syntax
@@ -266,7 +266,7 @@ summary(mod)
 
 This suggests a two predictor model is best: male gender (or, nearly equivalent, having children under the age of 5) + a greater number of publications by the Ph.D. mentor predict a greater number of publications by the student. 
 
-Of course, the Poisson distribution, which has a variance equal to its mean, does not describe these data very well either. The publication counts show too much *overdispersion*. A potentially better way to fit the data is with a **negative binomial regression**, which `beset_glm` will perform if `family` is set to `"negbin"`. Note that this is not a family supported by the `glm` function in R; rather, `beset_glm` calls a modified version of the `glm.nb` function from the `MASS` package to fit an extra parameter called *theta* to model overdispersion.
+Of course, the Poisson distribution, which has a variance equal to its mean, does not describe these data very well either. The publication counts show too much *overdispersion*. A potentially better way to fit the data is with a **negative binomial regression**, which `beset_glm` will perform if `family` is set to `"negbin"`. Note that this is not a family supported by the `glm` function in R; rather, `beset_glm` calls an internal modified version of the `glm.nb` function from the `MASS` package to fit an extra parameter called *theta* to model overdispersion.
 
 ```{r}
 mod <- beset_glm(art ~ ., bioChemists$train, bioChemists$test,

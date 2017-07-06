@@ -12,7 +12,7 @@
 
 <meta name="author" content="Jason Shumake" />
 
-<meta name="date" content="2017-07-03" />
+<meta name="date" content="2017-07-05" />
 
 <title>Best subset selection</title>
 
@@ -70,7 +70,7 @@ code > span.in { color: #60a0b0; font-weight: bold; font-style: italic; } /* Inf
 
 <h1 class="title toc-ignore">Best subset selection</h1>
 <h4 class="author"><em>Jason Shumake</em></h4>
-<h4 class="date"><em>2017-07-03</em></h4>
+<h4 class="date"><em>2017-07-05</em></h4>
 
 
 
@@ -300,7 +300,7 @@ mod<span class="fl">.5</span> &lt;-<span class="st"> </span><span class="kw">bes
 ## =======================================================</code></pre>
 <ol style="list-style-type: decimal">
 <li><p>In addition to the best model (a 5-predictor model that includes <code>lstat</code>, <code>dis</code>, <code>zn</code>, <code>ptratio</code>, and <code>black</code>), note the appearance of two other 5-predictor models that <code>beset</code> has identified as <code>Nearly Equivalent Models</code>, defined as models with less than a 0.01 difference in the fraction of deviance explained. For example, the first model in the list is identical to the best model, except that it exchanges <code>age</code> for <code>black</code>. However, it appears that all of the best models include <code>lstat</code>, <code>dis</code>, and <code>zn</code>.</p></li>
-<li><p>Note the appearance of a “Test-sample R squared” next to the “Train-sample R-squared”. In this case, the cross-validated <span class="math inline">\(R^2\)</span> underestimates the test-sample <span class="math inline">\(R^2\)</span> a bit (but the 95% confidence interval contains it–barely), but it is closer than the train-sample <span class="math inline">\(R^2\)</span>, which overestimates it.</p></li>
+<li><p>Note the appearance of a “Test-sample R squared” next to the “Train-sample R-squared”. In this case, the cross-validated <span class="math inline">\(R^2\)</span> underestimates the test-sample <span class="math inline">\(R^2\)</span> a bit, but it is closer than the train-sample <span class="math inline">\(R^2\)</span>, which overestimates it.</p></li>
 </ol>
 <p>Also note that increased sample size buys one the ability to fit more complicated models without overfitting, as we can also see by extracting the best model based on the largest training sample (N = 254):</p>
 <div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r"><span class="kw">summary</span>(mod<span class="fl">.5</span>)</code></pre></div>
@@ -412,7 +412,7 @@ biopsy &lt;-<span class="st"> </span>biopsy[,-<span class="dv">1</span>]</code><
 <li><code>V7</code>: bland chromatin</li>
 </ol>
 <p>Seven additional models were identified as nearly equivalent. All of them include clump thickness and bare nuclei, but all of the predictors in the data frame appear at least once with the exception of single epithelia cell size, which is never selected.</p>
-<p>Note one key difference between <code>glm</code> and <code>beset_glm</code> syntax is that the <code>family</code> argument must be passed as a string, not as a function call. For example, this will not work:</p>
+<p><strong>Note one key difference between <code>glm</code> and <code>beset_glm</code> syntax is that the <code>family</code> argument must be passed as a string, not as a function call.</strong> For example, this will not work:</p>
 <div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r"><span class="co"># Incorrect syntax</span>
 <span class="kw">beset_glm</span>(class ~<span class="st"> </span>., biopsy$train, biopsy$test,
           <span class="dt">family =</span> <span class="kw">binomial</span>(<span class="st">&quot;probit&quot;</span>))</code></pre></div>
@@ -472,7 +472,7 @@ mod &lt;-<span class="st"> </span><span class="kw">beset_glm</span>(art ~<span c
 ## Cross-validated R-squared = 0.08, 95% CI [0.07, 0.1]
 ## =======================================================</code></pre>
 <p>This suggests a two predictor model is best: male gender (or, nearly equivalent, having children under the age of 5) + a greater number of publications by the Ph.D. mentor predict a greater number of publications by the student.</p>
-<p>Of course, the Poisson distribution, which has a variance equal to its mean, does not describe these data very well either. The publication counts show too much <em>overdispersion</em>. A potentially better way to fit the data is with a <strong>negative binomial regression</strong>, which <code>beset_glm</code> will perform if <code>family</code> is set to <code>&quot;negbin&quot;</code>. Note that this is not a family supported by the <code>glm</code> function in R; rather, <code>beset_glm</code> calls a modified version of the <code>glm.nb</code> function from the <code>MASS</code> package to fit an extra parameter called <em>theta</em> to model overdispersion.</p>
+<p>Of course, the Poisson distribution, which has a variance equal to its mean, does not describe these data very well either. The publication counts show too much <em>overdispersion</em>. A potentially better way to fit the data is with a <strong>negative binomial regression</strong>, which <code>beset_glm</code> will perform if <code>family</code> is set to <code>&quot;negbin&quot;</code>. Note that this is not a family supported by the <code>glm</code> function in R; rather, <code>beset_glm</code> calls an internal modified version of the <code>glm.nb</code> function from the <code>MASS</code> package to fit an extra parameter called <em>theta</em> to model overdispersion.</p>
 <div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r">mod &lt;-<span class="st"> </span><span class="kw">beset_glm</span>(art ~<span class="st"> </span>., bioChemists$train, bioChemists$test,
                  <span class="dt">family =</span> <span class="st">&quot;negbin&quot;</span>)
 <span class="kw">summary</span>(mod)</code></pre></div>
