@@ -165,22 +165,21 @@ print.summary_beset_elnet <- function(x, ...){
   } else {
     cat("Mixture of ridge and lasso ")
   }
-  cat("(alpha = ", x$best_alpha, ") with lambda = ", x$best_lambda,
-      sep = "")
-  cat("\n\nNon-zero coefficients ranked in order of importance:\n")
+  cat("(alpha = ", x$best_alpha, ") with lambda = ", x$best_lambda, sep = "")
   best_coef <- dplyr::select(x$var_imp, variable, stand.coef)
   best_coef <- dplyr::filter(best_coef, abs(stand.coef) > 0)
   best_coef <- dplyr::arrange(best_coef, dplyr::desc(abs(stand.coef)))
   best_coef <- dplyr::mutate(best_coef, stand.coef = round(stand.coef, 3))
   best_coef <- as.data.frame(best_coef)
-  if(nrow(best_coef) > 1){
+  if(nrow(best_coef) >= 1){
+    cat("\n\nNon-zero coefficients ranked in order of importance:\n")
     print(best_coef, quote = FALSE)
     cat(paste("\nTrain-sample R-squared =", round(x$r2,2)))
     if(!is.null(x$r2_test)){
       cat(paste(", Test-sample R-squared =", round(x$r2_test, 2)))
-    }
-    cat("\n")
-    print(x$r2_cv)
+      }
+      cat("\n")
+      print(x$r2_cv)
   } else {
     cat("\n\nNo reliable predictors.")
   }
