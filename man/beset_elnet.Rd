@@ -5,8 +5,8 @@
 \title{Beset GLM with Elasticnet Regularization}
 \usage{
 beset_elnet(form, data, test_data = NULL, family = "gaussian",
-  alpha = c(0.01, 0.5, 0.99), standard_coef = TRUE, ..., n_folds = 10,
-  n_repeats = 10, seed = 42, n_cores = 2)
+  alpha = c(0.01, 0.5, 0.99), standard_coef = TRUE, impute_na = TRUE, ...,
+  n_folds = 10, n_repeats = 10, seed = 42, n_cores = 2)
 }
 \arguments{
 \item{form}{A model \code{\link[stats]{formula}}.}
@@ -35,8 +35,12 @@ these variables will still be standardized for purposes of model fitting,
 but the coefficients will be converted back to original scale before they are
 returned.}
 
-\item{...}{Additional parameters to be passed to
-\code{\link[glmnet]{glmnet}}.}
+\item{impute_na}{Logical flag to impute missing values with the median for
+numeric variables and the reference level of factor variables. Imputation is
+based on training folds and applied to test folds at the time of prediction,
+so the imputation rules effectively become a part of the predicitve model,
+and imputation error becomes a part of the cross-validation error. If
+\code{FALSE}, missing values will be removed via casewise deletion.}
 
 \item{n_folds}{Integer indicating the number of cross-validation folds.}
 
@@ -56,7 +60,7 @@ more information.}
 \code{beset_elnet} is a wrapper to \code{\link[glmnet]{glmnet}} for fitting
  generalized linear models via penalized maximum likelihood, providing
  automated data preprocessing and selection of both the elasticnet penalty
- and regularization parameter through repeated cross-validation.
+ and regularization parameter through repeated k-fold cross-validation.
 }
 \seealso{
 \code{\link[glmnet]{glmnet}}

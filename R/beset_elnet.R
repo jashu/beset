@@ -3,7 +3,7 @@
 #' \code{beset_elnet} is a wrapper to \code{\link[glmnet]{glmnet}} for fitting
 #'  generalized linear models via penalized maximum likelihood, providing
 #'  automated data preprocessing and selection of both the elasticnet penalty
-#'  and regularization parameter through repeated cross-validation.
+#'  and regularization parameter through repeated k-fold cross-validation.
 #'
 #' @param form A model \code{\link[stats]{formula}}.
 #'
@@ -31,8 +31,12 @@
 #' but the coefficients will be converted back to original scale before they are
 #' returned.
 #'
-#' @param ... Additional parameters to be passed to
-#' \code{\link[glmnet]{glmnet}}.
+#' @param impute_na Logical flag to impute missing values with the median for
+#' numeric variables and the reference level of factor variables. Imputation is
+#' based on training folds and applied to test folds at the time of prediction,
+#' so the imputation rules effectively become a part of the predicitve model,
+#' and imputation error becomes a part of the cross-validation error. If
+#' \code{FALSE}, missing values will be removed via casewise deletion.
 #'
 #' @param n_folds Integer indicating the number of cross-validation folds.
 #'
@@ -54,31 +58,59 @@
 
 beset_elnet <- function(form, data, test_data = NULL,
                         family = "gaussian", alpha = c(.01, .5, .99),
-                        standard_coef = TRUE, ...,
+                        standard_coef = TRUE, impute_na = TRUE, ...,
                         n_folds = 10, n_repeats = 10,
                         seed = 42, n_cores = 2){
   #==================================================================
   # Create model frame and extract response name and vector
   #------------------------------------------------------------------
-  mf <- stats::model.frame(form, data = data, na.action = stats::na.omit)
+  na_action <- if(impute_na) stats::na.pass else stats::na.omit
+  mf <- stats::model.frame(form, data = data, na.action = na_action)
   if(!is.null(test_data)){
     test_data <- stats::model.frame(form, data = test_data,
-                                    na.action = stats::na.omit)
+                                    na.action = na_action)
   }
   n_drop <- nrow(data) - nrow(mf)
   if(n_drop > 0)
     warning(paste("Dropping", n_drop, "rows with missing data."),
             immediate. = TRUE)
-  y <- mf[,1]
+  y <- mf[[1]]
+  missing_response <- is.na(y)
+  n_drop <- sum(missing_response)
+  if(n_drop > 0)
+    warning(paste("Dropping", n_drop, "rows with missing response data."),
+            immediate. = TRUE)
+  y <- y[!missing_response]
+  mf <- mf[!missing_response,]
   if(grepl("binomial", family)) y <- as.factor(y)
-  if(standard_coef) mf <- dplyr::mutate_if(mf, is.numeric, scale)
-  x <- stats::model.matrix(form, data = mf)[,-1]
+  mf <- dplyr::mutate_if(mf, is.logical, as.integer)
 
   #======================================================================
-  # Obtain fit statistics
+  # Screen for near zero variance and obtain fit statistics
   #----------------------------------------------------------------------
-  fits <- lapply(alpha, function(a, ...){
-    glmnet::glmnet(x, y, family, alpha = a, ...)
+  nzv <- caret::nearZeroVar(mf)
+  if(length(nzv) > 0){
+    warning(
+      paste("The following predictors have near-zero variance ",
+            "and will be dropped:\n\t",
+            paste0(names(mf)[nzv], collapse = "\n\t"), sep = ""),
+      immediate. = TRUE)
+  }
+  mf <- mf[-nzv]
+  mf_init <- mf
+  if(impute_na){
+    mf_init <- dplyr::mutate_if(mf_init, is.numeric, function(x){
+      ifelse(is.na(x), median(x, na.rm = TRUE), x)
+    })
+    mf_init <- dplyr::mutate_if(mf_init, is.factor, function(x){
+      labs <- levels(x)
+      factor(ifelse(is.na(x), 1, x), labels = labs)
+    })
+  }
+  x <- stats::model.matrix(form, data = mf_init)[,-1]
+  if(standard_coef) x <- apply(x, 2, scale)
+  fits <- lapply(alpha, function(a){
+    glmnet::glmnet(x, y, family, alpha = a)
    })
   names(fits) <- alpha
   lambda_seq <- sapply(fits, function(x) unique(round(x$lambda, 3)))
@@ -134,15 +166,33 @@ beset_elnet <- function(form, data, test_data = NULL,
   lambda_list <- rep(lambda_seq, each = n_folds * n_repeats)
   cl <- parallel::makeCluster(n_cores)
   metrics <- parallel::clusterMap(
-    cl, function(i, alpha, lambda, predictors, response, ...){
+    cl, function(i, alpha, lambda, mf, form, family, impute_na, standard_coef){
+      if(impute_na){
+        train_impute <- lapply(mf[i,], function(x){
+          if(is.numeric(x)) median(x, na.rm = TRUE) else 1L
+        })
+        mf_temp <- purrr::map2_df(mf, train_impute, function(x,y){
+          if(is.factor(x)){
+            labs <- levels(x)
+            factor(ifelse(is.na(x), 1, x), labels = labs)
+          } else {
+            ifelse(is.na(x), y, x)
+          }
+        })
+      }
+      predictors <- stats::model.matrix(form, mf_temp)[,-1]
+      if(standard_coef) predictors <- apply(predictors, 2, scale)
+      response <- mf_temp[[1]]
+      if(is.factor(response)) response <- as.integer(response) - 1
       fit <- glmnet::glmnet(x = predictors[i,], y = response[i], alpha = alpha,
-                            ...)
+                            family = family)
+      x <- predictors[-i,]
       y <- response[-i]
-      if(is.factor(y)) y <- as.integer(y) - 1
-      y_hat <- stats::predict(fit, predictors[-i,], lambda, "response")
-      apply(y_hat, 2, function(x) predict_metrics_(y, x, "gaussian"))
+      y_hat <- stats::predict(fit, x, lambda, "response")
+      apply(y_hat, 2, function(x) predict_metrics_(y, x, family))
       }, i = fold_list, alpha = alpha_list, lambda = lambda_list,
-    MoreArgs = list(predictors = x, response = y, family = family, ...)
+    MoreArgs = list(mf = mf, family = family, impute_na = impute_na,
+                    form = form, standard_coef = standard_coef)
   )
   parallel::stopCluster(cl)
   cv_stats <- data.frame(
