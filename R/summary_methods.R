@@ -31,8 +31,11 @@ NULL
 
 #' @export
 #' @rdname summary.beset
-summary.beset_elnet <- function(object, metric = "mce", oneSE = TRUE,
+summary.beset_elnet <- function(object, metric = NULL, oneSE = TRUE,
                                 n_cores = 2, ...){
+  if(is.null(metric)){
+    metric <- if(object$model_params$family == "gaussian") "mse" else "mce"
+  }
   metric <- match.arg(metric, c("mce", "mse", "r2"))
   if(is.na(metric)) stop("invalid 'metric' argument")
   best_metric <- switch(
