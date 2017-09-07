@@ -95,8 +95,8 @@ beset_elnet <- function(form, data, test_data = NULL,
             "and will be dropped:\n\t",
             paste0(names(mf)[nzv], collapse = "\n\t"), sep = ""),
       immediate. = TRUE)
+    mf <- mf[-nzv]
   }
-  mf <- mf[-nzv]
   mf_init <- mf
   if(impute_na){
     mf_init <- dplyr::mutate_if(mf_init, is.numeric, function(x){
