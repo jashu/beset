@@ -7,13 +7,15 @@
 \alias{summary.beset_zeroinfl}
 \title{Summary Methods for \code{beset} Objects}
 \usage{
-summary.beset_elnet(object, metric = NULL, oneSE = TRUE, n_cores = 2, ...)
-
-summary.beset_glm(object, metric = NULL, n_pred = NULL, oneSE = TRUE,
+\method{summary}{beset_elnet}(object, metric = NULL, oneSE = TRUE,
   n_cores = 2, ...)
 
-summary.beset_zeroinfl(object, metric = "mce", n_count_pred = NULL,
-  n_zero_pred = NULL, oneSE = TRUE, n_cores = 2, ...)
+\method{summary}{beset_glm}(object, metric = NULL, n_pred = NULL,
+  oneSE = TRUE, n_cores = 2, ...)
+
+\method{summary}{beset_zeroinfl}(object, metric = "mce",
+  n_count_pred = NULL, n_zero_pred = NULL, oneSE = TRUE, n_cores = 2,
+  ...)
 }
 \arguments{
 \item{object}{An object of class \code{"beset_glm"},

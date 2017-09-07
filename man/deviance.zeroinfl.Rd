@@ -4,7 +4,7 @@
 \alias{deviance.zeroinfl}
 \title{Deviance Method for Zero-Inflated Models}
 \usage{
-deviance.zeroinfl(object, ...)
+\method{deviance}{zeroinfl}(object, ...)
 }
 \arguments{
 \item{object}{an object for which the deviance is desired.}
