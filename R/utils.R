@@ -31,6 +31,7 @@ model_frame <- function (form, data){
   vars <- rownames(attr(terms(form, data = data), "factors"))
   vars <- gsub("`\\\\", "", vars)
   vars <- gsub("\\\\`", "", vars)
+  vars <- gsub("`", "", vars)
   data <- data[vars]
   data[complete.cases(data),]
 }
