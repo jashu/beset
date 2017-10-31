@@ -78,7 +78,7 @@ r2d <- function (object, newdata = NULL, cv = FALSE, ...) {
                     stats::var(object$model[[1]]),
                   glm = 1 - object$deviance / object$null.deviance,
                   negbin = 1 - object$deviance / object$null.deviance,
-                  zeroinfl = predict_metrics(object)$R_squared)
+                  zeroinfl = predict_metrics(object, object$model)$R_squared)
   R2new <- NULL
   if(!is.null(newdata)){
     R2new <- predict_metrics(object, newdata)$R_squared
