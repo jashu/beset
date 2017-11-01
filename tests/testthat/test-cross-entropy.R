@@ -73,7 +73,7 @@ test_that("neg binomial deviance = deviance()",{
 })
 
 test_that("zeroinfl poisson cross entropy = -logLik/N", {
-  object <- pscl::zeroinfl(art ~ ., data = pscl::bioChemists, dist = "negbin")
+  object <- pscl::zeroinfl(art ~ ., data = pscl::bioChemists, dist = "poisson")
   metrics <- predict_metrics(object, object$model)
   expect_equal(metrics$mean_cross_entropy,
                -1 * as.numeric(stats::logLik(object))/nrow(object$model))
