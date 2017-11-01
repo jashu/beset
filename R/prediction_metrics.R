@@ -82,14 +82,18 @@ predict_metrics <- function(object, test_data){
   if(is.factor(y)) y <- as.integer(y) - 1
   y_hat <- stats::predict(object, test_data, type="response")
   na <- which(is.na(y) | is.na(y_hat))
-  y <- y[-na]
-  y_hat <- y_hat[-na]
+  if(length(na) > 0){
+    y <- y[-na]
+    y_hat <- y_hat[-na]
+  }
   phi <- theta <- NULL
   if(family %in% c("zip", "zinb")){
     y_hat <- stats::predict(object, test_data, type = "count")
     phi <- stats::predict(object, test_data, type = "zero")
-    y_hat <- y_hat[-na]
-    phi <- phi[-na]
+    if(length(na) > 0){
+      y_hat <- y_hat[-na]
+      phi <- phi[-na]
+    }
   }
   if(family %in% c("negbin","zinb")) theta <- object$theta
   predict_metrics_(y, y_hat, family, phi, theta)
