@@ -190,7 +190,7 @@ beset_glm <- function(form, data, test_data = NULL, p_max = 10,
   # Warn user if any rows were dropped
   n_drop <- nrow(data) - nrow(mf)
   if(n_drop > 0){
-    warning(paste("Dropping", n_drop, "rows with missing data."),
+    warning(paste("Dropping", n_drop, "rows with missing data.\n"),
             immediate. = TRUE)
   }
   # cache name of the response variable
@@ -218,14 +218,14 @@ beset_glm <- function(form, data, test_data = NULL, p_max = 10,
   if(alt$p < p){
     p <- alt$p
     warning(paste("'p_max' argument too high for your sample size",
-                  ".\n  Reducing maximum subset size to ", p, ".",
+                  ".\n  Reducing maximum subset size to ", p, ".\n",
                   sep = ""), immediate. = TRUE)
   }
   if(n_folds < alt$folds){
     n_folds <- as.integer(alt$folds)
     warning(paste("'n_folds' argument too low for your sample size ",
                   "and choice of 'p_max'",
-                  ".\n  Increasing number of cv folds to ", n_folds, ".",
+                  ".\n  Increasing number of cv folds to ", n_folds, ".\n",
                   sep = ""), immediate. = TRUE)
   }
   #======================================================================
