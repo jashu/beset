@@ -65,8 +65,8 @@
 #'
 #' @export
 cv_r2 <- function(object, n_cores = 2, n_folds = 10, n_repeats = 10, seed = 42){
-  y <- as_vector(object$model[1])
-  if(is.null(y)) y <- as_vector(object$data[all.vars(object$terms)[1]])
+  y <- purrr::as_vector(object$model[1])
+  if(is.null(y)) y <- purrr::as_vector(object$data[all.vars(object$terms)[1]])
   if(is.null(y)) stop(paste("Model data not found in model object.",
                             "Try refitting model with `model = TRUE` arg."))
   set.seed(seed)
