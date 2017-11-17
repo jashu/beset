@@ -179,8 +179,8 @@ beset_elnet <- function(form, data, test_data = NULL,
             ifelse(is.na(x), y, x)
           }
         })
-      }
       predictors <- stats::model.matrix(form, mf_temp)[,-1]
+      }
       if(standard_coef) predictors <- apply(predictors, 2, scale)
       response <- mf_temp[[1]]
       if(is.factor(response)) response <- as.integer(response) - 1
