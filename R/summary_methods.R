@@ -91,7 +91,7 @@ summary.beset_elnet <- function(object, metric = NULL, oneSE = TRUE,
   boot_CI <- boot::boot.ci(r2_boot, type = "bca")
   r2_cv <- structure(
     list(cv_R2 = mean(cv_r2, na.rm = TRUE), `95% CI` = boot_CI$bca[4:5],
-         r2 = cv_r2), class = "cv_R2")
+         R2 = cv_r2), class = "cv_R2")
 
   structure(list(best = best_model, best_alpha = best_alpha,
                  best_lambda = best_lambda, var_imp = var_imp,
