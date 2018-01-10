@@ -5,8 +5,8 @@
 \title{Beset GLM with Elasticnet Regularization}
 \usage{
 beset_elnet(form, data, test_data = NULL, family = "gaussian",
-  alpha = c(0.01, 0.5, 0.99), standard_coef = TRUE, impute_na = TRUE, ...,
-  n_folds = 10, n_repeats = 10, seed = 42, n_cores = 2)
+  alpha = c(0.01, 0.5, 0.99), ..., n_folds = 10, n_repeats = 10,
+  seed = 42, n_cores = 2)
 }
 \arguments{
 \item{form}{A model \code{\link[stats]{formula}}.}
@@ -26,21 +26,6 @@ parameters. \code{alpha = 0} results in ridge regression, and \code{alpha =
 1} results in lasso regression. Values in between result in a mixture of L1
 and L2 penalties. (Values closer to 0 weight the L2 penalty more heavily,
 and values closer to 1 weight the L1 penalty more heavily.)}
-
-\item{standard_coef}{Logical flag to return standardized regression
-coefficients. Default is \code{standard_coef = TRUE}. Note that this refers
-to how the coefficients are returned; the elastic net requires all \code{x}
-variables to be at the same scale, so if \code{standard_coef = FALSE}
-these variables will still be standardized for purposes of model fitting,
-but the coefficients will be converted back to original scale before they are
-returned.}
-
-\item{impute_na}{Logical flag to impute missing values with the median for
-numeric variables and the reference level of factor variables. Imputation is
-based on training folds and applied to test folds at the time of prediction,
-so the imputation rules effectively become a part of the predicitve model,
-and imputation error becomes a part of the cross-validation error. If
-\code{FALSE}, missing values will be removed via casewise deletion.}
 
 \item{n_folds}{Integer indicating the number of cross-validation folds.}
 
