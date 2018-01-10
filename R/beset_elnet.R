@@ -23,21 +23,6 @@
 #' and L2 penalties. (Values closer to 0 weight the L2 penalty more heavily,
 #' and values closer to 1 weight the L1 penalty more heavily.)
 #'
-#' @param standard_coef Logical flag to return standardized regression
-#' coefficients. Default is \code{standard_coef = TRUE}. Note that this refers
-#' to how the coefficients are returned; the elastic net requires all \code{x}
-#' variables to be at the same scale, so if \code{standard_coef = FALSE}
-#' these variables will still be standardized for purposes of model fitting,
-#' but the coefficients will be converted back to original scale before they are
-#' returned.
-#'
-#' @param impute_na Logical flag to impute missing values with the median for
-#' numeric variables and the reference level of factor variables. Imputation is
-#' based on training folds and applied to test folds at the time of prediction,
-#' so the imputation rules effectively become a part of the predicitve model,
-#' and imputation error becomes a part of the cross-validation error. If
-#' \code{FALSE}, missing values will be removed via casewise deletion.
-#'
 #' @param n_folds Integer indicating the number of cross-validation folds.
 #'
 #' @param n_repeats Number of times cross-validation should be repeated.
@@ -57,58 +42,56 @@
 #' @export
 
 beset_elnet <- function(form, data, test_data = NULL,
-                        family = "gaussian", alpha = c(.01, .5, .99),
-                        standard_coef = TRUE, impute_na = TRUE, ...,
+                        family = "gaussian", alpha = c(.01, .5, .99), ...,
                         n_folds = 10, n_repeats = 10,
                         seed = 42, n_cores = 2){
   #==================================================================
   # Create model frame and extract response name and vector
   #------------------------------------------------------------------
-  na_action <- if(impute_na) stats::na.pass else stats::na.omit
-  mf <- stats::model.frame(form, data = data, na.action = na_action)
-  if(!is.null(test_data)){
-    test_data <- stats::model.frame(form, data = test_data,
-                                    na.action = na_action)
-  }
+  mf <- stats::model.frame(form, data = data)
   n_drop <- nrow(data) - nrow(mf)
-  if(n_drop > 0)
-    warning(paste("Dropping", n_drop, "rows with missing data."),
-            immediate. = TRUE)
+  if(n_drop > 0){
+    warning(
+      paste("Dropping", n_drop,
+            "rows from training data with missing values."),
+      immediate. = TRUE)
+  }
   y <- mf[[1]]
-  missing_response <- is.na(y)
-  n_drop <- sum(missing_response)
-  if(n_drop > 0)
-    warning(paste("Dropping", n_drop, "rows with missing response data."),
-            immediate. = TRUE)
-  y <- y[!missing_response]
-  mf <- mf[!missing_response,]
   if(grepl("binomial", family)) y <- as.factor(y)
   mf <- dplyr::mutate_if(mf, is.logical, as.integer)
+  if(!is.null(test_data)){
+    test_mf <- stats::model.frame(form, data = test_data)
+    n_drop <- nrow(test_data) - nrow(test_mf)
+    if(n_drop > 0){
+      warning(paste("Dropping", n_drop,
+                    "rows from test data with missing values."),
+              immediate. = TRUE)
+    }
+    y_test <- test_mf[[1]]
+    if(grepl("binomial", family)) y_test <- as.factor(y_test)
+    test_mf <- dplyr::mutate_if(test_mf, is.logical, as.integer)
+  }
 
   #======================================================================
   # Screen for near zero variance and obtain fit statistics
   #----------------------------------------------------------------------
-  nzv <- caret::nearZeroVar(mf)
+  x <- stats::model.matrix(form, data = mf)[, -1]
+  nzv <- caret::nearZeroVar(x)
   if(length(nzv) > 0){
     warning(
-      paste("The following predictors have near-zero variance ",
+      paste("The following predictors or contrasts have near-zero variance ",
             "and will be dropped:\n\t",
-            paste0(names(mf)[nzv], collapse = "\n\t"), sep = ""),
+            paste0(colnames(x)[nzv], collapse = "\n\t"), sep = ""),
       immediate. = TRUE)
-    mf <- mf[-nzv]
+    x <- x[,-nzv]
   }
-  mf_init <- mf
-  if(impute_na){
-    mf_init <- dplyr::mutate_if(mf_init, is.numeric, function(x){
-      ifelse(is.na(x), median(x, na.rm = TRUE), x)
-    })
-    mf_init <- dplyr::mutate_if(mf_init, is.factor, function(x){
-      labs <- levels(x)
-      factor(ifelse(is.na(x), 1, x), labels = labs)
-    })
+  if(!is.null(test_data)){
+    x_test <- stats::model.matrix(form, data = test_mf)[, -1]
+    x_test <- try(x_test[, colnames(x)], silent = TRUE)
+    if(inherits(x_test, "try-error")){
+      stop("Train and test data have different predictors or predictor levels")
+    }
   }
-  x <- stats::model.matrix(form, data = mf_init)[,-1]
-  if(standard_coef) x <- apply(x, 2, scale)
   fits <- lapply(alpha, function(a){
     glmnet::glmnet(x, y, family, alpha = a)
    })
@@ -137,12 +120,6 @@ beset_elnet <- function(form, data, test_data = NULL,
   if(!is.null(test_data)){
     test_stats <- data.frame(alpha = unlist(alpha_seq),
                              lambda = unlist(lambda_seq))
-    y_test <- test_data[,1]
-    if(standard_coef){
-      test_data <- dplyr::mutate_if(test_data, is.numeric, scale)
-    }
-    if(grepl("binomial", family)) y_test <- factor(y_test)
-    x_test <- stats::model.matrix(form, data = test_data)[,-1]
     metrics <- mapply(function(fit, lambda){
       y_hats <- stats::predict(fit, x_test, lambda, type = "response")
       y_obs <- if(is.factor(y_test)) as.integer(y_test) - 1 else y_test
@@ -166,33 +143,14 @@ beset_elnet <- function(form, data, test_data = NULL,
   lambda_list <- rep(lambda_seq, each = n_folds * n_repeats)
   cl <- parallel::makeCluster(n_cores)
   metrics <- parallel::clusterMap(
-    cl, function(i, alpha, lambda, mf, form, family, impute_na, standard_coef){
-      if(impute_na){
-        train_impute <- lapply(mf[i,], function(x){
-          if(is.numeric(x)) median(x, na.rm = TRUE) else 1L
-        })
-        mf_temp <- purrr::map2_df(mf, train_impute, function(x,y){
-          if(is.factor(x)){
-            labs <- levels(x)
-            factor(ifelse(is.na(x), 1, x), labels = labs)
-          } else {
-            ifelse(is.na(x), y, x)
-          }
-        })
-      predictors <- stats::model.matrix(form, mf_temp)[,-1]
-      }
-      if(standard_coef) predictors <- apply(predictors, 2, scale)
-      response <- mf_temp[[1]]
-      if(is.factor(response)) response <- as.integer(response) - 1
-      fit <- glmnet::glmnet(x = predictors[i,], y = response[i], alpha = alpha,
+    cl, function(i, alpha, lambda, x, y, family){
+      fit <- glmnet::glmnet(x = x[i,], y = y[i], alpha = alpha,
                             family = family)
-      x <- predictors[-i,]
-      y <- response[-i]
-      y_hat <- stats::predict(fit, x, lambda, "response")
-      apply(y_hat, 2, function(x) predict_metrics_(y, x, family))
+      y_hat <- stats::predict(fit, x[-i,], lambda, "response")
+      y <- if(is.factor(y)) as.integer(y) - 1
+      apply(y_hat, 2, function(x) predict_metrics_(y[-i], x, family))
       }, i = fold_list, alpha = alpha_list, lambda = lambda_list,
-    MoreArgs = list(mf = mf, family = family, impute_na = impute_na,
-                    form = form, standard_coef = standard_coef)
+    MoreArgs = list(x = x, y = y, family = family)
   )
   parallel::stopCluster(cl)
   cv_stats <- data.frame(
