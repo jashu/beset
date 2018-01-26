@@ -345,7 +345,7 @@ beset_glm <- function(form, data, test_data = NULL, p_max = 10,
   test_stats <- NULL
   if(!is.null(test_data)){
     metrics <- lapply(cv_stats$form, function(form){
-      fit <- fit_glm(test_data, form, family, link)
+      fit <- fit_glm(data, form, family, link)
       stats <- tryCatch(
         predict_metrics(fit, test_data = test_data),
         error = function(c){
