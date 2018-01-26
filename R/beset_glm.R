@@ -263,7 +263,8 @@ beset_glm <- function(form, data, test_data = NULL, p_max = 10,
   #----------------------------------------------------------------------
   cl <- parallel::makeCluster(n_cores)
   parallel::clusterExport(cl, c("mf", "family", "link", "test_data", "glm_nb",
-                                "fit_glm"), envir = environment())
+                                "fit_glm", "predict_metrics",
+                                "predict_metrics_"), envir = environment())
   fit_stats <- parallel::parLapplyLB(cl, form_list, function(form){
     fit <- try(fit_glm(mf, form, family, link), silent = TRUE)
     aic <- dev <- mae <- mce <- mse <- r2 <- NA_real_
