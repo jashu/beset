@@ -61,8 +61,6 @@
 #' @seealso \code{\link{r2d}}, \code{\link[stats]{logLik}},
 #' \code{\link{deviance.zeroinfl}}
 #'
-#' @importFrom purrr as_vector
-#'
 #' @export
 predict_metrics <- function(object, test_data){
   model_type <- class(object)[1]
@@ -75,9 +73,9 @@ predict_metrics <- function(object, test_data){
   if(model_type == "glm" && !family %in% c("gaussian", "binomial", "poisson"))
     stop(paste(family, "family not supported"))
   y <- if(model_type == "zeroinfl"){
-    as_vector(test_data[[all.vars(object$terms$full)[1]]])
+    purrr::as_vector(test_data[[all.vars(object$terms$full)[1]]])
   } else {
-    as_vector(test_data[[all.vars(object$terms)[1]]])
+    purrr::as_vector(test_data[[all.vars(object$terms)[1]]])
   }
   if(is.factor(y)) y <- as.integer(y) - 1
   y_hat <- stats::predict(object, test_data, type="response")
