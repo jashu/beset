@@ -242,10 +242,14 @@ beset_glm <- function(form, data, test_data = NULL, p_max = 10,
   # Determine number of predictors for each model in list
   #----------------------------------------------------------------------
   get_npred <- function(pred_name){
-    pred_data <- mf[[pred_name]]
-    if(is.factor(pred_data)) length(levels(pred_data)) - 1L else 1L
+    pred_data <- mf[pred_name]
+    map_int(
+      pred_data, ~ {
+        if(is.factor(.x)) length(levels(.x)) - 1L else 1L
+      }
+    )
   }
-  n_pred <- pred %>% at_depth(2, get_npred) %>% map_int(reduce, `+`)
+  n_pred <- pred %>% map(get_npred) %>% map_int(reduce, `+`)
   n_pred <- c(0L, n_pred)
 
   #======================================================================
