@@ -487,17 +487,17 @@ beset_zeroinfl <- function(form, data, test_data = NULL,
     metrics %>% at_depth(1, i) %>% transpose()
   )
   cv_mean <- metrics %>%
-    at_depth(2, function(x) mean.default(as_vector(x), na.rm = TRUE)) %>%
+    at_depth(2, function(x) mean.default(purrr::as_vector(x), na.rm = TRUE)) %>%
     transpose() %>%
-    at_depth(1, as_vector) %>%
+    at_depth(1, purrr::as_vector) %>%
     as_data_frame()
   names(cv_mean) <- c("dev", "mae", "mce", "mse", "r2")
   cv_se <- metrics %>%
     at_depth(2, function(x){
-      x <- as_vector(x)
+      x <- purrr::as_vector(x)
       sd(x, na.rm = TRUE) / sqrt(length(x[!is.na(x)]))
     }) %>% transpose() %>%
-    at_depth(1, as_vector) %>%
+    at_depth(1, purrr::as_vector) %>%
     as_data_frame()
   names(cv_se) <- c("dev_SE", "mae_SE", "mce_SE", "mse_SE", "r2_SE")
   cv_stats <- bind_cols(cv_stats, cv_mean, cv_se)
@@ -522,7 +522,7 @@ beset_zeroinfl <- function(form, data, test_data = NULL,
       }
     })
     metrics <- transpose(metrics) %>%
-      at_depth(1, as_vector) %>%
+      at_depth(1, purrr::as_vector) %>%
       as.data.frame()
     names(metrics) <- c("dev", "mae", "mce", "mse", "r2")
     test_stats <- bind_cols(select(cv_stats, n_count_pred, n_zero_pred, form),
