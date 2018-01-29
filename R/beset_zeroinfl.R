@@ -483,24 +483,22 @@ beset_zeroinfl <- function(form, data, test_data = NULL,
   #======================================================================
   # Derive cross-validation statistics
   #----------------------------------------------------------------------
-  metrics <- lapply(1:nrow(cv_stats), function(i)
-    metrics %>% at_depth(1, i) %>% transpose()
-  )
-  cv_mean <- metrics %>%
-    at_depth(2, function(x) mean.default(purrr::as_vector(x), na.rm = TRUE)) %>%
-    transpose() %>%
-    at_depth(1, purrr::as_vector) %>%
-    as_data_frame()
+  metrics <- purrr::transpose(metrics)
+  metrics <- purrr::map(metrics, purrr::transpose)
+  metrics <- purrr::modify_depth(metrics, 2, purrr::as_vector)
+  cv_mean <- purrr::modify_depth(metrics, 2, ~mean.default(.,na.rm = TRUE))
+  cv_mean <- purrr::transpose(cv_mean)
+  cv_mean <- purrr::map(cv_mean, purrr::as_vector)
+  cv_mean <- tibble::as_data_frame(cv_mean)
   names(cv_mean) <- c("dev", "mae", "mce", "mse", "r2")
-  cv_se <- metrics %>%
-    at_depth(2, function(x){
-      x <- purrr::as_vector(x)
-      sd(x, na.rm = TRUE) / sqrt(length(x[!is.na(x)]))
-    }) %>% transpose() %>%
-    at_depth(1, purrr::as_vector) %>%
-    as_data_frame()
+  cv_se <- purrr::modify_depth(metrics, 2, function(x){
+    sd(x, na.rm = TRUE) / sqrt(length(x[!is.na(x)]))
+  })
+  cv_se <- purrr::transpose(cv_se)
+  cv_se <- purrr::map(cv_se, purrr::as_vector)
+  cv_se <- tibble::as_data_frame(cv_se)
   names(cv_se) <- c("dev_SE", "mae_SE", "mce_SE", "mse_SE", "r2_SE")
-  cv_stats <- bind_cols(cv_stats, cv_mean, cv_se)
+  cv_stats <- dplyr::bind_cols(cv_stats, cv_mean, cv_se)
 
   #======================================================================
   # Compute prediction statistics for independent test set
@@ -521,11 +519,12 @@ beset_zeroinfl <- function(form, data, test_data = NULL,
              R_squared = NA_real_)
       }
     })
-    metrics <- transpose(metrics) %>%
-      at_depth(1, purrr::as_vector) %>%
-      as.data.frame()
+    metrics <- purrr::transpose(metrics)
+    metrics <- purrr::map(metrics, purrr::as_vector)
+    metrics <- tibble::as_data_frame(metrics)
     names(metrics) <- c("dev", "mae", "mce", "mse", "r2")
-    test_stats <- bind_cols(select(cv_stats, n_count_pred, n_zero_pred, form),
+    test_stats <- dplyr::bind_cols(
+      dplyr::select(cv_stats, n_count_pred, n_zero_pred, form),
                             metrics)
   }
   #======================================================================
