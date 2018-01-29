@@ -278,7 +278,8 @@ This also chooses the same two predictor model, but suggests that a number of pr
 
 ```{r, fig.height=4, fig.width=5}
 plot(mod, metric = "r2") + 
-  ggtitle("Cross-validated subsets for negative binomial regression")
+  ggtitle("Cross-validated subsets for
+negative binomial regression")
 ```
 
 ## `beset_zeroinfl`

@@ -122,7 +122,8 @@ summary(mod)
 
 ## ---- fig.height=4, fig.width=5------------------------------------------
 plot(mod, metric = "r2") + 
-  ggtitle("Cross-validated subsets for negative binomial regression")
+  ggtitle("Cross-validated subsets for
+negative binomial regression")
 
 ## ------------------------------------------------------------------------
 mod <- beset_zeroinfl(art ~ ., bioChemists$train, bioChemists$test)
