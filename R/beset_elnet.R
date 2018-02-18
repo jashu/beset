@@ -91,8 +91,7 @@ beset_elnet <- function(form, data, test_data = NULL,
     if(inherits(x_test, "try-error")){
       stop("Train and test data have different predictors or predictor levels")
     }
-    y_test <- if(is.factor(test_data[[1]]))
-      as.integer(test_data[[1]]) - 1 else test_data[[1]]
+    y_test <- test_data[[1]]
   }
   fits <- lapply(alpha, function(a){
     glmnet::glmnet(x, y, family, alpha = a)
@@ -105,7 +104,7 @@ beset_elnet <- function(form, data, test_data = NULL,
                           lambda = unlist(lambda_seq))
   metrics <- mapply(function(fit, lambda){
     y_hats <- stats::predict(fit, x, lambda, type = "response")
-    y_obs <-
+    y_obs <- if(is.factor(y)) as.integer(y) - 1 else y
     apply(y_hats, 2, function(y_hat) predict_metrics_(y_obs, y_hat, family))
   }, fit = fits, lambda = lambda_seq)
   fit_stats$mce <- unlist(sapply(metrics, function(x)
@@ -124,7 +123,8 @@ beset_elnet <- function(form, data, test_data = NULL,
                              lambda = unlist(lambda_seq))
     metrics <- mapply(function(fit, lambda){
       y_hats <- stats::predict(fit, x_test, lambda, type = "response")
-      apply(y_hats, 2, function(y_hat) predict_metrics_(y_test, y_hat, family))
+      y_obs <- if(is.factor(y_test)) as.integer(y_test) - 1 else y_test
+      apply(y_hats, 2, function(y_hat) predict_metrics_(y_obs, y_hat, family))
     }, fit = fits, lambda = lambda_seq)
     test_stats$mce <- unlist(sapply(metrics, function(x)
       sapply(x, function(s) s$mean_cross_entropy)))
