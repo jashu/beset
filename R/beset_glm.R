@@ -268,9 +268,11 @@ beset_glm <- function(form, data, test_data = NULL, p_max = 10,
   # Obtain fit statistics for every model
   #----------------------------------------------------------------------
   cl <- parallel::makeCluster(n_cores)
+  lib_paths <- .libPaths()
+  parallel::clusterExport(cl, c("mf", "family", "link", "test_data",
+                                "lib_paths"), envir = environment())
+  parallel::clusterEvalQ(cl, .libPaths(lib_paths))
   parallel::clusterEvalQ(cl, library(beset))
-  parallel::clusterExport(cl, c("mf", "family", "link", "test_data", "fit_glm"),
-                          envir = environment())
   fit_stats <- parallel::parLapplyLB(cl, form_list, function(form){
     fit <- try(fit_glm(mf, form, family, link), silent = TRUE)
     aic <- dev <- mae <- mce <- mse <- r2 <- NA_real_
@@ -387,7 +389,7 @@ beset_glm <- function(form, data, test_data = NULL, p_max = 10,
 #' @export
 #' @rdname beset_glm
 beset_lm <- function(form, data, test_data = NULL, p_max = 10,
-                     n_cores = 2, n_folds = 10, n_repeats = 10,  seed = 42){
+                     n_cores = 2, n_folds = 5, n_repeats = 5,  seed = 42){
   beset_glm(form, data, test_data = test_data, p_max = p_max,
             n_cores = n_cores, n_folds = n_folds, n_repeats = n_repeats,
             seed = seed)
