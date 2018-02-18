@@ -143,7 +143,8 @@ beset_elnet <- function(form, data, test_data = NULL,
   lambda_list <- rep(lambda_seq, each = n_folds * n_repeats)
   cl <- parallel::makeCluster(n_cores)
   lib_paths <- .libPaths()
-  parallel::clusterExport(cl, "lib_paths", envir = environment())
+  parallel::clusterExport(cl, c("lib_paths", "predict_metrics_"),
+                          envir = environment())
   parallel::clusterEvalQ(cl, .libPaths(lib_paths))
   metrics <- parallel::clusterMap(
     cl, function(i, alpha, lambda, x, y, family){
