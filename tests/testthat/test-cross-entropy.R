@@ -20,7 +20,7 @@ test_that("lm deviance = deviance()",{
   expect_equal(metrics$deviance, stats::deviance(object))
 })
 
-test_that("gauss metrics = -logLik/N", {
+test_that("gauss cross-entropy = -logLik/N", {
   object <- stats::glm(Fertility ~ ., data = swiss, family = "gaussian")
   metrics <- predict_metrics(object, object$model)
   expect_equal(metrics$mean_cross_entropy,
@@ -74,6 +74,22 @@ test_that("neg binomial deviance = deviance()",{
 
 test_that("zeroinfl poisson cross entropy = -logLik/N", {
   object <- pscl::zeroinfl(art ~ ., data = pscl::bioChemists, dist = "poisson")
+  metrics <- predict_metrics(object, object$model)
+  expect_equal(metrics$mean_cross_entropy,
+               -1 * as.numeric(stats::logLik(object))/nrow(object$model))
+})
+
+test_that("zeroinfl negbin cross entropy = -logLik/N", {
+  object <- pscl::zeroinfl(art ~ ., data = pscl::bioChemists,
+                           dist = "negbin")
+  metrics <- predict_metrics(object, object$model)
+  expect_equal(metrics$mean_cross_entropy,
+               -1 * as.numeric(stats::logLik(object))/nrow(object$model))
+})
+
+test_that("zeroinfl poisson cross entropy = -logLik/N", {
+  data(BinomialExample, package = "glmnet")
+  object <- glmnet::glmnet(x, y, family = "binomial")
   metrics <- predict_metrics(object, object$model)
   expect_equal(metrics$mean_cross_entropy,
                -1 * as.numeric(stats::logLik(object))/nrow(object$model))
