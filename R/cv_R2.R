@@ -69,8 +69,7 @@ cv_r2 <- function(object, n_cores = 2, n_folds = 10, n_repeats = 10, seed = 42){
   if(is.null(y)) y <- purrr::as_vector(object$data[all.vars(object$terms)[1]])
   if(is.null(y)) stop(paste("Model data not found in model object.",
                             "Try refitting model with `model = TRUE` arg."))
-  set.seed(seed)
-  fold_ids <- caret::createMultiFolds(y, k = n_folds, times = n_repeats)
+  fold_ids <- create_folds(y, n_folds, n_repeats, seed)
   cl <- parallel::makeCluster(n_cores)
   r2 <- parallel::parSapply(cl, fold_ids, function(i, object){
     form <- object$terms; fam <- object$family; link <- object$family$link

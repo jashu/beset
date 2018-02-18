@@ -27,27 +27,19 @@ testing sets, respectively.
 \code{\link{data_partition}} structure.
 }
 \details{
-\code{partition} is mainly a convenince wrapper for
-\code{\link[caret]{createDataPartition}}, which returns row position integers
-corresponding to the training data, as derived from stratefied random
-sampling within the factor levels of a classification outcome or the
-quintiles of a numeric outcome. This insures that the training and test
-samples will be closely matched in terms of class incidence or frequency
-distribution of the outcome measure. The typical use case for
-\code{\link[caret]{createDataPartition}} is to create a single partition,
-which will include a preceding call to \code{\link[base]{set.seed}}, so that
-the randomization is reproducible, and a subsequent construction of separate
-training and testing data frames using the row positions that are returned.
-
-\code{partition} consolidates the above steps into a single function call,
-creating analysis-ready \code{train} and \code{test} data frames, which are
+\code{partition} creates a train/test split among the rows of a data frame
+based on stratified random sampling within the factor levels of a
+classification outcome or the quintiles of a numeric outcome. This insures
+that the training and test samples will be closely matched in terms of class
+incidence or frequency distribution of the outcome measure. \code{partition}
+includes a \code{seed} argument so that the randomized partitioning is
+reproducible. The \code{train} and \code{test} data frames are returned
 bound together in a \code{\link{data_partition}} structure so that their
 common ancestry is maintained and self-documented. For example, if you name
-your \code{\link{data_partition}} "\code{data}", you can intutively access
+your \code{\link{data_partition}} "\code{data}", you can intuitively access
 the training set with \code{data$train} and its corresponding test set with
 \code{data$test}.
 }
 \seealso{
-\code{\link[caret]{createDataPartition}},
- \code{\link[base]{set.seed}}, \code{\link{data_partition}}
+\code{\link[base]{set.seed}}, \code{\link{data_partition}}
 }

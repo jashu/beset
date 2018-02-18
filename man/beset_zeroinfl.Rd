@@ -6,7 +6,7 @@
 \usage{
 beset_zeroinfl(form, data, test_data = NULL, family = "poisson",
   link = "logit", p_count_max = 10, p_zero_max = 10, n_cores = 2,
-  n_folds = 10, n_repeats = 10, seed = 42)
+  n_folds = 5, n_repeats = 5, seed = 42)
 }
 \arguments{
 \item{form}{A model \code{\link[stats]{formula}}. Note that you cannot
@@ -23,8 +23,8 @@ to be used for model fitting.}
 the data to be used for model validation.}
 
 \item{family}{Character string naming the count model family. Options are
-\code{"poisson"} (default), \code{"negbin"}, or \code{"geometric"}. (Note a
-log link is always used with the count model).}
+\code{"poisson"} (default) or \code{"negbin"}. (Note a log link is always
+used with the count model.)}
 
 \item{link}{Character string naming the link function in the binary
 zero-inflation model. Options are \code{"logit"} (default), \code{"probit"},
@@ -175,7 +175,7 @@ the new settings.
 }
 
 \seealso{
-\code{\link[caret]{createFolds}}, \code{\link{beset_glm}},
+\code{\link{beset_glm}},
 \code{\link[pscl]{zeroinfl}}, \code{\link[base]{set.seed}},
 \code{\link{predict_metrics}}
 }

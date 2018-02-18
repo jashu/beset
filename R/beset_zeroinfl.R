@@ -63,7 +63,7 @@
 #'  recommended.
 #' }
 #'
-#' @seealso \code{\link[caret]{createFolds}}, \code{\link{beset_glm}},
+#' @seealso \code{\link{beset_glm}},
 #' \code{\link[pscl]{zeroinfl}}, \code{\link[base]{set.seed}},
 #' \code{\link{predict_metrics}}
 #'
@@ -81,8 +81,8 @@
 #' the data to be used for model validation.
 #'
 #' @param family Character string naming the count model family. Options are
-#' \code{"poisson"} (default), \code{"negbin"}, or \code{"geometric"}. (Note a
-#' log link is always used with the count model).
+#' \code{"poisson"} (default) or \code{"negbin"}. (Note a log link is always
+#' used with the count model.)
 #'
 #' @param link Character string naming the link function in the binary
 #' zero-inflation model. Options are \code{"logit"} (default), \code{"probit"},
@@ -168,98 +168,70 @@
 beset_zeroinfl <- function(form, data, test_data = NULL,
                            family = "poisson", link = "logit",
                            p_count_max = 10, p_zero_max = 10, n_cores = 2,
-                           n_folds = 10, n_repeats = 10, seed = 42){
+                           n_folds = 5, n_repeats = 5, seed = 42){
   #==================================================================
   # Check family and link arguments
   #------------------------------------------------------------------
-  family <- tryCatch(match.arg(family, c("negbin", "poisson", "geometric")),
-                     error = function(c){
-                       c$message <- gsub("arg", "family", c$message)
-                       c$call <- NULL
-                       stop(c)
-                     })
-  link <- if(!is.null(link)){
-    tryCatch(match.arg(link, c("logit", "probit", "cauchit", "log", "cloglog")),
-             error = function(c){
-               c$message <- gsub("arg", "link", c$message)
-               c$call <- NULL
-               stop(c)
-             })
-    }
+  family <- check_family(family)
+  link <- check_link("binomial", link)
 
   #==================================================================
   # Create model frame and extract response name and vector
   #------------------------------------------------------------------
-  mf <- stats::model.frame(form, data = data, na.action = stats::na.omit)
+  mf <- model_frame(form, data)
   # Correct non-standard column names
   names(mf) <- make.names(names(mf))
+  # Do the same for test_data if it exists
   if(!is.null(test_data)){
-    test_data <- stats::model.frame(form, data = test_data,
-                                    na.action = stats::na.omit)
+    test_data <- model_frame(form, data = test_data)
     names(test_data) <- make.names(names(test_data))
     if(!all(names(mf) %in% names(test_data)))
       stop("'test_data' must contain same variables as 'data'")
   }
+  # Warn user if any rows were dropped
   n_drop <- nrow(data) - nrow(mf)
   if(n_drop > 0)
     warning(paste("Dropping", n_drop, "rows with missing data."),
             immediate. = TRUE)
+  # Cache name of the response variable
   response <- names(mf)[1]
-  y <- mf[,1]
-  if(min(y) != 0)
-    stop("Observed lower bound does not equal 0.")
-  if(!is.null(test_data)){
-    test_data <- stats::model.frame(form, data = test_data,
-                                    na.action = stats::na.omit)
+  # Extract response vector
+  y <- mf[[1]]
+  # Insure that a zero-inflated count model is appropriate
+  ## Insure that all values are integers
+  if(!is.integer(y) || any(y < 0)){
+    stop(paste("Response variable does not appear to be a count.",
+               "Check that all values are non-negative integers.")
+    )
   }
+  ## Insure that there are zero values
+  if(min(y) != 0){
+    stop(paste("Observed lower bound does not equal 0.",
+               "Transform your outcome to have a floor of 0,",
+               "or, if you do not have a floor effect,",
+               "use beset_glm instead.")
+    )
+  }
+
   #==================================================================
   # Screen for linear dependencies among predictors
   #------------------------------------------------------------------
-  mm <- stats::model.matrix(form, data = data)
-  colinear_vars <- caret::findLinearCombos(mm)
-  if(!is.null(colinear_vars$remove)){
-    mf_to_mm <- rep(1, ncol(mf))
-    factor_idx <- which(sapply(mf, class) == "factor")
-    if(length(factor_idx) != 0){
-      factor_exp <- sapply(mf[, factor_idx], function(x) length(levels(x)))
-      mf_to_mm[factor_idx] <- factor_exp
-    }
-    mf_to_mm <- cumsum(mf_to_mm)
-    to_remove <- names(mf)[mf_to_mm %in% colinear_vars$remove]
-    stop(
-      if(length(to_remove) == 1){
-        paste("Linear dependency found. Consider removing predictor `",
-              to_remove, "`.", sep = "")
-      } else {
-        paste(length(to_remove), " linear dependencies found. ",
-              "Consider removing the following predictors:\n\t",
-              paste0(to_remove, collapse = "\n\t"),
-              sep = "")
-      }
-    )
-  }
+  mf <- check_lindep(form, mf)
+
   #==================================================================
   # Check that number of predictors and cv folds is acceptable
   #------------------------------------------------------------------
   p_count <- min(ncol(mf) - 1, p_count_max)
   n <- nrow(mf)
-  alt_folds <- n / (n - p_count * 10)
-  alt_p_count <- p_count
-  while(!dplyr::between(alt_folds, 1, 10)){
-    alt_p_count <- alt_p_count - 1
-    alt_folds <- n / (n - alt_p_count * 10)
-  }
-  if(alt_p_count < 1){
-    stop("Sample size is too small.")
-  }
-  if(alt_p_count < p_count){
-    p_count <- alt_p_count
+  alt <- check_cv(n, p_count, FALSE, n_folds)
+  if(alt$p < p_count){
+    p_count <- alt$p
     warning(paste("'p_count_max' argument too high given sample size",
                   ".\n Reducing maximum subset size for count-model to ",
                   p_count, ".", sep = ""), immediate. = TRUE)
   }
-  if(n_folds < alt_folds){
-    n_folds <- as.integer(alt_folds)
+  if(n_folds < alt$folds){
+    n_folds <- as.integer(alt$folds)
     warning(paste("'n_folds' argument too low given sample size",
                   "and choice of 'p_count_max'",
                   ".\n  Increasing number of cv folds to ", n_folds, ".",
@@ -271,26 +243,30 @@ beset_zeroinfl <- function(form, data, test_data = NULL,
   y_binom <- as.factor(mf_binom[,1])
   n <- min(sum(y_binom == levels(y_binom)[1]),
            sum(y_binom == levels(y_binom)[2]))
-  alt_folds <- n / (n - p_zero * 10)
-  alt_p_zero <- p_zero
-  while(!dplyr::between(alt_folds, 1, 10)){
-    alt_p_zero <- alt_p_zero - 1
-    alt_folds <- n / (n - alt_p_zero * 10)
-  }
-  if(alt_p_zero < 1){
-      stop("Not enough 0 values to model zero-inflation process.")
-  }
-  if(alt_p_zero < p_zero){
-    p_zero <- alt_p_zero
+  alt <- tryCatch(
+    check_cv(n, p_zero, TRUE, n_folds),
+    error = function(c){
+      c$message <- "Not enough 0 values to model zero-inflation process."
+      c$call <- NULL
+      stop(c)
+    })
+  if(alt$p < p_zero){
+    p_zero <- alt$p
     warning(paste("'p_zero_max' argument too high given counts of zero values",
                   ".\n Reducing maximum subset size for zero-model to ",
                   p_zero, ".", sep = ""), immediate. = TRUE)
   }
-  if(n_folds < alt_folds){
-    n_folds <- as.integer(alt_folds)
+  if(n_folds < alt$folds){
+    n_folds <- as.integer(alt$folds)
     warning(paste("'n_folds' argument too low given counts of zero values",
                   "and choice of 'p_zero_max'",
                   ".\n  Increasing number of cv folds to ", n_folds, ".",
+                  sep = ""), immediate. = TRUE)
+  }
+  if(n_folds > alt$folds){
+    n_folds <- as.integer(alt$folds)
+    warning(paste("'n_folds' argument too high given counts of zero values",
+                  ".\n  Decreasing number of cv folds to ", n_folds, ".\n",
                   sep = ""), immediate. = TRUE)
   }
   #======================================================================
@@ -449,19 +425,7 @@ beset_zeroinfl <- function(form, data, test_data = NULL,
   #----------------------------------------------------------------------
   cv_stats <- dplyr::select(fit_stats, n_count_pred:form)
   cv_stats <- dplyr::arrange(cv_stats, n_zero_pred, n_count_pred)
-  folds <- matrix(nrow = length(y), ncol = n_repeats)
-  # make separate fold assignments for zero vs. non-zero values to insure
-  # both 0 and count process is represented in every fold
-  zero_folds <- rep(1:n_folds, ceiling(sum(y == 0) / n_folds))[1:sum(y==0)]
-  set.seed(seed)
-  folds[y == 0,] <- replicate(n_repeats, sample(zero_folds))
-  folds[y > 0,] <- replicate(n_repeats,
-    caret::createFolds(y[y > 0], k = n_folds, list = FALSE))
-  fold_ids <- expand.grid(Fold = 1:n_folds, Rep = 1:n_repeats)
-  fold_names <- paste("Fold", fold_ids$Fold, ".Rep", fold_ids$Rep, sep = "")
-  fold_ids <- mapply(function(fold, rep) which(folds[, rep] != fold),
-                     fold_ids$Fold, fold_ids$Rep)
-  names(fold_ids) <- fold_names
+  fold_ids <- create_folds(y, n_folds, n_repeats, seed)
   metrics <- parallel::parLapply(cl, fold_ids, function(i, form_list){
     lapply(form_list, function(form){
       fit <- try(suppressWarnings(

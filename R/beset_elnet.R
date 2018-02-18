@@ -48,43 +48,33 @@ beset_elnet <- function(form, data, test_data = NULL,
   #==================================================================
   # Create model frame and extract response name and vector
   #------------------------------------------------------------------
-  mf <- stats::model.frame(form, data = data)
+  mf <- model_frame(form, data)
+  # Correct non-standard column names
+  names(mf) <- make.names(names(mf))
+  # Do the same for test_data if it exists
+  if(!is.null(test_data)){
+    test_data <- model_frame(form, data = test_data)
+    names(test_data) <- make.names(names(test_data))
+    if(!all(names(mf) %in% names(test_data)))
+      stop("'test_data' must contain same variables as 'data'")
+  }
+  # Warn user if any rows were dropped
   n_drop <- nrow(data) - nrow(mf)
   if(n_drop > 0){
-    warning(
-      paste("Dropping", n_drop,
-            "rows from training data with missing values."),
-      immediate. = TRUE)
+    warning(paste("Dropping", n_drop, "rows with missing data.\n"),
+            immediate. = TRUE)
   }
+  # cache name of the response variable
+  response <- names(mf)[1]
+  # extract response vector
   y <- mf[[1]]
-  if(grepl("binomial", family)) y <- as.factor(y)
-  mf <- dplyr::mutate_if(mf, is.logical, as.integer)
-  if(!is.null(test_data)){
-    test_mf <- stats::model.frame(form, data = test_data)
-    n_drop <- nrow(test_data) - nrow(test_mf)
-    if(n_drop > 0){
-      warning(paste("Dropping", n_drop,
-                    "rows from test data with missing values."),
-              immediate. = TRUE)
-    }
-    y_test <- test_mf[[1]]
-    if(grepl("binomial", family)) y_test <- as.factor(y_test)
-    test_mf <- dplyr::mutate_if(test_mf, is.logical, as.integer)
-  }
+  # insure y is a factor if family is binomial
+  if(family == "binomial" && !is.factor(y)) y <- factor(y)
 
   #======================================================================
-  # Screen for near zero variance and obtain fit statistics
+  # Obtain fit statistics
   #----------------------------------------------------------------------
   x <- stats::model.matrix(form, data = mf)[, -1]
-  nzv <- caret::nearZeroVar(x)
-  if(length(nzv) > 0){
-    warning(
-      paste("The following predictors or contrasts have near-zero variance ",
-            "and will be dropped:\n\t",
-            paste0(colnames(x)[nzv], collapse = "\n\t"), sep = ""),
-      immediate. = TRUE)
-    x <- x[,-nzv]
-  }
   if(!is.null(test_data)){
     x_test <- stats::model.matrix(form, data = test_mf)[, -1]
     x_test <- try(x_test[, colnames(x)], silent = TRUE)
@@ -136,8 +126,7 @@ beset_elnet <- function(form, data, test_data = NULL,
   #==================================================================
   # Obtain cross-validation stats
   #------------------------------------------------------------------
-  set.seed(seed)
-  fold_ids <- caret::createMultiFolds(y, k = n_folds, times = n_repeats)
+  fold_ids <- create_folds(y, n_folds, n_repeats, seed)
   fold_list <- rep(fold_ids, length(alpha))
   alpha_list <- rep(alpha, each = n_folds * n_repeats)
   lambda_list <- rep(lambda_seq, each = n_folds * n_repeats)

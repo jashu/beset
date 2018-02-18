@@ -14,7 +14,7 @@
 #' folds predicts the left-out fold).
 #'
 #' @section Cross-validation details:
-#' \code{beset_glm} uses \code{\link[caret]{createMultiFolds}} to randomly
+#' \code{beset_glm} uses \code{\link{create_folds}} to randomly
 #' partition the data set into \code{n_folds} * \code{n_repeats} folds within
 #' strata (factor levels for factor outcomes, percentile-based groups for
 #' numeric outcomes). This insures that the folds will be matched in terms of
@@ -69,7 +69,7 @@
 #' @import dplyr
 #'
 #'
-#' @seealso \code{\link[caret]{createFolds}}, \code{\link[stats]{glm}},
+#' @seealso \code{\link[stats]{glm}},
 #' \code{\link[base]{set.seed}}, \code{\link[MASS]{glm.nb}}
 #'
 #' @param form A model \code{\link[stats]{formula}}.
@@ -159,7 +159,7 @@ NULL
 #' @export
 beset_glm <- function(form, data, test_data = NULL, p_max = 10,
                       family = "gaussian", link = NULL,
-                      n_cores = 2, n_folds = 10, n_repeats = 10, seed = 42){
+                      n_cores = 2, n_folds = 5, n_repeats = 5, seed = 42){
 
   #==================================================================
   # Check family argument and set up link function if specified
@@ -228,6 +228,12 @@ beset_glm <- function(form, data, test_data = NULL, p_max = 10,
                   ".\n  Increasing number of cv folds to ", n_folds, ".\n",
                   sep = ""), immediate. = TRUE)
   }
+  if(n_folds > alt$folds){
+    n_folds <- as.integer(alt$folds)
+    warning(paste("'n_folds' argument too high for your sample size ",
+                  ".\n  Decreasing number of cv folds to ", n_folds, ".\n",
+                  sep = ""), immediate. = TRUE)
+  }
   #======================================================================
   # Make list of all possible formulas with number of predictors <= p_max
   #----------------------------------------------------------------------
@@ -262,9 +268,9 @@ beset_glm <- function(form, data, test_data = NULL, p_max = 10,
   # Obtain fit statistics for every model
   #----------------------------------------------------------------------
   cl <- parallel::makeCluster(n_cores)
-  parallel::clusterExport(cl, c("mf", "family", "link", "test_data", "glm_nb",
-                                "fit_glm", "predict_metrics",
-                                "predict_metrics_"), envir = environment())
+  parallel::clusterEvalQ(cl, library(beset))
+  parallel::clusterExport(cl, c("mf", "family", "link", "test_data", "fit_glm"),
+                          envir = environment())
   fit_stats <- parallel::parLapplyLB(cl, form_list, function(form){
     fit <- try(fit_glm(mf, form, family, link), silent = TRUE)
     aic <- dev <- mae <- mce <- mse <- r2 <- NA_real_
@@ -277,7 +283,7 @@ beset_glm <- function(form, data, test_data = NULL, p_max = 10,
        r2 <- 1 - fit$deviance / fit$null.deviance
     }
     list(aic = aic, dev = dev, mae = mae, mce = mce, mse = mse, r2 = r2)
-    }) %>% transpose() %>% map(flatten_dbl) %>% as_data_frame() %>%
+    }) %>% transpose %>% map(flatten_dbl) %>% as_data_frame %>%
     mutate_all(function(x) case_when(abs(x) < 1e-6 ~ 0, TRUE ~ x))
   stat_names <- names(fit_stats)
   fit_stats <- bind_cols(
@@ -298,8 +304,7 @@ beset_glm <- function(form, data, test_data = NULL, p_max = 10,
   #======================================================================
   # Perform cross-validation on best models
   #----------------------------------------------------------------------
-  set.seed(seed)
-  fold_ids <- caret::createMultiFolds(y, k = n_folds, times = n_repeats)
+  fold_ids <- create_folds(y, n_folds, n_repeats, seed)
   metrics <- parallel::parLapplyLB(cl, fold_ids, function(i, form_list){
     lapply(form_list, function(form){
       fit <- fit_glm(mf[i,], form, family, link)
@@ -320,7 +325,6 @@ beset_glm <- function(form, data, test_data = NULL, p_max = 10,
   #======================================================================
   # Derive cross-validation statistics
   #----------------------------------------------------------------------
-
   cv_mean <-  map(1:nrow(cv_stats), function(i)
     metrics %>% map(i) %>% transpose() %>% map(flatten_dbl) %>%
       map(mean, na.rm = TRUE)

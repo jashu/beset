@@ -7,7 +7,7 @@
 \title{Best Subset Selection for Generalized Linear Models}
 \usage{
 beset_glm(form, data, test_data = NULL, p_max = 10, family = "gaussian",
-  link = NULL, n_cores = 2, n_folds = 10, n_repeats = 10, seed = 42)
+  link = NULL, n_cores = 2, n_folds = 5, n_repeats = 5, seed = 42)
 
 beset_lm(form, data, test_data = NULL, p_max = 10, n_cores = 2,
   n_folds = 10, n_repeats = 10, seed = 42)
@@ -113,7 +113,7 @@ folds predicts the left-out fold).
 }
 \section{Cross-validation details}{
 
-\code{beset_glm} uses \code{\link[caret]{createMultiFolds}} to randomly
+\code{beset_glm} uses \code{\link{create_folds}} to randomly
 partition the data set into \code{n_folds} * \code{n_repeats} folds within
 strata (factor levels for factor outcomes, percentile-based groups for
 numeric outcomes). This insures that the folds will be matched in terms of
@@ -162,6 +162,6 @@ number generator as one of its arguments.
 }
 
 \seealso{
-\code{\link[caret]{createFolds}}, \code{\link[stats]{glm}},
+\code{\link[stats]{glm}},
 \code{\link[base]{set.seed}}, \code{\link[MASS]{glm.nb}}
 }
