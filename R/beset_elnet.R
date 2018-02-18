@@ -45,7 +45,7 @@
 
 beset_elnet <- function(form, data, test_data = NULL,
                         family = "gaussian", alpha = c(.01, .5, .99), ...,
-                        n_folds = 10, n_repeats = 10,
+                        n_folds = 5, n_repeats = 5,
                         seed = 42, n_cores = 2){
   #==================================================================
   # Check if data is data_partition object and set up accordingly
