@@ -5,7 +5,7 @@
 \title{Beset GLM with Elasticnet Regularization}
 \usage{
 beset_elnet(form, data, test_data = NULL, family = "gaussian",
-  alpha = c(0.01, 0.5, 0.99), ..., n_folds = 10, n_repeats = 10,
+  alpha = c(0.01, 0.5, 0.99), ..., n_folds = 5, n_repeats = 5,
   seed = 42, n_cores = 2)
 }
 \arguments{
