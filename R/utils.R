@@ -35,29 +35,3 @@ model_frame <- function (form, data){
   data <- data[vars]
   data[complete.cases(data),]
 }
-
-# check for linear dependencies and remove them
-rm_lindep <- function(form, mf){
-  y <- names(mf[1])
-  form <- formula(paste(y, "~ ."))
-  # Correct non-standard column names
-  # names(mf) <- make.names(names(mf))
-  mm <- stats::model.matrix(form, mf)
-  # factor the matrix using QR decomposition
-  qr_ob <- qr(mm)
-  # extract R matrix
-  R <- qr.R(qr_ob)
-  if (is.null(dim(R)[2]) || qr_ob$rank == dim(R)[2]){
-    # there are no linear combinations; return original mf (-terms attribute)
-    attr(mf, "terms") <- NULL
-    mf
-  } else {
-    # extract the independent columns and remove
-    p1 <- 1:qr_ob$rank
-    X <- R[p1, p1]
-    mm_keep <- which(colnames(mm) %in% colnames(X))
-    mm_dict <- mf_to_mm(mf)
-    mf_keep <- purrr::map_lgl(mm_dict, ~ all(.x %in% mm_keep))
-    rm_lindep(form, mf[c(T, mf_keep)])
-  }
-}

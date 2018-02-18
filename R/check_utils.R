@@ -27,7 +27,7 @@ check_link <- function(family, link){
       stop(c)
     })
 }
-## Check for linear dependence
+## Check for linear dependencies and remove them
 check_lindep <- function(form, mf){
   attr(mf, "terms") <- NULL
   new_mf <- rm_lindep(form, mf)
@@ -47,21 +47,48 @@ check_lindep <- function(form, mf){
   }
   new_mf
 }
-## Check for problems with p_max and n_folds args
-
-check_cv <- function(n, p, binom, n_folds){
-  alt_folds <- n / (n - p * 2)
-  alt_p <- p
-  while(!dplyr::between(alt_folds, 1, 10)){
-    alt_p <- alt_p - 1L
-    alt_folds <- n / (n - alt_p * 2L)
+rm_lindep <- function(form, mf){
+  y <- names(mf[1])
+  form <- formula(paste(y, "~ ."))
+  # Correct non-standard column names
+  # names(mf) <- make.names(names(mf))
+  mm <- stats::model.matrix(form, mf)
+  # factor the matrix using QR decomposition
+  qr_ob <- qr(mm)
+  # extract R matrix
+  R <- qr.R(qr_ob)
+  if (is.null(dim(R)[2]) || qr_ob$rank == dim(R)[2]){
+    # there are no linear combinations; return original mf (-terms attribute)
+    attr(mf, "terms") <- NULL
+    mf
+  } else {
+    # extract the independent columns and remove
+    p1 <- 1:qr_ob$rank
+    X <- R[p1, p1]
+    mm_keep <- which(colnames(mm) %in% colnames(X))
+    mm_dict <- mf_to_mm(mf)
+    mf_keep <- purrr::map_lgl(mm_dict, ~ all(.x %in% mm_keep))
+    rm_lindep(form, mf[c(T, mf_keep)])
   }
-  if(alt_p < 1){
+}
+
+## Check for problems with p_max and n_folds
+check_cv <- function(n, p, binom, n_folds){
+  max_folds <- floor(n/5)
+  if(max_folds < 2){
     if(binom){
       stop("Your sample size for the minority class is too small.")
     } else {
       stop("Your sample size is too small.")
     }
   }
-  list(p = as.integer(alt_p), folds = as.integer(alt_folds))
+  alt_folds <- min(n_folds, max_folds)
+  alt_p <- floor(n/alt_folds * (alt_folds - 1))
+  alt_p <- min(p, alt_p)
+  while(alt_folds < max_folds && alt_p < p){
+    alt_folds <- alt_folds + 1L
+    alt_p <- floor(n/alt_folds * (alt_folds - 1))
+    alt_p <- min(p, alt_p)
+  }
+  list(p = alt_p, folds = alt_folds)
 }
