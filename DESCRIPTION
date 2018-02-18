@@ -16,8 +16,6 @@ Imports:
     assertthat,
     bindrcpp (>= 0.2),
     boot,
-    car,
-    caret,
     dplyr (>= 0.7.1),
     foreach,
     iterators,
