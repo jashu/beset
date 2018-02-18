@@ -1,14 +1,24 @@
-# Fit a Negative Binomial Generalized Linear Model
-#
-# A modification of \code{\link[MASS]{glm.nb}} that can be programmed with.
-# The main change is to avoid non-standard evaluation of the link argument so
-# that this argument is passed as a "quoted" string, which requires the
-# removal of the line `link <- substitute(link)`. This in turn enables the
-# removal of `do.call` syntax. Other edits were done to define the namespaces
-# of other MASS functions that are called by `glm.nb`, to change the default
-# arguments to avoid returning copies of the model data and the response
-# vector, and to return $data to maintain consistency with the object returned
-# by \code{\link[stats]{glm}}.
+#' Fit a Negative Binomial Generalized Linear Model
+#'
+#' A modification of \code{\link[MASS]{glm.nb}} that can be programmed with.
+#' The main change is to avoid non-standard evaluation of the link argument so
+#' that this argument is passed as a "quoted" string, which requires the
+#' removal of the line `link <- substitute(link)`. This in turn enables the
+#' removal of `do.call` syntax. Other edits were done to define the namespaces
+#' of other MASS functions that are called by `glm.nb`, to change the default
+#' arguments to avoid returning copies of the model data and the response
+#' vector, and to return \code{$data} to maintain consistency with the object
+#' returned by \code{\link[stats]{glm}}.
+#'
+#' @inheritParams stats::glm
+#'
+#' @param init.theta Optional initial value for the theta parameter. If omitted
+#' a moment estimator after an initial fit using a Poisson GLM is used.
+#'
+#' @param link The link function. Currently must be one of "log", "sqrt" or
+#' "identity".
+#'
+#' @export
 
 glm_nb <- function (formula, data, weights, subset, na.action, start = NULL,
                     etastart, mustart, control = stats::glm.control(...),
