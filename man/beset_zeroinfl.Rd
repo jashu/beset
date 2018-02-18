@@ -16,11 +16,13 @@ that would equal or nest the maximum complexity desired for both components,
 and use the \code{p_count_max} and \code{p_zero_max} arguments if you want
 to impose differential constraints on the complexity of each component.}
 
-\item{data}{Data frame with the variables in \code{form} and the data
-to be used for model fitting.}
+\item{data}{Either a \code{\link{data_partition}} object containing data sets
+to be used for both model training and testing, or a single data frame that
+will be used for model training only.}
 
 \item{test_data}{Optional data frame with the variables in \code{form} and
-the data to be used for model validation.}
+the data to be used for model validation. Not necessary and ignored if a
+\code{\link{data_partition}} object is passed via the \code{data} parameter.}
 
 \item{family}{Character string naming the count model family. Options are
 \code{"poisson"} (default) or \code{"negbin"}. (Note a log link is always

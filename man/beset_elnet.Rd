@@ -11,11 +11,13 @@ beset_elnet(form, data, test_data = NULL, family = "gaussian",
 \arguments{
 \item{form}{A model \code{\link[stats]{formula}}.}
 
-\item{data}{Data frame with the variables in \code{form} and the data
-to be used for model fitting.}
+\item{data}{Either a \code{\link{data_partition}} object containing data sets
+to be used for both model training and testing, or a single data frame that
+will be used for model training only.}
 
 \item{test_data}{Optional data frame with the variables in \code{form} and
-the data to be used for model validation.}
+the data to be used for model validation. Not necessary and ignored if a
+\code{\link{data_partition}} object is passed via the \code{data} parameter.}
 
 \item{family}{Character string naming the error distribution to be used in
 the model. Currently supported options are \code{"gaussian"} (default),
