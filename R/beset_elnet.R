@@ -151,7 +151,7 @@ beset_elnet <- function(form, data, test_data = NULL,
       fit <- glmnet::glmnet(x = x[i,], y = y[i], alpha = alpha,
                             family = family)
       y_hat <- stats::predict(fit, x[-i,], lambda, "response")
-      y <- if(is.factor(y)) as.integer(y) - 1
+      y <- if(is.factor(y)) as.integer(y) - 1 else y
       apply(y_hat, 2, function(x) predict_metrics_(y[-i], x, family))
       }, i = fold_list, alpha = alpha_list, lambda = lambda_list,
     MoreArgs = list(x = x, y = y, family = family)
