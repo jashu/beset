@@ -27,7 +27,7 @@
 #'
 #' @param n_folds Integer indicating the number of cross-validation folds.
 #'
-#' @param n_repeats Number of times cross-validation should be repeated.
+#' @param n_reps Number of times cross-validation should be repeated.
 #'
 #' @param n_cores Number of cores to use for parallel execution. If not
 #' specified, the number of cores is set to 2. To determine the theoretical
@@ -41,78 +41,44 @@
 #'
 #' @seealso \code{\link[glmnet]{glmnet}}
 #'
+#' @import purrr
 #' @export
 
 beset_elnet <- function(form, data, test_data = NULL,
                         family = "gaussian", alpha = c(.01, .5, .99), ...,
-                        n_folds = 5, n_repeats = 5,
+                        n_folds = 5, n_reps = 5,
                         seed = 42, n_cores = 2){
   #==================================================================
   # Check if data is data_partition object and set up accordingly
   #------------------------------------------------------------------
   if(inherits(data, "data_partition")){
     test_data <- data$test
-    data <- data$train
-  }
+    train_data <- data$train
+  } else train_data <- data
 
   #==================================================================
-  # Create model frame and extract response name and vector
+  # Create model matrices
   #------------------------------------------------------------------
-  mf <- model_frame(form, data)
-  # Correct non-standard column names
-  names(mf) <- make.names(names(mf))
-  # Do the same for test_data if it exists
-  if(!is.null(test_data)){
-    test_data <- model_frame(form, data = test_data)
-    names(test_data) <- make.names(names(test_data))
-    if(!all(names(mf) %in% names(test_data)))
-      stop("'test_data' must contain same variables as 'data'")
-  }
-  # Warn user if any rows were dropped
-  n_drop <- nrow(data) - nrow(mf)
-  if(n_drop > 0){
-    warning(paste("Dropping", n_drop, "rows with missing data.\n"),
-            immediate. = TRUE)
-  }
-  # cache name of the response variable
-  response <- names(mf)[1]
-  # extract response vector
-  y <- mf[[1]]
-  # insure y is a factor if family is binomial
-  if(family == "binomial" && !is.factor(y)) y <- factor(y)
+  m <- make_mm(form, family, train_data, test_data)
 
   #======================================================================
   # Obtain fit statistics
   #----------------------------------------------------------------------
-  x <- stats::model.matrix(form, data = mf)[, -1]
-  if(!is.null(test_data)){
-    x_test <- stats::model.matrix(form, data = test_data)[, -1]
-    x_test <- try(x_test[, colnames(x)], silent = TRUE)
-    if(inherits(x_test, "try-error")){
-      stop("Train and test data have different predictors or predictor levels")
-    }
-    y_test <- test_data[[1]]
-  }
   fits <- lapply(alpha, function(a){
-    glmnet::glmnet(x, y, family, alpha = a)
+    glmnet::glmnet(m$x_train, m$y_train, family, alpha = a)
    })
   names(fits) <- alpha
-  lambda_seq <- sapply(fits, function(x) unique(round(x$lambda, 3)))
-  lambda_length <- sapply(lambda_seq, function(x) length(x))
-  alpha_seq <- mapply(function(a, l) rep(a, l), a = alpha, l = lambda_length)
+  lambda_seq <- map(fits, "lambda")
+  alpha_seq <- map2(alpha, lambda_seq, ~ rep(.x, length(.y)))
   fit_stats <- data.frame(alpha = unlist(alpha_seq),
                           lambda = unlist(lambda_seq))
-  metrics <- mapply(function(fit, lambda){
-    y_hats <- stats::predict(fit, x, lambda, type = "response")
-    y_obs <- if(is.factor(y)) as.integer(y) - 1 else y
-    apply(y_hats, 2, function(y_hat) predict_metrics_(y_obs, y_hat, family))
-  }, fit = fits, lambda = lambda_seq)
-  fit_stats$mce <- unlist(sapply(metrics, function(x)
-    sapply(x, function(s) s$mean_cross_entropy)))
-  fit_stats$mse <- unlist(sapply(metrics, function(x)
-    sapply(x, function(s) s$mean_squared_error)))
-  fit_stats$r2 <- unlist(sapply(metrics, function(x)
-    sapply(x, function(s) round(s$R_squared, 3))))
+  y_hats <- map2(fits, lambda_seq,
+                 ~ predict(.x, m$x_train, .y, type = "response") %>%
+                   as_data_frame) %>% reduce(c)
+  y_obs <- if(is.factor(m$y_train)) as.integer(m$y_train) - 1 else m$y_train
+  fit_stats <- bind_cols(
+    fit_stats, map(y_hats, ~ predict_metrics_(y_obs, ., family)) %>%
+      transpose %>% simplify_all %>% as_data_frame)
 
   #==================================================================
   # Obtain independent test stats
@@ -121,26 +87,24 @@ beset_elnet <- function(form, data, test_data = NULL,
   if(!is.null(test_data)){
     test_stats <- data.frame(alpha = unlist(alpha_seq),
                              lambda = unlist(lambda_seq))
-    metrics <- mapply(function(fit, lambda){
-      y_hats <- stats::predict(fit, x_test, lambda, type = "response")
-      y_obs <- if(is.factor(y_test)) as.integer(y_test) - 1 else y_test
-      apply(y_hats, 2, function(y_hat) predict_metrics_(y_obs, y_hat, family))
-    }, fit = fits, lambda = lambda_seq)
-    test_stats$mce <- unlist(sapply(metrics, function(x)
-      sapply(x, function(s) s$mean_cross_entropy)))
-    test_stats$mse <- unlist(sapply(metrics, function(x)
-      sapply(x, function(s) s$mean_squared_error)))
-    test_stats$r2 <- unlist(sapply(metrics, function(x)
-      sapply(x, function(s) round(s$R_squared, 3))))
+    y_hats <- map2(fits, lambda_seq,
+                   ~ predict(.x, m$x_test, .y, type = "response") %>%
+                     as_data_frame) %>% reduce(c)
+    y_obs <- if(is.factor(m$y_test)) as.integer(m$y_test) - 1 else m$y_test
+    test_stats <- bind_cols(
+      test_stats,
+      map(y_hats, ~ predict_metrics_(y_obs, ., family)) %>%
+        transpose %>% simplify_all %>% as_data_frame
+    )
   }
 
   #==================================================================
   # Obtain cross-validation stats
   #------------------------------------------------------------------
-  fold_ids <- create_folds(y, n_folds, n_repeats, seed)
+  fold_ids <- create_folds(y, n_folds, n_reps, seed)
   fold_list <- rep(fold_ids, length(alpha))
-  alpha_list <- rep(alpha, each = n_folds * n_repeats)
-  lambda_list <- rep(lambda_seq, each = n_folds * n_repeats)
+  alpha_list <- rep(alpha, each = n_folds * n_reps)
+  lambda_list <- rep(lambda_seq, each = n_folds * n_reps)
   cl <- parallel::makeCluster(n_cores)
   lib_paths <- .libPaths()
   parallel::clusterExport(cl, c("lib_paths", "predict_metrics_"),
