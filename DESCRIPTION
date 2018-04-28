@@ -15,21 +15,19 @@ Depends:
 Imports:
     assertthat,
     bindrcpp (>= 0.2),
-    boot,
     dplyr (>= 0.7.1),
     foreach,
     iterators,
     glmnet,
     glue (>= 1.1.0),
     grid,
-    gridExtra,
     magrittr,
     MASS,
     methods,
     parallel,
     pkgconfig,
-    pscl,
     purrr,
+    randomForest,
     R6,
     Rcpp (>= 0.12.6),
     rlang (>= 0.1),
@@ -43,5 +41,6 @@ RoxygenNote: 6.0.1
 Suggests:
     testthat,
     knitr,
-    rmarkdown
+    rmarkdown,
+    ElemStatLearn
 VignetteBuilder: knitr
