@@ -14,13 +14,13 @@
 #' folds predicts the left-out fold).
 #'
 #' @section Cross-validation details:
-#' \code{beset_glm} uses \code{\link{create_folds}} to randomly
-#' partition the data set into \code{n_folds} * \code{n_repeats} folds within
-#' strata (factor levels for factor outcomes, percentile-based groups for
-#' numeric outcomes). This insures that the folds will be matched in terms of
-#' the outcome's frequency distribution. \code{beset_glm} also insures the
-#' reproducibility of your analysis by requiring a \code{seed} to the random
-#' number generator as one of its arguments.
+#' \code{beset_glm} uses \code{\link{create_folds}} to randomly partition the
+#' data set into \code{n_folds} * \code{n_repeats} folds within strata (factor
+#' levels for factor outcomes, percentile-based groups for numeric outcomes).
+#' This insures that the folds will be matched in terms of the outcome's
+#' frequency distribution. \code{beset_glm} also insures the reproducibility of
+#' your analysis by requiring a \code{seed} to the random number generator as
+#' one of its arguments.
 #'
 #' @section List of available families and link functions:
 #' \describe{
@@ -41,13 +41,10 @@
 #'   No other options for handling missing data are provided at this time. The
 #'   user is encouraged to deal with missing values prior to running this
 #'   function.
-#'  \item \code{beset_glm} is intended for use with additive models only. If you
-#'   include interaction terms in the model formula passed to \code{form}, they
-#'   will be ignored (e.g. \code{A * B * C} will be treated as \code{A + B + C}
-#'   and \code{A + B + A:B} will be treated as \code{A + B}). An exhaustive
-#'   search over the space of possible interactions and/or non-linear effects is
-#'   computationally prohibitive, but I hope to offer a greedy search option in
-#'   the future. In the meantime and in general, I would recommend the
+#'  \item \code{beset_glm} is intended for use with additive models only.  An
+#'  exhaustive search over the space of possible interactions and/or non-linear
+#'  effects is computationally prohibitive, but I hope to offer a greedy search
+#'  option in the future. In the meantime and in general, I would recommend the
 #'    \href{https://cran.r-project.org/web/packages/earth/index.html}{MARS}
 #'    technique.
 #'  \item \code{beset_glm} is best suited for searching over a small number of
@@ -58,13 +55,8 @@
 #' }
 #'
 #' @name beset_glm
-#' @importFrom purrr at_depth
-#' @importFrom purrr map
-#' @importFrom purrr map_chr
-#' @importFrom purrr map_int
-#' @importFrom purrr flatten_dbl
-#' @importFrom purrr reduce
-#' @importFrom purrr transpose
+#' @import parallel
+#' @import purrr
 #' @importFrom utils combn
 #' @import dplyr
 #'
@@ -76,37 +68,63 @@
 #'
 #' @param data Either a \code{\link{data_partition}} object containing data sets
 #' to be used for both model training and testing, or a single data frame that
-#' will be used for model training only.
-#'
-#' @param test_data Optional data frame with the variables in \code{form} and
-#' the data to be used for model validation. Not necessary and ignored if a
-#' \code{\link{data_partition}} object is passed via the \code{data} parameter.
+#' will be used for model training and cross-validation.
 #'
 #' @param family Character string naming the error distribution to be used in
 #' the model. Available families are listed under 'List of available families
 #' and link functions'.
 #'
-#' @param link Optional character string naming the link function to be used in
+#' @param link (Optional) character string naming the link function to be used in
 #' the model. Available links and their defaults differ by \code{family} and are
 #' listed under 'List of available families and link functions'.
 #'
-#' @param p_max Maximum number of predictors to attempt to fit.
+#' @param p_max Maximum number of predictors to attempt to fit. Default is 10.
 #'
-#' @param n_cores Integer value indicating the number of workers to run in
-#' parallel during subset search and cross-validation. By default, this will
-#' be set to 2. To determine the theoretical maximum number of cores you have
-#' available, see \code{\link[parallel]{detectCores}}, but note that the actual
-#' number of cores available may be less. See
-#' \code{\link[parallel]{parallel-package}} for more information.
+#' @param force_in (Optional) vector containing the names or indices of any
+#' predictor variables that should be included in every model. (Note that if
+#' there is an intercept, it is forced into every model by default.)
 #'
-#' @param n_folds Integer indicating the number of folds to use for
-#' cross-validation.
+#' @param n_folds (Optional) integer indicating the number of folds to use for
+#' cross-validation. If omitted, 10-fold cross-validation will be used if there
+#' are fewer than 100 observations; for larger sample sizes, 5-fold
+#' cross-validation will be used. To obtain leave-one-out cross-validation, set
+#' \code{n_folds} to a value greater than or equal to the number of
+#' observations.
 #'
-#' @param n_repeats Integer indicating the number of times cross-validation
-#' should be repeated.
+#' @param n_reps (Optional) integer indicating the number of times
+#' cross-validation should be repeated. If omitted, 10 repetitions will be
+#' performed by default, provided \code{n_folds <= 10}; otherwise,
+#' \code{n_reps} will be set to the maximum value such that the total number of
+#' iterations \code{n_folds * n_reps} does not exceed 100. If performing
+#' leave-one-out cross-validation (\code{n_folds eqn{>= N}}), \code{n_reps} is
+#' ignored.
 #'
 #' @param seed An integer used to seed the random number generator when
 #' assigning observations to folds.
+#'
+#' @param epsilon \code{Numeric} value of positive convergence tolerance ε; the
+#' iterations converge when \eqn{|dev - dev_{old}|/(|dev| + 0.1) < ε}. Default
+#' is \code{1e-8}.
+#'
+#' @param maxit \code{Integer} giving the maximal number of IWLS iterations.
+#' Default is 25.
+#'
+#' @param n_cores Integer value indicating the number of workers to run in
+#' parallel during subset search and cross-validation. By default, this will
+#' be set to the maximum number of physical cores you have available, as
+#' indicated by \code{\link[parallel]{detectCores}}. Set to 1 to disable
+#' parallel processing.
+#'
+#' @param parallel_type (Optional) character string indicating the type of
+#' parallel operation to be used, either \code{"fork"} or \code{"sock"}. If
+#' omitted and \code{n_cores > 1}, the default is \code{"sock"} for Windows and
+#' \code{"fork"} for any other OS.
+#'
+#' @param cl (Optional) \code{\link[parallel]{parallel}} or
+#' \code{\link[snow]{snow}} cluster for use if \code{parallel_type = "sock"}.
+#' If not supplied, a cluster on the local machine is automatically created.
+#'
+#' @inheritParams stats::glm
 #'
 #' @return A "beset_glm" object with the following components:
 #' \enumerate{
@@ -159,248 +177,203 @@ NULL
 
 #' @rdname beset_glm
 #' @export
-beset_glm <- function(form, data, test_data = NULL, p_max = 10,
-                      family = "gaussian", link = NULL,
-                      n_cores = 2, n_folds = 5, n_repeats = 5, seed = 42){
+beset_glm <- function(form, data, family = "gaussian", link = NULL,
+                      p_max = 10, force_in = NULL, contrasts = NULL,
+                      nest_cv = FALSE, n_folds = 10, n_reps = 10, seed = 42,
+                      offset = NULL, weights = NULL,
+                      start = NULL, etastart = NULL, mustart = NULL,
+                      epsilon = 1e-8, maxit = 25,
+                      n_cores = NULL, parallel_type = NULL, cl = NULL){
 
   #==================================================================
-  # Check family argument and set up link function if specified
+  # Check family argument and identify appropriate model fit function
   #------------------------------------------------------------------
   family <- check_family(family)
-  link <- if(!is.null(link)){
-    check_link(family, link)
-  } else {
-    switch(family,
-           binomial = "logit",
-           gaussian = "identity",
-           poisson = "log",
-           negbin = "log")
-  }
-  #==================================================================
-  # Check if data is data_partition object and set up accordingly
-  #------------------------------------------------------------------
-  if(inherits(data, "data_partition")){
-    test_data <- data$test
-    data <- data$train
-  }
-  #==================================================================
-  # Create model frame and extract response name and vector
-  #------------------------------------------------------------------
-  mf <- model_frame(form, data)
-  # Correct non-standard column names
-  names(mf) <- make.names(names(mf))
-  # Do the same for test_data if it exists
-  if(!is.null(test_data)){
-    test_data <- model_frame(form, data = test_data)
-    names(test_data) <- make.names(names(test_data))
-    if(!all(names(mf) %in% names(test_data)))
-      stop("'test_data' must contain same variables as 'data'")
-  }
-  # Warn user if any rows were dropped
-  n_drop <- nrow(data) - nrow(mf)
-  if(n_drop > 0){
-    warning(paste("Dropping", n_drop, "rows with missing data.\n"),
-            immediate. = TRUE)
-  }
-  # cache name of the response variable
-  response <- names(mf)[1]
-  # extract response vector
-  y <- mf[[1]]
-  # insure y is a factor if family is binomial
-  if(family == "binomial" && !is.factor(y)) y <- factor(y)
-
-  #==================================================================
-  # Screen for linear dependencies among predictors
-  #------------------------------------------------------------------
-  mf <- check_lindep(form, mf)
-
-  #==================================================================
-  # Check that number of predictors and cv folds is acceptable
-  #------------------------------------------------------------------
-  p <- min(ncol(mf) - 1L, p_max)
-  n <- if(family == "binomial"){
-    min(sum(y == levels(y)[1]), sum(y == levels(y)[2]))
-  } else {
-    nrow(mf)
-  }
-  alt <- check_cv(n, p, family == "binomial", n_folds)
-  if(alt$p < p){
-    p <- alt$p
-    warning(paste("'p_max' argument too high for your sample size",
-                  ".\n  Reducing maximum subset size to ", p, ".\n",
-                  sep = ""), immediate. = TRUE)
-  }
-  if(n_folds < alt$folds){
-    n_folds <- as.integer(alt$folds)
-    warning(paste("'n_folds' argument too low for your sample size ",
-                  "and choice of 'p_max'",
-                  ".\n  Increasing number of cv folds to ", n_folds, ".\n",
-                  sep = ""), immediate. = TRUE)
-  }
-  if(n_folds > alt$folds){
-    n_folds <- as.integer(alt$folds)
-    warning(paste("'n_folds' argument too high for your sample size ",
-                  ".\n  Decreasing number of cv folds to ", n_folds, ".\n",
-                  sep = ""), immediate. = TRUE)
-  }
-  #======================================================================
-  # Make list of all possible formulas with number of predictors <= p_max
-  #----------------------------------------------------------------------
-  pred <- lapply(1:p, function(x)
-    combn(names(mf)[2:ncol(mf)], x, simplify = FALSE))
-  pred <- reduce(pred, c)
-  form_list <- map_chr(pred, ~ paste0(.x, collapse = " + "))
-  form_list <- c("1", form_list)
-  form_list <- paste(response, "~", form_list)
+  fitter <- if(family == "negbin") "glm_nb" else "glm.fit"
 
   #======================================================================
-  # Determine number of predictors for each model in list
+  # Set up parallel operations
   #----------------------------------------------------------------------
-  get_npred <- function(pred_name){
-    pred_data <- mf[pred_name]
-    map_int(
-      pred_data, ~ {
-        if(is.factor(.x)) length(levels(.x)) - 1L else 1L
+  if(is.null(n_cores) || n_cores > 1){
+    parallel_control <- setup_parallel(
+      parallel_type = parallel_type, n_cores = n_cores, cl = cl)
+    have_mc <- parallel_control$have_mc
+    n_cores <- parallel_control$n_cores
+    cl <- parallel_control$cl
+  }
+
+  if(nest_cv){
+    if(inherits(data, "data_partition")){
+      tryCatch(
+      stop(paste("Ambiguous call: do you want to use the test partition found",
+                 "in `data`` to estimate test performance, or do you want to",
+                 "use nested cross-validation? Either set `nest_cv` to FALSE",
+                 "or pass a single data frame instead of a train/test split.",
+                 sep = "\n")),
+           error = function(c){
+             c$call <- NULL
+             stop(c)
+           })
+    }
+    o <- NULL; w <- NULL
+    if(!is.null(offset)){
+      data$offset = offset
+      o <- "offset"
+    }
+    if(!is.null(weights)){
+      data$weights = weights
+      w <- "weights"
+    }
+    y <- all.vars(form)[1]
+    x <- all.vars(form)[-1]
+    if(length(x) == 1 && x == ".") x <- NULL
+    fold_ids <- create_folds(data[[y]], n_folds, n_reps, seed)
+    all_partitions <- lapply(fold_ids, function(i){
+      suppressWarnings(
+        data_partition(train = data[-i,], test = data[i,], y = y, x = x,
+                       offset = o, weights = w)
+      )
+    })
+    out <- if(n_cores > 1L){
+      if(have_mc){
+        parallel::mclapply(all_partitions, function(x){
+          beset_glm(form = form, data = x, family = family, link = link,
+                    p_max = p_max, force_in = force_in, contrasts = contrasts,
+                    nest_cv = FALSE, n_folds = n_folds, n_reps = 1, seed = seed,
+                    start = start, etastart = etastart, mustart = mustart,
+                    epsilon = epsilon, maxit = maxit, n_cores = 1)
+        })
+      } else {
+        parallel::parLapply(cl, all_partitions, function(x){
+          beset_glm(form = form, data = x, family = family, link = link,
+                    p_max = p_max, force_in = force_in, contrasts = contrasts,
+                    nest_cv = FALSE, n_folds = n_folds, n_reps = 1, seed = seed,
+                    start = start, etastart = etastart, mustart = mustart,
+                    epsilon = epsilon, maxit = maxit, n_cores = 1)
+        })
       }
-    )
+    } else {
+      lapply(all_partitions, function(x){
+        beset_glm(form = form, data = x, family = family, link = link,
+                  p_max = p_max, force_in = force_in, contrasts = contrasts,
+                  nest_cv = FALSE, n_folds = n_folds, n_reps = 1, seed = seed,
+                  start = start, etastart = etastart, mustart = mustart,
+                  epsilon = epsilon, maxit = maxit, n_cores = 1)
+      })
+    }
+    attr(out, "fold_assignments") <- fold_ids
+    class(out) <- "nested_beset"
+    return(out)
   }
-  n_pred <- pred %>% map(get_npred) %>% map_int(reduce, `+`)
-  n_pred <- c(0L, n_pred)
+
+
+  #==================================================================
+  # Create list of arguments for model
+  #------------------------------------------------------------------
+  m <- make_args(form = form, data = data, family = family, link = link,
+                 contrasts = contrasts, weights = weights, offset = offset,
+                 start = start, etastart = etastart, mustart = mustart,
+                 epsilon = epsilon, maxit = maxit)
+
+  #==================================================================
+  # Set number of cross-validation folds and reps
+  #------------------------------------------------------------------
+  n_obs <- length(m$train$y)
+  cv_params <- set_cv_par(n_obs = n_obs, n_folds = n_folds, n_reps = n_reps)
+  n_reps <- cv_params$n_reps; n_folds <- cv_params$n_folds
 
   #======================================================================
-  # Eliminate formulae that exceed p_max
+  # Get all subsets (see utils_subset.R)
   #----------------------------------------------------------------------
-  form_list <- form_list[n_pred <= p]
-  n_pred <- n_pred[n_pred <= p]
+  all_subsets <- get_subsets(m, force_in, p_max)
 
   #======================================================================
   # Obtain fit statistics for every model
   #----------------------------------------------------------------------
-  cl <- parallel::makeCluster(n_cores)
-  lib_paths <- .libPaths()
-  parallel::clusterExport(cl, c("mf", "family", "link", "test_data",
-                                "lib_paths"), envir = environment())
-  parallel::clusterEvalQ(cl, .libPaths(lib_paths))
-  parallel::clusterEvalQ(cl, library(beset))
-  fit_stats <- parallel::parLapplyLB(cl, form_list, function(form){
-    fit <- try(fit_glm(mf, form, family, link), silent = TRUE)
-    aic <- dev <- mae <- mce <- mse <- r2 <- NA_real_
-    if(!inherits(fit, "try-error")){
-       aic <- stats::AIC(fit)
-       dev <- stats::deviance(fit)
-       mae <- mean(abs(stats::residuals(fit, type = "response")))
-       mce <- -1 * as.numeric(stats::logLik(fit)) / nrow(mf)
-       mse <- mean(stats::residuals(fit, type = "response")^2)
-       r2 <- 1 - fit$deviance / fit$null.deviance
+  train_test_stats <- if (n_cores > 1L) {
+    if (have_mc) {
+      parallel::mclapply(all_subsets$pred_idx, get_subset_stats, m = m,
+                         fitter= fitter, mc.cores = n_cores)
+    } else {
+      parallel::parLapply(cl, all_subsets$pred_idx, get_subset_stats, m = m,
+                          fitter = fitter)
     }
-    list(aic = aic, dev = dev, mae = mae, mce = mce, mse = mse, r2 = r2)
-    }) %>% transpose %>% map(flatten_dbl) %>% as_data_frame %>%
+  } else lapply(all_subsets$pred_idx, get_subset_stats, m = m, fitter = fitter)
+  fit_stats <- transpose(train_test_stats)$fit_stats %>%
+    transpose %>% simplify_all %>% as_data_frame %>%
     mutate_all(function(x) case_when(abs(x) < 1e-6 ~ 0, TRUE ~ x))
-  stat_names <- names(fit_stats)
-  fit_stats <- bind_cols(
-    n_pred = n_pred,
-    form = form_list,
-    as_data_frame(fit_stats)
-    )
+  fit_stats <- dplyr::bind_cols(all_subsets, dplyr::as_data_frame(fit_stats))
+  test_stats <- NULL
+  test_preds <- NULL
+  if(!is.null(train_test_stats[[1]]$test_stats)){
+    test_stats <- transpose(train_test_stats)$test_stats %>%
+      transpose %>% simplify_all %>% as_data_frame %>%
+      mutate_all(function(x) case_when(abs(x) < 1e-6 ~ 0, TRUE ~ x))
+    test_stats <- bind_cols(all_subsets, as_data_frame(test_stats))
+    test_preds <- transpose(train_test_stats)$test_preds
+  }
+  m$test$yhat <- test_preds
 
   #======================================================================
   # Obtain model with best fit for each number of parameters
   #----------------------------------------------------------------------
   cv_stats <- group_by(fit_stats, n_pred) %>%
-    filter(r2 == max(r2)) %>%
+    filter(rsq == max(rsq)) %>%
     ungroup() %>%
-    select(n_pred, form) %>%
+    select(pred_idx:n_pred) %>%
     arrange(n_pred)
+  best_fits <- lapply(cv_stats$pred_idx, function(j){
+    model <- c(list(x = m$train$x[, j, drop = FALSE]), m$train[-1])
+    out <- do.call(fitter, model)
+    out <- c(out, model[c("x", "offset", "control", "intercept")])
+    class(out) <- c("glm", "lm")
+    if(family == "negbin") class(out) <- c("negbin", class(out))
+    out
+  })
 
   #======================================================================
   # Perform cross-validation on best models
   #----------------------------------------------------------------------
-  fold_ids <- create_folds(y, n_folds, n_repeats, seed)
-  metrics <- parallel::parLapplyLB(cl, fold_ids, function(i, form_list){
-    lapply(form_list, function(form){
-      fit <- fit_glm(mf[i,], form, family, link)
-      stats <- try(predict_metrics(fit, test_data = mf[-i,]), silent = FALSE)
-      if(inherits(stats, "prediction_metrics")){
-        stats
-      } else {
-        list(deviance = NA_real_,
-             mean_absolute_error = NA_real_,
-             mean_cross_entropy = NA_real_,
-             mean_squared_error = NA_real_,
-             R_squared = NA_real_)
-      }
-    })
-  }, form_list = cv_stats$form)
-  parallel::stopCluster(cl)
+  cv_results <- if (n_cores > 1L) {
+    if (have_mc) {
+      parallel::mclapply(best_fits, validate, n_folds = n_folds,
+                         n_reps = n_reps, seed = seed, mc.cores = n_cores)
+    } else {
+      parallel::parLapply(cl, best_fits, validate, n_folds = n_folds,
+                          n_reps = n_reps, seed = seed)
+    }
+  } else map(best_fits, ~ validate(., n_folds = n_folds, n_reps = n_reps,
+                                       seed = seed)
+  )
+  cv_results <- cv_results %>% map("stats") %>% transpose %>% as_data_frame
+  if(!is.null(cl)) stopCluster(cl)
+  cv_stats <- bind_cols(cv_stats, cv_results)
 
-  #======================================================================
-  # Derive cross-validation statistics
-  #----------------------------------------------------------------------
-  cv_mean <-  map(1:nrow(cv_stats), function(i)
-    metrics %>% map(i) %>% transpose() %>% map(flatten_dbl) %>%
-      map(mean, na.rm = TRUE)
-  ) %>% transpose() %>% map(flatten_dbl) %>% as_data_frame()
-  names(cv_mean) <- stat_names[-1]
 
-  se <- function(x){
-    sd(x, na.rm = TRUE) / sqrt(length(x[!is.na(x)]))
-  }
-
-  cv_se <-  map(1:nrow(cv_stats), function(i)
-    metrics %>% map(i) %>% transpose() %>% map(flatten_dbl) %>% map(se)
-  ) %>% transpose() %>% map(flatten_dbl) %>% as_data_frame() %>%
-    mutate_all(function(x) case_when(abs(x) < 1e-6 ~ 0, TRUE ~ x))
-  names(cv_se) <- paste(stat_names[-1], "SE", sep = "_")
-
-  cv_stats <- bind_cols(cv_stats, cv_mean, cv_se)
-
-  #======================================================================
-  # Compute prediction statistics for independent test set
-  #----------------------------------------------------------------------
-  test_stats <- NULL
-  if(!is.null(test_data)){
-    metrics <- lapply(cv_stats$form, function(form){
-      fit <- fit_glm(data, form, family, link)
-      stats <- tryCatch(
-        predict_metrics(fit, test_data = test_data),
-        error = function(c){
-          c$message <- paste("unable to compute 'test_data' prediction metrics",
-                             "for one or more subsets because\n", c$message)
-          c$call <- NULL
-          warning(c)
-          })
-      if(class(stats) == "prediction_metrics") stats
-      else list(deviance = NA_real_,
-                mean_absolute_error = NA_real_,
-                mean_cross_entropy = NA_real_,
-                mean_squared_error = NA_real_,
-                R_squared = NA_real_)
-      }) %>% transpose() %>% map(flatten_dbl) %>% as_data_frame() %>%
-      mutate_all(function(x) case_when(abs(x) < 1e-6 ~ 0, TRUE ~ x))
-    names(metrics) <- stat_names[-1]
-    test_stats <- cv_stats %>% select(n_pred, form) %>% bind_cols(metrics)
-  }
   #======================================================================
   # Construct beset_glm object
   #----------------------------------------------------------------------
-  structure(list(params = list(family = family,
-                               link = link,
-                               n_folds = n_folds,
-                               n_repeats = n_repeats,
-                               seed = seed),
-                 model_data = mf,
-                 stats = list(fit = fit_stats,
-                              cv = cv_stats,
-                              test = test_stats)),
-            class = "beset_glm")
+  structure(list(
+    stats = list(fit = fit_stats,
+                 cv = cv_stats,
+                 test = test_stats),
+    parameters = list(
+      form = form,
+      family = family,
+      link = link,
+      n_cores = n_cores,
+      n_folds = n_folds,
+      n_reps = n_reps,
+      seed = seed),
+    data = m), class = "beset_glm")
 }
 
 #' @export
 #' @rdname beset_glm
-beset_lm <- function(form, data, test_data = NULL, p_max = 10,
-                     n_cores = 2, n_folds = 5, n_repeats = 5,  seed = 42){
-  beset_glm(form, data, test_data = test_data, p_max = p_max,
-            n_cores = n_cores, n_folds = n_folds, n_repeats = n_repeats,
-            seed = seed)
+beset_lm <- function(form, data, p_max = 10, force_in = NULL,
+                     weights = NULL, contrasts = NULL, offset = NULL,
+                     nest_cv = FALSE, n_folds = 10, n_reps = 10,  seed = 42,
+                     n_cores = NULL, parallel_type = NULL, cl = NULL){
+  do.call(beset_glm, as.list(match.call())[-1])
 }
 
