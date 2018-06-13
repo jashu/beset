@@ -1,0 +1,68 @@
+/* CUSTOM BLOCKS */
+
+.rmd-caution {
+  padding: 1em 1em 1em 4em;
+  margin-bottom: 10px;
+  background: /* #FFFF99 */ url("images/1459472920_attention.png") left center/3em no-repeat !important;
+  border-style:solid;
+  border-color:#FFFF00;
+}
+.rmd-caution:before {
+  font-style: italic;
+  content: "";
+}
+.rmd-details {
+  padding: 1em 1em 1em 4em;
+  margin-bottom: 10px;
+  background: /* #99FF99 */ url("images/1459472947_idea.png") left center/3em no-repeat !important;
+  border-style:solid;
+  border-color:#00FF00;
+}
+.rmd-details:before {
+  font-style: italic;
+  content: "";
+}
+
+/* EXTRA BOOK TITLE SPACING */
+
+.level1 {
+  margin-top: 60px;
+}
+
+/* TOC FORMATTING TWEAKS */
+/*
+  set spacing so that links go to the right place
+  (considering the floating top bar's height)
+*/
+
+.section::before {
+  /*Using @Jerry's answer http://stackoverflow.com/a/9618795/ */
+  content:"";
+  display:block;
+  height:60px;
+  margin:-60px 0 0;
+}
+
+/*
+  ensure floating TOC doesn't display when printing
+  as far as i can tell, this does not work (to hide TOC when printing)
+  it should be used in conjunction with the include arg to html_book,
+  but that arg breaks violently, so...
+*/
+
+@media print {
+  #TOC, TOC {
+    display: none;
+  }
+}
+
+/*
+  shrink blockquote text size vs rmarkdown default
+  italicize and color so it still stands out
+*/
+
+blockquote {
+  background: #f5f5f0;
+  font-size: medium;
+  font-style: italic;
+}

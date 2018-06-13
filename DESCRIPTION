@@ -1,8 +1,8 @@
 Package: beset
 Type: Package
 Title: Best Subset Predictive Modeling
-Version: 0.0.0.9300
-Date: 2017-07-03
+Version: 0.0.0.9400
+Date: 2018-06-11
 Authors@R: person("Jason", "Shumake", email = "shumake@utexas.edu",
   role = c("aut","cre"))
 Description: Provides a friendly user interface, summary, and plotting methods
@@ -29,6 +29,7 @@ Imports:
     purrr,
     randomForest,
     R6,
+    readr,
     Rcpp (>= 0.12.6),
     rlang (>= 0.1),
     tibble (>= 1.3.1),

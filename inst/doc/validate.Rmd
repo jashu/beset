@@ -1,0 +1,155 @@
+---
+title: "`beset`: Easy cross-validation of GLMs"
+author: "Jason Shumake"
+date: "`r Sys.Date()`"
+output: 
+  rmarkdown::html_vignette:
+    css: 
+      - !expr system.file("rmarkdown/templates/html_vignette/resources/vignette.css", package = "rmarkdown")
+      - style.css
+vignette: >
+  %\VignetteIndexEntry{Easy cross-validation of GLMs}
+  %\VignetteEngine{knitr::rmarkdown}
+  \usepackage[utf8]{inputenc}
+---
+
+```{r, echo = FALSE}
+suppressPackageStartupMessages(library(beset))
+suppressPackageStartupMessages(library(ggplot2))
+```
+
+The `beset` package includes an S3 object system that enables you to easily obtain cross-validated prediction metrics from common model objects. Currently supported classes are "`lm`", "`negbin`", and "`glm`"/ "`glmnet`" (for `gaussian`, `binomial`, and `poisson` families only). To access this feature, first fit a model as you normally would. 
+
+For example, consider this example model that uses the [Prostate Cancer Data](https://www.rdocumentation.org/packages/ElemStatLearn/versions/2015.6.26/topics/prostate) from the `ElemStatLearn` package. These data come from a study by Stamey et al. (1989) of 97 men. Measurements include the log of prostate specific antigen (PSA, `lpsa`), log of cancer volume (`lcavol`), log of prostate weight (`lweight`), `age`, log of benign prostatic hyperplasia amount (`lbph`), seminal vesicle invasion (`svi`), log of capsular penetration (`lcp`), Gleason score (`gleason`), and percent of Gleason scores 4 or 5 (`pgg45`).
+
+Suppose we have a hypothesis that Gleason score predicts PSA. Since there are only 4 unique Gleason scores (6, 7, 8, and 9), let's first convert this from a numeric to a factor variable.
+
+```{r}
+library(ElemStatLearn)
+data(prostate)
+prostate$gleason <- factor(prostate$gleason)
+qplot(gleason, lpsa, data = prostate, geom = "boxplot") + geom_jitter()
+```
+
+Further, since there are so few observations of Gleason scores greater than 7, let's convert this to a binomial variable, with levels of `6` and `> 6`.
+
+```{r}
+prostate$gleason <- forcats::fct_collapse(
+  prostate$gleason, gleason_6 = "6", gleason_above_6 = c("7", "8", "9"))
+qplot(gleason, lpsa, data = prostate, geom = "boxplot") + geom_jitter()
+```
+
+Finally, we fit our hypothesized linear model.
+
+```{r}
+lin_mod <- lm(lpsa ~ gleason, data = prostate)
+summary(lin_mod)
+```
+
+To obtain cross-validation metrics using default settings, simply pass the model object to the S3 generic function `validate`. If you have not specified the number of folds or repetitions to use, a 10 X 10 cross-validation will be performed by default (10-fold c.v. repeated 10 times). 
+
+```{r}
+validate(lin_mod)
+```
+
+## Prediction Metrics
+
+The print method for objects returned by `validate` will report 4 summary statistics of prediction error on the hold-out data and, provided more than one repetition was performed, the range of each statistic observed across the different repetitions.
+
+1. **Mean absolute error.** This corresponds to the mean of the absolute value of the prediction residuals. On average, our model predictions tend to miss the true PSA score by 0.765 log units. 
+
+2. **Mean cross entropy.** This is an information-theory metric that corresponds to the mean negative log-likelihood of the observations. Smaller is better, but the magnitude of this value is not particularly informative by itself. It is mainly useful for evaluating models that optimize a loss function other than the residual sum of squares, especially binary classification models that minimize logistic loss. (Cross entropy in this case is identical to "log loss".) To obtain a benchmark, you can always compare this metric to the expected negative log-likelihood of a null (intercept-only) model:
+
+```{r}
+null_model <- lm(lpsa ~ 1, data = prostate)
+-logLik(null_model) / nobs(null_model)
+```
+
+In this case, we can see that our model reduces the mean cross entropy from 1.56 to 1.44, a 7.7% improvement.
+
+3. **Mean squared error.** The traditional performance metric for regression models of a continuous response.  
+
+4. **R-squared.** It is well known that, unless the sample size $n$ greatly exceeds the number of predictors $p$, a model's $R^2$ will be inflated. The adjusted $R^2$ that appears in the `summary` output of an `lm` is an attempt to correct for this bias by penalizing the $R^2$ in proportion to larger $p$ and smaller $n$. The cross-validated $R^2$ can also be thought of as an adjusted $R^2$, except it is empirically, rather than formulaically, derived. It is the fraction of variance that the model is expected to *predict* in a *new* sample. At least in the case of the `prostate` data set, the cross-validated $R^2$ is somewhat more pessimistic than the adjusted $R^2$ statistic.
+
+```{block2, type = 'rmd-details'}
+**How `S.E.`, `Min`, and `Max` are calculated**. These columns report different ways of quantifying the variability of the cross-validation estimates. For example, 10-fold cross-validation results in 10 different train-test splits: 10 models and 10 different estimates of each prediction metric. The `S.E.` column reports the standard error of these different estimates, calculated as the standard deviation of the within-fold estimates divided by the square root of the number of folds. Provided that repetitions are performed (`n_reps > 1`), an additional metric to evaluate is how sensitive the cross-validation estimates are to the randomized fold assignments. The `Min` and `Max` columns report the range of estimates that were obtained between repetitions (after aggregating all folds within each repetition).
+```
+
+If you `validate` a binomial GLM, "Mean Absolute Error" will be replaced by "Area Under Curve", i.e., the area under the receiver operating characteristic (ROC) curve, and "Variance Explained" will be replaced by "Deviance Explained". For example, we can flip our previous model and predict the Gleason score category as a function of PSA scores:
+
+```{r}
+log_mod <- glm(gleason ~ lpsa, data = prostate, family = "binomial")
+summary(log_mod)
+validate(log_mod)
+```
+
+```{block2, type = 'rmd-details'}
+**Use of deviance-based $R_D^2$**. Ordinary $R^2$ can show undesirable properties when applied to GLMs with non-normal error distributions, such as the training $R^2$ not uniformly increasing as more predictors are added. However, `beset` calculates the deviance-based $R_D^2$, which can be reliably used with all of the model families it supports to indicate the fraction of uncertainty in the outcome that the model is explaining.
+```
+
+# Optional Arguments
+
+## `n_folds` and `n_reps`
+
+Use the `n_folds` arg to specify the number of cross-validation folds, and the `n_reps` arg to specify the number of times that cross-validation should be repeated (with different random draws to assign cases to folds). 
+
+For example, the following will result in 5 repetitions of 5-fold cross-validation:
+
+```{r}
+validate(log_mod, n_folds = 5, n_reps = 5)
+```
+
+```{block2, type = 'rmd-details'}
+**How fold assignments are made**. The `validate` methods use stratified random sampling to make fold assignments. For factor responses, random fold assignment is made within each factor level, insuring that the ratio of class examples remains the same between any given train-test split. For numeric responses, the random assignment is made within quartiles of the response, insuring that the distribution of response values is similar for all train-test splits. Special consideration is given if `validate` detects a count distribution with a floor of 0; in this case, the 0 values are treated as a separate stratum to insure that the magnitude of zero-inflation is matched for all folds. 
+```
+
+To perform leave-one-out cross-validation (LOOCV), set `n_folds` to a value equal to the number of observations in your data set. (Technically, any value greater than half the number of observations will also result in LOOCV because `validate` will autocorrect any such value to equal the number of observations.) Note that under LOOCV repetitions are pointless and will not be performed, and so ranges will not be reported in the output.
+
+```{r}
+validate(log_mod, n_folds = nobs(log_mod), n_reps = 1)
+```
+
+Note also that for the AUC statistics and variance/deviance explained, error metrics cannot be calculated under LOOCV because these statistics are undefined for individual predictions; they can only be calculated on the aggregate predictions. 
+
+```{block2, type = 'rmd-details'}
+**Advice on choosing `n_folds` and `n_reps`**. To understand the impact of the choice of how many folds to use in cross-validation, it is helpful to consider two extremes. 
+
+The smallest number of folds that one can choose is 2, which is equivalent to training your model on half your data and testing it on the other half (and then doing the reverse). Unless your sample is so large that all meaningful variation in the population is captured after splitting it in half, you will incur greater prediction error because of the reduced sample size; on the other hand, the magnitude of the error is likely to be highly consistent between the two halves, and you can be reasonably confident that the model trained to the entire sample will perform at least as well on new data as the model trained on half (and it will likely perform better).
+
+The largest number of folds that one can use is one for every observation in the data set, which is also known as leave-one-out cross-validation (LOOCV). Here, you are training models on data sets that are almost the same size as the full data set (n-1). So the cross-validation estimator is the least biased for the true prediction error, but it is also the most variable; that is, if you were to repeat the LOOCV procedure on multiple independent samples, you would find that the average LOOCV error would approximate the true error, but the individual LOOCV errors would vary greatly. So you can no longer be reasonably confident that the model will perform as well on new data as the LOOCV estimate would suggest; it is equally likely to perform much better or much worse. 
+
+So the smaller the number of folds, the more pessimistic your estimates of prediction error will be. (Note above how the predicted deviance explained is a bit lower when 5 folds is used as opposed to 10.) But the more confident you can be that your model will meet or exceed this estimate. Overall, 10-fold cross-validation is recognized as an optimal compromise for this bias-variance tradeoff (Kohavi, 1995), which is why it is used by default. However, LOOCV may be preferrable when the data distributions are characterized by wide dispersion or extreme values (Japkowics & Shah, 2011).
+
+As for the number of repetitions, it is a good idea to evaluate how sensitive your cross-validation estimates are to different random splits of the data. You want to perform enough repetitions so that your mean estimate is stable. (You get roughly the same result no matter what value you choose for `seed`.) 10 repetitions has been recommended for 10-fold cross-validation (Bouckaert, 2003) and is used as the default value.
+```
+
+## Obtaining hold-out predictions and fold assignments
+
+The hold-out predictions of the cross-validation procedure and the corresponding fold-assignments can be obtained by assigning a variable name to the object returned by `validate`:
+
+```{r}
+cv_results <- validate(lin_mod)
+```
+
+The predictions are stored as a data frame named "predictions". The rows correpsond to the equivalent rows of the data frame used to fit the model, and there is a column for each repetition of the cross-validation procedure. Going across columns within a row you can see the variability of the prediction for that individual as a function of fitting the model to different subsamples of the data (none of which included that individual):
+
+```{r}
+cv_results$predictions
+```
+
+The fold assignments are stored as a data frame named "fold_assignments". The values indicate the number of the fold that the case was assigned to; within a repetition, cases with the same fold number make up one of the hold-out data sets (and all cases not having that number were used to train a model to predict that hold-out set):
+
+```{r}
+cv_results$fold_assignments
+```
+
+ 
+
+```{block2, type = 'rmd-caution'}
+**The wrong and right way to do cross-validation**. A common blunder is to first perform variable selection on the basis of *all of the samples*, such as computing the pairwise correlation betweeen each predictor and the response and retaining only those that meet a "significance" threshold. If `validate` is used on a model whose variables have been selected in this way, it will underestimate the true prediction error, in proportion to the number of predictors that were pre-screened; the more predictors that were eliminated from the original data set, the more erroneous the cross-validation error will be. 
+
+Why is this the case? Suppose we have two independent samples, A and B, and we want to train a model on Sample A and test it on Sample B. Now suppose we use information from Sample B to make decisions about how Sample A is trained. The samples will no longer be independent, and the more degrees of freedom we have to choose the model parameters for Sample A, the more opportunities we have to stumble upon and exploit spurious similarities between these two particular samples that will not generalize to other samples. Similarly, cross-validation estimates based on hold-out folds will be corrupted if the entire data set is used beforehand because the procedure no longer mimics the prediction of a brand new sample. 
+
+In summary, the intended use case for the `validate` function is to estimate the true prediction error of a model based on theory or prior work that has not been influenced by "peeking" at the relationships between the predictors and the response in the sample data. (It is perfectly okay though to look at just the predictors by themselves and eliminate variables for reasons unrelated to the response, such as low variance.) Accurate cross-validation estimates of prediction error can still be obtained for models based on data-driven variable selection, but the variable selection must take place *during* the cross-validation procedure, not before.
+```
+

@@ -2,20 +2,41 @@
 % Please edit documentation in R/prediction_metrics.R
 \name{predict_metrics}
 \alias{predict_metrics}
+\alias{predict_metrics_}
 \title{Prediction Metrics}
 \usage{
 predict_metrics(object, test_data)
+
+predict_metrics_(y, y_hat, family, phi = NULL, theta = NULL)
 }
 \arguments{
 \item{object}{A model object of class "glm", "negbin", or "zeroinfl".}
 
 \item{test_data}{A data frame containing new data for the response and all
 predictors that were used to fit the model \code{object}.}
+
+\item{y}{Vector of actual observed values}
+
+\item{y_hat}{Vector of predicted values. For zero-inflated models, the
+predicted values for the count component of the model.}
+
+\item{family}{Character string giving the name of the error distribution for
+\code{y_hat}. Currently supported distributions are "gaussian", "binomial",
+"poisson", "negbin" (negative binomial), "zip" (zero-inflated Poisson), and
+ "zinb" (zero-inflated negative binomial).}
+
+\item{phi}{(Required for zero-inflated models) the predicted values for the
+zero component of the model.}
+
+\item{theta}{(Required for negative binomial models) the estimated dispersion
+parameter \code{theta}.}
 }
 \value{
-A list giving the deviance, mean absolute error, mean cross entropy,
-mean squared error, and deviance R-squared between model predictions and
-actual observations.
+For binomial models, a list giving the area under the ROC curve
+("auc"), mean cross entropy AKA log loss ("mce"), mean squared error AKA
+Brier score ("mse"), and deviance R-squared ("rsq'). For all other models,
+mean absolute error ("mae") takes the place of "auc" but otherwise the
+metrics are the same.
 }
 \description{
 Calculate deviance, mean absolute error, mean cross entropy, mean squared
@@ -30,6 +51,11 @@ well as the log-likelihoods for the corresponding saturated model (a model
 with one free parameter per observation) and null model (a model with only an
 intercept) fit to the true responses. These quantities are used to derive the
 metrics described below.
+
+\code{predict_metrics_} is the workhorse function: there is no need to call
+this directly but is more efficient for programming if the actual response
+vector, the predicted response vector(s), and dispersion parameter (if
+applicable) have already been calculated.
 }
 \section{Mean squared error (MSE) and mean cross entropy (MCE)}{
 

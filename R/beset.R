@@ -1,9 +1,9 @@
 #' beset: Best Subset Predictive Modeling
 #'
 #' \code{beset} is a portmanteau of BEst subSET, which references the overall
-#' objective of this package: to improve the generalizability of data-driven
-#' model selection through cross-validation. To learn more about \code{beset},
-#' start with the vignettes: \code{browseVignettes(package = "beset")}
+#' objective of this package: to identify the best subset of variables for
+#' a predictive model. To learn more about \code{beset}, start with the
+#' vignettes: \code{browseVignettes(package = "beset")}
 #'
 #' @section Overarching goals:
 #' \enumerate{
@@ -14,14 +14,12 @@
 #'   \item Make elastic-net regression more accessible and interpretable by
 #'     providing a wrapper to \code{\link[glmnet]{glmnet}} that maintains the
 #'     same user interface as \code{\link[stats]{lm}} and
-#'     \code{\link[stats]{glm}} provides informative summary and plot methods.
+#'     \code{\link[stats]{glm}} and provides informative plot and summary
+#'     methods.
 #' }
 #'
 #' @section Overview of principal functions:
 #' \describe{
-#'  \item{\code{\link{partition}}}{Makes it quick and easy to split a data
-#'    frame into a train/test partition and keep track of which train set goes
-#'    with which test set.}
 #'  \item{\code{\link{beset_glm}}}{Performs best subset selection using repeated
 #'    cross-validation to find the optimal number of predictors for several
 #'    families of generalized linear models.}
@@ -32,7 +30,7 @@
 #'    that ranks the relative importance of the predictors that survived
 #'    shrinkage and gives some statistics indicating how well the model fits the
 #'    training data and predicts new data.}
-#'  \item{\code{\link{validate}}}{An S3 object system that makes it very easy
+#'  \item{\code{\link{validate}}}{An S3 object system that makes it easy
 #'   to obtain cross-validated prediction stats for a previously fit model.}
 #'  }
 #' @docType package

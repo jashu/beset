@@ -7,41 +7,31 @@
 \title{beset: Best Subset Predictive Modeling}
 \description{
 \code{beset} is a portmanteau of BEst subSET, which references the overall
-objective of this package: to improve prediction accuracy and
-interpretability of generalized linear models by automatically performing
-variable selection, either explicitly (e.g., with subset selection) or
-implicitly (e.g., with coefficient shrinkage), based on cross-validation.
-To learn more about \code{beset}, start with the vignettes:
-\code{browseVignettes(package = "beset")}
+objective of this package: to identify the best subset of variables for
+a predictive model. To learn more about \code{beset}, start with the
+vignettes: \code{browseVignettes(package = "beset")}
 }
 \section{Overarching goals}{
 
 \enumerate{
+  \item Provide a fast and easy way to cross-validate GLMs.
   \item Establish a common, user-friendly interface for best subset selection
-    that works with several model fitting functions, including
-    \code{\link[stats]{lm}}, \code{\link[stats]{glm}},
-    \code{\link[MASS]{glm.nb}}, and \code{\link[pscl]{zeroinfl}}.
-  \item Provide a fast and easy way to cross-validate generalized linear
-    models, with a streamlined, parallelized implementation that can take
-    advantage of multicore computing architectures.
-  \item Make elastic-net regression and cross-validation more accessible by
-    providing simple wrappers and informative summary methods for fitting
-    models with \code{\link[glmnet]{glmnet}}.
+    that works with several model fitting functions (\code{\link[stats]{lm}},
+    \code{\link[stats]{glm}}, and \code{\link[MASS]{glm.nb}}.
+  \item Make elastic-net regression more accessible and interpretable by
+    providing a wrapper to \code{\link[glmnet]{glmnet}} that maintains the
+    same user interface as \code{\link[stats]{lm}} and
+    \code{\link[stats]{glm}} and provides informative plot and summary
+    methods.
 }
 }
 
 \section{Overview of principal functions}{
 
 \describe{
- \item{\code{\link{partition}}}{Makes it quick and easy to split a data
-   frame into a train/test partition and keep track of which train set goes
-   with which test set.}
  \item{\code{\link{beset_glm}}}{Performs best subset selection using repeated
    cross-validation to find the optimal number of predictors for several
    families of generalized linear models.}
- \item{\code{\link{beset_zeroinfl}}}{Provides a cross-validated search
-   strategy for identifying the best predictors for each of the two
-   components in a zero-inflated count model.}
  \item{\code{\link{beset_elnet}}}{Enhances elastic-net regression with
    \code{\link[glmnet]{glmnet}} by 1) allowing the user to specify a model
    using R's formula syntax, 2) allowing the user to simultaneously tune both
@@ -49,11 +39,8 @@ To learn more about \code{beset}, start with the vignettes:
    that ranks the relative importance of the predictors that survived
    shrinkage and gives some statistics indicating how well the model fits the
    training data and predicts new data.}
- \item{\code{\link{r2d}}}{Calculates an R-squared as the fraction of deviance
-   explained for any "\code{glm}", "\code{negbin}", or "\code{zeroinfl}"
-   model object and, with optional additional arguments, returns a predictive
-   R-squared for how well the model predicts responses for new observations
-   and/or a cross-validated R-squared with bootstrapped confidence interval.}
+ \item{\code{\link{validate}}}{An S3 object system that makes it easy
+  to obtain cross-validated prediction stats for a previously fit model.}
  }
 }
 

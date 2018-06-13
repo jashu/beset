@@ -4,60 +4,11 @@
 \alias{glm_nb}
 \title{Fit a Negative Binomial Generalized Linear Model}
 \usage{
-glm_nb(formula, data, weights, subset, na.action, start = NULL, etastart,
-  mustart, control = stats::glm.control(...), method = "glm.fit",
-  model = FALSE, x = FALSE, y = FALSE, contrasts = NULL, ...,
-  init.theta, link = "log")
+glm_nb(x, y, weights = rep(1, nobs), start = NULL, etastart = NULL,
+  mustart = NULL, offset = rep(0, nobs), family = poisson(),
+  control = list(), intercept = TRUE)
 }
 \arguments{
-\item{formula}{an object of class \code{"\link{formula}"} (or one that
-    can be coerced to that class): a symbolic description of the
-    model to be fitted.  The details of model specification are given
-    under \sQuote{Details}.}
-
-\item{data}{an optional data frame, list or environment (or object
-    coercible by \code{\link{as.data.frame}} to a data frame) containing
-    the variables in the model.  If not found in \code{data}, the
-    variables are taken from \code{environment(formula)},
-    typically the environment from which \code{glm} is called.}
-
-\item{weights}{an optional vector of \sQuote{prior weights} to be used
-    in the fitting process.  Should be \code{NULL} or a numeric vector.}
-
-\item{subset}{an optional vector specifying a subset of observations
-    to be used in the fitting process.}
-
-\item{na.action}{a function which indicates what should happen
-    when the data contain \code{NA}s.  The default is set by
-    the \code{na.action} setting of \code{\link{options}}, and is
-    \code{\link{na.fail}} if that is unset.  The \sQuote{factory-fresh}
-    default is \code{\link{na.omit}}.  Another possible value is
-    \code{NULL}, no action.  Value \code{\link{na.exclude}} can be useful.}
-
-\item{start}{starting values for the parameters in the linear predictor.}
-
-\item{etastart}{starting values for the linear predictor.}
-
-\item{mustart}{starting values for the vector of means.}
-
-\item{control}{a list of parameters for controlling the fitting
-    process.  For \code{glm.fit} this is passed to
-    \code{\link{glm.control}}.}
-
-\item{method}{the method to be used in fitting the model.  The default
-    method \code{"glm.fit"} uses iteratively reweighted least squares
-    (IWLS): the alternative \code{"model.frame"} returns the model frame
-    and does no fitting.
-
-    User-supplied fitting functions can be supplied either as a function
-    or a character string naming a function, with a function which takes
-    the same arguments as \code{glm.fit}.  If specified as a character
-    string it is looked up from within the \pkg{stats} namespace.
-  }
-
-\item{model}{a logical value indicating whether \emph{model frame}
-    should be included as a component of the returned value.}
-
 \item{x}{For \code{glm}:
     logical values indicating whether the response vector and model
     matrix used in the fitting process should be returned as components
@@ -78,30 +29,38 @@ glm_nb(formula, data, weights, subset, na.action, start = NULL, etastart,
     \code{n}.
   }
 
-\item{contrasts}{an optional list. See the \code{contrasts.arg}
-    of \code{model.matrix.default}.}
+\item{weights}{an optional vector of \sQuote{prior weights} to be used
+    in the fitting process.  Should be \code{NULL} or a numeric vector.}
 
-\item{...}{
-    For \code{glm}: arguments to be used to form the default
-    \code{control} argument if it is not supplied directly.
+\item{start}{starting values for the parameters in the linear predictor.}
 
-    For \code{weights}: further arguments passed to or from other methods.
-  }
+\item{etastart}{starting values for the linear predictor.}
 
-\item{init.theta}{Optional initial value for the theta parameter. If omitted
-a moment estimator after an initial fit using a Poisson GLM is used.}
+\item{mustart}{starting values for the vector of means.}
 
-\item{link}{The link function. Currently must be one of "log", "sqrt" or
-"identity".}
+\item{offset}{this can be used to specify an \emph{a priori} known
+    component to be included in the linear predictor during fitting.
+    This should be \code{NULL} or a numeric vector of length equal to
+    the number of cases.  One or more \code{\link{offset}} terms can be
+    included in the formula instead or as well, and if more than one is
+    specified their sum is used.  See \code{\link{model.offset}}.}
+
+\item{family}{a description of the error distribution and link
+    function to be used in the model.  For \code{glm} this can be a
+    character string naming a family function, a family function or the
+    result of a call to a family function.  For \code{glm.fit} only the
+    third option is supported.  (See \code{\link{family}} for details of
+    family functions.)}
+
+\item{control}{a list of parameters for controlling the fitting
+    process.  For \code{glm.fit} this is passed to
+    \code{\link{glm.control}}.}
+
+\item{intercept}{logical. Should an intercept be included in the
+    \emph{null} model?}
 }
 \description{
-A modification of \code{\link[MASS]{glm.nb}} that can be programmed with.
-The main change is to avoid non-standard evaluation of the link argument so
-that this argument is passed as a "quoted" string, which requires the
-removal of the line `link <- substitute(link)`. This in turn enables the
-removal of `do.call` syntax. Other edits were done to define the namespaces
-of other MASS functions that are called by `glm.nb`, to change the default
-arguments to avoid returning copies of the model data and the response
-vector, and to return \code{$data} to maintain consistency with the object
-returned by \code{\link[stats]{glm}}.
+A modification of \code{\link[MASS]{glm.nb}} to provide a more efficient
+workhorse function analagous to \code{\link[stats]{glm.fit}} where the
+response vector, design matrix, and family have already been calculated.
 }

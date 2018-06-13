@@ -12,6 +12,11 @@
 #' intercept) fit to the true responses. These quantities are used to derive the
 #' metrics described below.
 #'
+#' \code{predict_metrics_} is the workhorse function: there is no need to call
+#' this directly but is more efficient for programming if the actual response
+#' vector, the predicted response vector(s), and dispersion parameter (if
+#' applicable) have already been calculated.
+#'
 #' @section Mean squared error (MSE) and mean cross entropy (MCE):
 #' MSE is the average of the squared difference between each predicted response
 #' \eqn{ŷ} and the actual observed response \eqn{y}. MCE is an analagous
@@ -54,9 +59,27 @@
 #' @param test_data A data frame containing new data for the response and all
 #' predictors that were used to fit the model \code{object}.
 #'
-#' @return A list giving the deviance, mean absolute error, mean cross entropy,
-#' mean squared error, and deviance R-squared between model predictions and
-#' actual observations.
+#' @param y Vector of actual observed values
+#'
+#' @param y_hat Vector of predicted values. For zero-inflated models, the
+#' predicted values for the count component of the model.
+#'
+#' @param family Character string giving the name of the error distribution for
+#'   \code{y_hat}. Currently supported distributions are "gaussian", "binomial",
+#'   "poisson", "negbin" (negative binomial), "zip" (zero-inflated Poisson), and
+#'    "zinb" (zero-inflated negative binomial).
+#'
+#' @param phi (Required for zero-inflated models) the predicted values for the
+#'  zero component of the model.
+#'
+#' @param theta (Required for negative binomial models) the estimated dispersion
+#' parameter \code{theta}.
+#'
+#' @return For binomial models, a list giving the area under the ROC curve
+#' ("auc"), mean cross entropy AKA log loss ("mce"), mean squared error AKA
+#' Brier score ("mse"), and deviance R-squared ("rsq'). For all other models,
+#' mean absolute error ("mae") takes the place of "auc" but otherwise the
+#' metrics are the same.
 #'
 #' @seealso \code{\link{r2d}}, \code{\link[stats]{logLik}},
 #' \code{\link{deviance.zeroinfl}}
@@ -77,27 +100,26 @@ predict_metrics <- function(object, test_data){
   } else {
     purrr::as_vector(test_data[[all.vars(object$terms)[1]]])
   }
-  if(is.factor(y)) y <- as.integer(y) - 1
   y_hat <- stats::predict(object, test_data, type="response")
-  na <- which(is.na(y) | is.na(y_hat))
-  if(length(na) > 0){
-    y <- y[-na]
-    y_hat <- y_hat[-na]
-  }
   phi <- theta <- NULL
   if(family %in% c("zip", "zinb")){
     y_hat <- stats::predict(object, test_data, type = "count")
     phi <- stats::predict(object, test_data, type = "zero")
-    if(length(na) > 0){
-      y_hat <- y_hat[-na]
-      phi <- phi[-na]
-    }
   }
   if(family %in% c("negbin","zinb")) theta <- object$theta
   predict_metrics_(y, y_hat, family, phi, theta)
 }
 
+#' @rdname predict_metrics
+#' @export
 predict_metrics_ <- function(y, y_hat, family, phi = NULL, theta = NULL){
+  na <- which(is.na(y) | is.na(y_hat))
+  if(length(na) > 0){
+    y <- y[-na]
+    y_hat <- y_hat[-na]
+    phi <- phi[-na]
+  }
+  if(is.factor(y)) y <- as.integer(y) - 1
   y_bar <- mean(y)
   sigma <- sqrt(mean((y_hat-y)^2))
   N <- length(y)
@@ -139,11 +161,18 @@ predict_metrics_ <- function(y, y_hat, family, phi = NULL, theta = NULL){
   if(family == "gaussian") dev_pred <- dev_pred * sigma^2
   dev_null <- 2 * (ll_saturated - ll_null)
   if(family == "gaussian") dev_null <- dev_null * sigma^2
-
-  structure(list(deviance = dev_pred,
-                 mean_absolute_error = mean(abs(y_hat - y)),
-                 mean_cross_entropy = -ll_predicted / N,
-                 mean_squared_error = sigma^2,
-                 R_squared = 1 - dev_pred / dev_null),
-            class = "prediction_metrics")
+  auc <- NULL
+  if(family == "binomial"){
+    x1 <- y_hat[y==1]; n1 <- length(x1);
+    x2 <- y_hat[y==0]; n2 <- length(x2);
+    r <- rank(c(x1, x2))
+    auc <- if(n1 > 0 && n2 > 0){
+      (sum(r[1:n1]) - n1 * (n1 + 1) / 2) / n1 / n2
+        } else NA_real_
+  }
+  out <- structure(c(
+    if(!is.null(auc)) list(auc = auc) else list(mae = mean(abs(y_hat - y))),
+    list(mce = -ll_predicted / N, mse = sigma^2,
+         rsq = if(length(y) > 2) 1 - dev_pred/dev_null else NA_real_)),
+    class = "prediction_metrics")
 }

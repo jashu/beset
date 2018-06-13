@@ -6,61 +6,99 @@
 \alias{beset_lm}
 \title{Best Subset Selection for Generalized Linear Models}
 \usage{
-beset_glm(form, data, test_data = NULL, p_max = 10, family = "gaussian",
-  link = NULL, n_cores = 2, n_folds = 5, n_repeats = 5, seed = 42)
+beset_glm(form, data, family = "gaussian", link = NULL, p_max = 10,
+  force_in = NULL, nest_cv = FALSE, n_folds = 10, n_reps = 10,
+  seed = 42, contrasts = NULL, offset = NULL, weights = NULL,
+  start = NULL, etastart = NULL, mustart = NULL, epsilon = 1e-08,
+  maxit = 25, skinny = FALSE, n_cores = NULL, parallel_type = NULL,
+  cl = NULL)
 
-beset_lm(form, data, test_data = NULL, p_max = 10, n_cores = 2,
-  n_folds = 5, n_repeats = 5, seed = 42)
+beset_lm(form, data, p_max = 10, force_in = NULL, weights = NULL,
+  contrasts = NULL, offset = NULL, nest_cv = FALSE, n_folds = 10,
+  n_reps = 10, seed = 42, n_cores = NULL, parallel_type = NULL,
+  cl = NULL)
 }
 \arguments{
 \item{form}{A model \code{\link[stats]{formula}}.}
 
 \item{data}{Either a \code{\link{data_partition}} object containing data sets
 to be used for both model training and testing, or a single data frame that
-will be used for model training only.}
-
-\item{test_data}{Optional data frame with the variables in \code{form} and
-the data to be used for model validation. Not necessary and ignored if a
-\code{\link{data_partition}} object is passed via the \code{data} parameter.}
-
-\item{p_max}{Maximum number of predictors to attempt to fit.}
+will be used for model training and cross-validation.}
 
 \item{family}{Character string naming the error distribution to be used in
 the model. Available families are listed under 'List of available families
 and link functions'.}
 
-\item{link}{Optional character string naming the link function to be used in
+\item{link}{(Optional) character string naming the link function to be used in
 the model. Available links and their defaults differ by \code{family} and are
 listed under 'List of available families and link functions'.}
 
-\item{n_cores}{Integer value indicating the number of workers to run in
-parallel during subset search and cross-validation. By default, this will
-be set to 2. To determine the theoretical maximum number of cores you have
-available, see \code{\link[parallel]{detectCores}}, but note that the actual
-number of cores available may be less. See
-\code{\link[parallel]{parallel-package}} for more information.}
+\item{p_max}{Maximum number of predictors to attempt to fit. Default is 10.}
+
+\item{force_in}{(Optional) vector containing the names or indices of any
+predictor variables that should be included in every model. (Note that if
+there is an intercept, it is forced into every model by default.)}
 
 \item{n_folds}{Integer indicating the number of folds to use for
 cross-validation.}
 
-\item{n_repeats}{Integer indicating the number of times cross-validation
-should be repeated.}
+\item{n_reps}{Integer indicating the number of times cross-validation should
+be repeated (with different randomized fold assignments).}
 
 \item{seed}{An integer used to seed the random number generator when
 assigning observations to folds.}
+
+\item{contrasts}{an optional list. See the \code{contrasts.arg}
+    of \code{model.matrix.default}.}
+
+\item{offset}{this can be used to specify an \emph{a priori} known
+    component to be included in the linear predictor during fitting.
+    This should be \code{NULL} or a numeric vector of length equal to
+    the number of cases.  One or more \code{\link{offset}} terms can be
+    included in the formula instead or as well, and if more than one is
+    specified their sum is used.  See \code{\link{model.offset}}.}
+
+\item{weights}{an optional vector of \sQuote{prior weights} to be used
+    in the fitting process.  Should be \code{NULL} or a numeric vector.}
+
+\item{start}{starting values for the parameters in the linear predictor.}
+
+\item{etastart}{starting values for the linear predictor.}
+
+\item{mustart}{starting values for the vector of means.}
+
+\item{epsilon}{\code{Numeric} value of positive convergence tolerance ε; the
+iterations converge when \eqn{|dev - dev_{old}|/(|dev| + 0.1) < ε}. Default
+is \code{1e-8}.}
+
+\item{maxit}{\code{Integer} giving the maximal number of IWLS iterations.
+Default is 25.}
+
+\item{skinny}{\code{Logical} value indicating whether or not to return a
+"skinny" model. If \code{FALSE} (the default), the return object will include
+a copy of the model \code{\link[stats]{terms}}, \code{data},
+\code{contrasts}, and a record of the \code{xlevels} of the factors used in
+fitting. If these features are not needed, setting \code{skinny = TRUE} will
+prevent these copies from being made.}
+
+\item{n_cores}{Integer value indicating the number of workers to run in
+parallel during subset search and cross-validation. By default, this will
+be set to one fewer than the maximum number of physical cores you have
+available, as indicated by \code{\link[parallel]{detectCores}}. Set to 1 to
+disable parallel processing.}
+
+\item{parallel_type}{(Optional) character string indicating the type of
+parallel operation to be used, either \code{"fork"} or \code{"sock"}. If
+omitted and \code{n_cores > 1}, the default is \code{"sock"} for Windows and
+\code{"fork"} for any other OS.}
+
+\item{cl}{(Optional) \code{\link[parallel]{parallel}} or
+\code{\link[snow]{snow}} cluster for use if \code{parallel_type = "sock"}.
+If not supplied, a cluster on the local machine is automatically created.}
 }
 \value{
 A "beset_glm" object with the following components:
-\enumerate{
- \item\describe{
-   \item{params}{list of parameters used in function call that will be
-   needed to reproduce results}
-   }
-  \item\describe{
-    \item{model_data}{data frame containing training data used to identify
-     best subsets.}
- }
- \item\describe{
+\describe{
    \item{stats}{a list with three data frames:
      \describe{
        \item{fit}{statistics for every possible combination of predictors:
@@ -90,13 +128,24 @@ A "beset_glm" object with the following components:
      Each metric is followed by its standard error. The data frame
      is otherwise the same as that documented for \code{fit}, except
      AIC is omitted.}
-     \item{test_stats}{if \code{test_data} is provided, a data frame
+     \item{test}{if \code{test_data} is provided, a data frame
      containing prediction metrics for the best model for each \code{n_pred}
      listed in \code{fit} as applied to the \code{test_data}.}
-      }
+     }
+   }
+  \item{fold_assignments}{list giving the row indices for the holdout
+   observations for each fold and/or repetition of cross-validation}
+  \item{n_folds}{number of folds used in cross-validation}
+  \item{n_reps}{number of repetitions used in cross-validation}
+  \item{family}{name of error distribution used in the model}
+  \item{link}{name of link function used in the model}
+  \item{terms}{the \code{\link[stats]{terms}} object used}
+  \item{data}{the \code{data} argument}
+  \item{offset}{the offset vector used}
+  \item{contrasts}{(where relevant) the contrasts used}
+  \item{xlevels}{(where relevant) a record of the levels of the factors used
+       in fitting}
     }
-  }
-}
 }
 \description{
 \code{beset_glm} performs best subset selection using repeated
@@ -115,13 +164,13 @@ folds predicts the left-out fold).
 }
 \section{Cross-validation details}{
 
-\code{beset_glm} uses \code{\link{create_folds}} to randomly
-partition the data set into \code{n_folds} * \code{n_repeats} folds within
-strata (factor levels for factor outcomes, percentile-based groups for
-numeric outcomes). This insures that the folds will be matched in terms of
-the outcome's frequency distribution. \code{beset_glm} also insures the
-reproducibility of your analysis by requiring a \code{seed} to the random
-number generator as one of its arguments.
+\code{beset_glm} uses \code{\link{create_folds}} to randomly partition the
+data set into \code{n_folds} * \code{n_repeats} folds within strata (factor
+levels for factor outcomes, percentile-based groups for numeric outcomes).
+This insures that the folds will be matched in terms of the outcome's
+frequency distribution. \code{beset_glm} also insures the reproducibility of
+your analysis by requiring a \code{seed} to the random number generator as
+one of its arguments.
 }
 
 \section{List of available families and link functions}{
@@ -146,13 +195,10 @@ number generator as one of its arguments.
   No other options for handling missing data are provided at this time. The
   user is encouraged to deal with missing values prior to running this
   function.
- \item \code{beset_glm} is intended for use with additive models only. If you
-  include interaction terms in the model formula passed to \code{form}, they
-  will be ignored (e.g. \code{A * B * C} will be treated as \code{A + B + C}
-  and \code{A + B + A:B} will be treated as \code{A + B}). An exhaustive
-  search over the space of possible interactions and/or non-linear effects is
-  computationally prohibitive, but I hope to offer a greedy search option in
-  the future. In the meantime and in general, I would recommend the
+ \item \code{beset_glm} is intended for use with additive models only.  An
+ exhaustive search over the space of possible interactions and/or non-linear
+ effects is computationally prohibitive, but I hope to offer a greedy search
+ option in the future. In the meantime and in general, I would recommend the
    \href{https://cran.r-project.org/web/packages/earth/index.html}{MARS}
    technique.
  \item \code{beset_glm} is best suited for searching over a small number of

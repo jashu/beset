@@ -15,6 +15,21 @@
 #' used in the model. Currently supported options are \code{"gaussian"}
 #' (default), \code{"binomial"}, and \code{"poisson"}.
 #'
+#' @param skinny \code{Logical} value indicating whether or not to return a
+#' "skinny" model. If \code{FALSE} (the default), the return object will include
+#' a copy of the model \code{\link[stats]{terms}}, \code{data},
+#' \code{contrasts}, and a record of the \code{xlevels} of the factors used in
+#' fitting. This information will be necessary if you apply
+#' \code{\link{predict.beset_elnet}} to new data. If this feature is not needed,
+#' setting \code{skinny = TRUE} will prevent these copies from being made.
+#'
+#' @param nest_cv \code{Logical} value indicating whether or not to perform a
+#' nested cross-validation that isolates the cross-validation used for tuning
+#' \code{alpha} and \code{lambda} from the cross-validation used to estimate
+#' prediction error. Setting to \code{TRUE} will increase run time considerably
+#' (by a factor equal to the number of folds), but useful for estimating
+#' uncertainty in the tuning procedure. Defaults to \code{FALSE}.
+#'
 #' @param alpha_seq \code{Numeric} vector of alpha values between 0 and 1 to
 #' use as tuning parameters. \code{alpha = 0} results in ridge regression, and
 #' \code{alpha = 1} results in lasso regression. Values in between result in a
@@ -23,34 +38,28 @@
 #' default is to try three alpha values: 0.01 (emphasis toward ridge penalty),
 #' 0.99 (emphasis toward lasso penalty), and 0.5 (equal mixture of L1 and L2).
 #'
-#' @param lambda_seq (Optional) \code{numeric} vector giving a decreasing
-#' sequence of \eqn{lambda} values. If omitted, the program computes its own
-#' \code{lambda_seq} based on \code{n_lambda} and \code{lambda_min_ratio}.
-#'
 #' @param n_lambda Number of lambdas to be used in a search. Defaults to
 #' \code{100}.
 #'
-#' @param lambda_min_ratio (Optional) minimum lambda used in lambda search,
-#' specified as a ratio of lambda_max (the smallest lambda that drives all
-#' coefficients to zero). Default if omitted: if the number of observations is
-#' greater than the number of variables, then \code{lambda_min_ratio} is set to
-#' 0.0001; if the number of observations is less than the number of variables,
-#' then \code{lambda_min_ratio} is set to 0.01.
+#' @param lambda_min_ratio (Optional) minimum \eqn{lambda} used in \eqn{lambda}
+#' search, specified as a ratio of \code{lambda_max} (the smallest \eqn{lambda}
+#' that drives all coefficients to zero). Default if omitted: if the number of
+#' observations is greater than the number of variables, then
+#' \code{lambda_min_ratio} is set to 0.0001; if the number of observations is
+#' less than the number of variables, then \code{lambda_min_ratio} is set to
+#' 0.01.
 #'
-#' @param offset A vector of length nobs that is included in the linear
-#' predictor. Useful for the "poisson" family (e.g. log of exposure time), or
-#' for refining a model by starting at a current fit. Default is NULL.
+#' @param offset (Optional) vector of length equal to the number of observations
+#' that is included in the linear predictor. Useful for the "poisson" family
+#' (e.g. log of exposure time), or for refining a model by starting at a current
+#' fit.
 #'
 #' @param weights (Optional) \code{numeric} vector of observation weights
 #' of length equal to the number of cases.
 #'
-#' @param epsilon Convergence threshold for coordinate descent. Each inner
-#' coordinate-descent loop continues until the maximum change in the objective
-#' after any coefficient update is less than thresh times the null deviance.
-#' Defaults value is \code{1e-7}.
+#' @param epsilon Convergence threshold for coordinate descent.
 #'
-#' @param maxit Maximum number of passes over the data for all lambda values;
-#' default is \code{10^5}.
+#' @param maxit Maximum number of passes over the data for all lambda values
 #'
 #' @param standardize Logical flag for x variable standardization, prior to
 #' fitting the model sequence. The coefficients are always returned on the
@@ -60,54 +69,76 @@
 #' @param contrasts {Optional} \code{list}. See the \code{contrasts.arg} of
 #' \code{\link[stats]{model.matrix.default}}.
 #'
-#' @return A "beset_elnet" or "nested_elnet" object with the following
-#' components:
-#' \enumerate{
-#'  \item\describe{
-#'    \item{params}{list of parameters used in function call that will be
-#'    needed to reproduce results}
-#'    }
-#'   \item\describe{
-#'     \item{model_data}{data frame containing training data used to identify
-#'      best subsets.}
-#'  }
-#'  \item\describe{
+#' @return A "beset_elnet" or "nested" object inheriting class "beset_elnet"
+#' with the following components:
+#'
+#' \describe{
+#' \item{For "beset_elnet" objects:}{
+#' \describe{
 #'    \item{stats}{a list with three data frames:
 #'      \describe{
-#'        \item{fit}{statistics for every possible combination of predictors:
+#'        \item{fit}{
 #'          \describe{
-#'            \item{n_pred}{the total number of predictors in model; note that
-#'               the number of predictors for a factor variable corresponds to the
-#'               number of factor levels minus 1}
-#'            \item{form}{formula for model}
-#'            \item{aic}{\eqn{-2*log-likelihood + k*npar}, where \eqn{npar}
-#'              represents the number of parameters in the fitted model, and
-#'              \eqn{k = 2}}
-#'            \item{dev}{twice the difference between the log-likelihoods of the
-#'              saturated and fitted models, multiplied by the scale parameter}
-#'            \item{mae}{mean absolute error}
+#'            \item{alpha}{value of L1-L2 mixing parameter}
+#'            \item{lambda}{value of shrinkage parameter}
+#'            \item{auc}{area under curve (binomial models only)}
+#'            \item{mae}{mean absolute error (not given for binomial models)}
 #'            \item{mce}{mean cross entropy, estimated as
 #'              \eqn{-log-likelihood/N}, where \eqn{N} is the number of
 #'              observations}
 #'            \item{mse}{mean squared error}
-#'            \item{r2}{R-squared, calculated as
+#'            \item{rsq}{R-squared, calculated as
 #'              \eqn{1 - deviance/null deviance}}
 #'            }
 #'          }
-#'      \item{cv}{a data frame containing cross-validation statistics
-#'      for the best model for each \code{n_pred} listed in \code{fit_stats}.
-#'      Each metric is computed using \code{\link{predict_metrics}}, with
-#'      models fit to \eqn{n-1} folds and predictions made on the left-out fold.
-#'      Each metric is followed by its standard error. The data frame
-#'      is otherwise the same as that documented for \code{fit}, except
-#'      AIC is omitted.}
-#'      \item{test_stats}{if \code{test_data} is provided, a data frame
-#'      containing prediction metrics for the best model for each \code{n_pred}
-#'      listed in \code{fit} as applied to the \code{test_data}.}
+#'      \item{cv}{a data frame containing cross-validation statistics for each
+#'        \code{alpha} and \code{lambda} listed in \code{fit}. If run with
+#'        \code{nest_cv = TRUE}, this will correspond to the inner
+#'        cross-validation used to select \code{alpha} and \code{lambda}. Each
+#'        metric consists of the following list:
+#'        \describe{
+#'          \item{mean}{mean of the metric calculated on the aggregate holdout
+#'            folds for each repetition and averaged across repetitions}
+#'          \item{btwn_fold_se}{the variability between all holdout folds, given
+#'            as a standard error}
+#'          \item{btwn_rep_range}{after aggregating over all hold-out folds
+#'            within each repetition, the variability between repetitions, given
+#'            as a min-max range}
+#'        }
+#'      }
+#'      \item{test}{if a \code{\link{data_partition}} is provided, or if run
+#'      with \code{nest_cv = TRUE}, a data frame containing prediction metrics
+#'      for each \code{alpha} and \code{lambda} listed in \code{fit} as applied
+#'      to the independent test data or outer cross-validation holdout data}
 #'       }
 #'     }
-#'   }
-#' }
+#'   \item{glmnet_parameters}{a list of all parameters that were passed to
+#'     \code{\link[glmnet]{glmnet}}}
+#'  }}}
+#'
+#'  \describe{
+#'  \item{For "nested" objects:}{
+#'  \describe{
+#'    \item{beset_elnet}{a list of "beset_elnet" objects, one for each train-
+#'      test partition of the outer cross-validation procedure, each consisting
+#'      of all of the elements listed above}
+#'  }}}
+#'
+#'  \describe{
+#'  \item{For both "nested" and unnested "beset_elnet" objects:}{
+#'  \describe{
+#'    \item{fold_assignments}{list giving the row indices for the holdout
+#'    observations for each fold and/or repetition of cross-validation}
+#'    \item{n_folds}{number of folds used in cross-validation}
+#'    \item{n_reps}{number of repetitions used in cross-validation}
+#'    \item{family}{names of error distribution used in the model}
+#'    \item{terms}{the \code{\link[stats]{terms}} object used}
+#'    \item{data}{the \code{data} argument}
+#'    \item{offset}{the offset vector used}
+#'    \item{contrasts}{(where relevant) the contrasts used}
+#'    \item{xlevels}{(where relevant) a record of the levels of the factors used
+#'      in fitting}
+#'  }}}
 #'
 #' @inheritParams beset_glm
 #' @seealso \code{\link[glmnet]{glmnet}}
@@ -115,16 +146,15 @@
 #' @import purrr
 #' @export
 
-beset_elnet <- function(form, data, family = "gaussian",
-                        alpha_seq = c(.01, .5, .99), lambda_seq = NULL,
-                        nest_cv = FALSE, n_folds = 10, n_reps = 10, seed = 42,
-                        weights = NULL, offset = NULL, contrasts = NULL,
-                        n_lambda = 100, lambda_min_ratio = NULL, p_max = NULL,
-                        standardize = TRUE, epsilon = 1e-7, maxit = 10^5,
-                        parallel_type = NULL, n_cores = NULL, cl = NULL){
+beset_elnet <- function(
+  form, data, family = "gaussian", skinny = FALSE, standardize = TRUE,
+  nest_cv = FALSE, n_folds = 10, n_reps = 10, seed = 42,
+  alpha_seq = c(.01, .5, .99), n_lambda = 100, lambda_min_ratio = NULL,
+  epsilon = 1e-7, maxit = 10^5, contrasts = NULL, offset = NULL, weights = NULL,
+  parallel_type = NULL, n_cores = NULL, cl = NULL){
 
   #==================================================================
-  # Check family argument
+  # Check family and cross-validation arguments
   #------------------------------------------------------------------
   family <- tryCatch(
     match.arg(family, c("binomial", "gaussian", "poisson")),
@@ -137,18 +167,55 @@ beset_elnet <- function(form, data, family = "gaussian",
   #======================================================================
   # Set up parallel operations
   #----------------------------------------------------------------------
-  if(is.null(n_cores) || n_cores > 1){
-    parallel_control <- setup_parallel(
-      parallel_type = parallel_type, n_cores = n_cores, cl = cl)
-    have_mc <- parallel_control$have_mc
-    n_cores <- parallel_control$n_cores
-    cl <- parallel_control$cl
+  if(!is.null(cl)){
+    if(!inherits(cl, "cluster")) stop("Not a valid parallel socket cluster")
+    n_cores <- length(cl)
+  } else {
+    if(is.null(n_cores) || n_cores > 1){
+      if(!nest_cv){
+        if(is.null(n_cores)){
+          n_cores <- length(alpha_seq)
+        } else {
+          n_cores <- min(n_cores, length(alpha_seq))
+        }
+      } else {
+        if(is.null(parallel_type)) parallel_type <- "sock"
+      }
+      parallel_control <- setup_parallel(
+        parallel_type = parallel_type, n_cores = n_cores, cl = cl)
+      n_cores <- parallel_control$n_cores
+      cl <- parallel_control$cl
+    }
+  }
+
+  #======================================================================
+  # Drop rows with missing values
+  #----------------------------------------------------------------------
+  if(inherits(data, "data.frame")){
+    data <- na.omit(data)
+    n_omit <- length(attr(data, "na.action"))
+    if(n_omit > 0){
+      warning(paste("Dropping", n_omit, "rows with missing data."),
+              immediate. = TRUE)
+    }
   }
 
   #======================================================================
   # Recursive function for performing nested cross-validation
   #----------------------------------------------------------------------
   if(nest_cv){
+    if(inherits(data, "data_partition")){
+      tryCatch(
+        stop(paste("Ambiguous call: do you want to use the test partition found",
+                   "in `data`` to estimate test performance, or do you want to",
+                   "use nested cross-validation? Either set `nest_cv` to FALSE",
+                   "or pass a single data frame instead of a train/test split.",
+                   sep = "\n")),
+        error = function(c){
+          c$call <- NULL
+          stop(c)
+        })
+    }
     o <- NULL; w <- NULL
     if(!is.null(offset)){
       data$offset = offset
@@ -161,6 +228,9 @@ beset_elnet <- function(form, data, family = "gaussian",
     y <- all.vars(form)[1]
     x <- all.vars(form)[-1]
     if(length(x) == 1 && x == ".") x <- NULL
+    n_obs <- nrow(na.omit(data))
+    cv_params <- set_cv_par(n_obs, n_folds, n_reps)
+    n_folds <- cv_params$n_folds; n_reps <- cv_params$n_reps
     fold_ids <- create_folds(data[[y]], n_folds, n_reps, seed)
     all_partitions <- lapply(fold_ids, function(i){
       suppressWarnings(
@@ -168,44 +238,60 @@ beset_elnet <- function(form, data, family = "gaussian",
                        offset = o, weights = w)
       )
     })
-    out <- if(n_cores > 1L){
-      if(have_mc){
+    nested_cv <- if(n_cores > 1L){
+      if(is.null(cl)){
         parallel::mclapply(all_partitions, function(x){
           beset_elnet(form = form, data = x, family = family,
                       contrasts = contrasts, alpha_seq = alpha_seq,
-                      lambda_seq = lambda_seq, n_lambda = n_lambda,
-                      lambda_min_ratio = lambda_min_ratio,
+                      n_lambda = n_lambda,
+                      lambda_min_ratio = lambda_min_ratio, skinny = TRUE,
                       standardize = standardize, epsilon = epsilon,
-                      p_max = p_max, maxit = maxit, n_folds = n_folds,
-                      n_reps = 1, seed = seed, n_cores = 1)
+                      maxit = maxit, n_folds = n_folds, n_reps = 1,
+                      seed = seed, n_cores = 1)
           })
         } else {
           parallel::parLapply(cl, all_partitions, function(x){
             beset_elnet(form = form, data = x, family = family,
                         contrasts = contrasts, alpha_seq = alpha_seq,
-                        lambda_seq = lambda_seq, n_lambda = n_lambda,
-                        lambda_min_ratio = lambda_min_ratio,
+                        n_lambda = n_lambda,
+                        lambda_min_ratio = lambda_min_ratio, skinny = TRUE,
                         standardize = standardize, epsilon = epsilon,
-                        p_max = p_max, maxit = maxit, n_folds = n_folds,
-                        n_reps = 1, seed = seed, n_cores = 1)
+                        maxit = maxit, n_folds = n_folds, n_reps = 1,
+                        seed = seed, n_cores = 1)
           })
         }
       } else {
         lapply(all_partitions, function(x){
         beset_elnet(form = form, data = x, family = family,
                     contrasts = contrasts, alpha_seq = alpha_seq,
-                    lambda_seq = lambda_seq, n_lambda = n_lambda,
-                    lambda_min_ratio = lambda_min_ratio,
+                    n_lambda = n_lambda,
+                    lambda_min_ratio = lambda_min_ratio, skinny = TRUE,
                     standardize = standardize, epsilon = epsilon,
-                    p_max = p_max, maxit = maxit, n_folds = n_folds,
-                    n_reps = 1, seed = seed, n_cores = 1)
+                    maxit = maxit, n_folds = n_folds, n_reps = 1,
+                    seed = seed, n_cores = 1)
       })
       }
-    attr(out, "fold_assignments") <- fold_ids
-    class(out) <- "nested_elnet"
+    if(skinny){
+      terms <- data <- contrasts <- xlevels <- NULL
+    } else {
+      arguments <- make_args(form = form, data = data, family = family,
+                             link = NULL, contrasts = contrasts,
+                             epsilon = epsilon, maxit = maxit)
+      terms <- arguments$terms
+      xlevels <- arguments$xlevels
+    }
+    out <- structure(
+      list(
+        beset_elnet = nested_cv, fold_assignments = fold_ids,
+        n_folds = n_folds, n_reps = n_reps,
+        family = family, terms = terms, data = data, offset = offset,
+        contrasts = contrasts, xlevels = xlevels
+      ),
+      class = c("nested", "beset", "elnet")
+    )
+    if(!is.null(cl)) stopCluster(cl)
     return(out)
   }
-
 
   #==================================================================
   # Create model matrices
@@ -213,10 +299,10 @@ beset_elnet <- function(form, data, family = "gaussian",
   m <- map(alpha_seq, ~ make_args(
     form = form, data = data, family = family, link = NULL, nlambda = n_lambda,
     contrasts = contrasts, weights = weights, offset = offset,
-    epsilon = epsilon, maxit = maxit, alpha = .x, lambda = lambda_seq,
-    standardize = standardize)
+    epsilon = epsilon, maxit = maxit, alpha = .x, standardize = standardize)
   )
   n_obs <- nrow(m[[1]]$train$x)
+  cv_params <- set_cv_par(n_obs, n_folds, n_reps)
   names(m) <- alpha_seq
   # glmnet handles intercept differently from other predictors
   # so should not be included in model matrix
@@ -229,19 +315,15 @@ beset_elnet <- function(form, data, family = "gaussian",
       m[[i]]$train$lambda.min.ratio <<- lambda_min_ratio
       if(length(m[[i]]$test)) m[[i]]$test$lambda.min.ratio <<- lambda_min_ratio
     }
-    if(!is.null(p_max)){
-      m[[i]]$train$dfmax <<- p_max
-      if(length(m[[i]]$test)) m[[i]]$test$dfmax <<- p_max
-    }
   })
 
   #======================================================================
   # Obtain fit statistics
   #----------------------------------------------------------------------
   fits <- if (n_cores > 1L) {
-    if (have_mc) {
+    if(is.null(cl)){
       parallel::mclapply(m, function(x) do.call(glmnet::glmnet, x$train),
-                         mc.cores = min(n_cores, length(m)))
+                         mc.cores = n_cores)
     } else {
       parallel::parLapply(cl, m, function(x) do.call(glmnet::glmnet, x$train))
     }
@@ -277,16 +359,13 @@ beset_elnet <- function(form, data, family = "gaussian",
     test_stats <- bind_cols(
       test_stats, map(y_hats, ~ predict_metrics_(y_obs, ., family)) %>%
         transpose %>% simplify_all %>% as_data_frame)
-    test_preds <- y_hats
   }
 
   #==================================================================
   # Obtain cross-validation stats
   #------------------------------------------------------------------
-  cv_params <- set_cv_par(n_obs, n_folds, n_reps)
-  n_folds <- cv_params$n_folds; n_reps <- cv_params$n_reps
-  cv_results <- map(fits, ~ validate(.x, n_folds = n_folds, n_reps = n_reps,
-                                     seed = seed)) %>%
+  cv_results <- map(
+    fits, ~ validate(.x, n_folds = n_folds, n_reps = n_reps, seed = seed)) %>%
     map("stats") %>% transpose %>% map(reduce, c) %>% as_data_frame
   cv_stats <- fit_stats %>% select(alpha, lambda) %>% bind_cols(cv_results)
 
@@ -294,15 +373,22 @@ beset_elnet <- function(form, data, family = "gaussian",
   # Construct beset_elnet object
   #----------------------------------------------------------------------
   stats <- list(fit = fit_stats, cv = cv_stats, test = test_stats)
-  fit_parameters <- m[[1]]$train
-  fit_parameters$alpha <- NULL
-  test_parameters <- m[[1]]$test
-  test_parameters$predictions <- test_preds
-  cv_parameters <- list(n_folds = n_folds, n_reps = n_reps, seed = seed,
-                        n_cores = n_cores)
-  structure(list(stats = stats,
-                 parameters = list(fit = fit_parameters,
-                                   cv = cv_parameters,
-                                   test = test_parameters)
-                 ), class = "beset_elnet")
+  parameters <- m[[1]]$train
+  parameters$alpha <- NULL
+  if(skinny){
+    terms <- data <- contrasts <- xlevels <- fold_ids <- NULL
+  } else {
+    terms <- m[[1]]$terms
+    xlevels <- m[[1]]$xlevels
+    fold_ids <- create_folds(y_obs, n_folds, n_reps, seed)
+  }
+  if(!is.null(cl)) stopCluster(cl)
+  structure(
+    list(stats = stats,
+         parameters = parameters,
+         fold_assignments = fold_ids, n_folds = n_folds, n_reps = n_reps,
+         family = family, terms = terms, data = data, offset = offset,
+         contrasts = contrasts, xlevels = xlevels),
+    class = c("beset", "elnet")
+  )
 }

@@ -1,4 +1,44 @@
 # CHECKING UTILS
+
+## Error argument
+check_error <- function(
+  error = c("auto", "btwn_fold_se", "btwn_rep_range", "none")
+){
+  tryCatch(
+    match.arg(error, c("auto", "btwn_fold_se", "btwn_rep_range", "none")),
+    error = function(c){
+      c$message <- gsub("arg", "error", c$message)
+      c$call <- NULL
+      stop(c)
+    })
+}
+
+## Metric argument
+check_metric <- function(
+  metric = c("auto", "auc", "mae", "mce", "mse", "rsq")
+){
+  tryCatch(
+    match.arg(metric, c("auto", "auc", "mae", "mce", "mse", "rsq")),
+    error = function(c){
+      c$message <- gsub("arg", "metric", c$message)
+      c$call <- NULL
+      stop(c)
+    })
+}
+
+## Variable Names
+check_names <- function(var_names){
+  new_names <- make.names(var_names)
+  bad_names <- var_names[!var_names %in% new_names]
+  if(length(bad_names))
+    stop(paste(
+      "Variable names may contain only letters, numbers, '.', and '_',\n",
+      "  and must start with a letter or '.' followed by a letter.\n",
+      "  Rename the following variables before proceeding:\n\t",
+      paste0(bad_names, collapse = "\n\t"), sep = ""))
+  return(NULL)
+}
+
 ## Check for valid family arg
 check_family <- function(family){
   tryCatch(
@@ -28,11 +68,10 @@ check_link <- function(family, link){
     })
 }
 ## Check for linear dependencies and remove them
-check_lindep <- function(form, mf){
-  attr(mf, "terms") <- NULL
-  new_mf <- rm_lindep(form, mf)
-  if(!identical(mf, new_mf)){
-    lindep_vars <- setdiff(names(mf), names(new_mf))
+check_lindep <- function(X){
+  new_X <- rm_lindep(X)
+  if(!identical(X, new_X)){
+    lindep_vars <- setdiff(colnames(X), colnames(new_X))
     dependx <- "dependency"; predx <- "predictor"
     if(length(lindep_vars) > 1){
       dependx <- "dependencies"; predx <- "predictors"
@@ -45,50 +84,21 @@ check_lindep <- function(form, mf){
       immediate. = TRUE
     )
   }
-  new_mf
+  new_X
 }
-rm_lindep <- function(form, mf){
-  y <- names(mf[1])
-  form <- formula(paste(y, "~ ."))
-  # Correct non-standard column names
-  # names(mf) <- make.names(names(mf))
-  mm <- stats::model.matrix(form, mf)
+rm_lindep <- function(X){
   # factor the matrix using QR decomposition
-  qr_ob <- qr(mm)
+  qr_ob <- qr(X)
   # extract R matrix
   R <- qr.R(qr_ob)
   if (is.null(dim(R)[2]) || qr_ob$rank == dim(R)[2]){
-    # there are no linear combinations; return original mf (-terms attribute)
-    attr(mf, "terms") <- NULL
-    mf
+    # there are no linear combinations; return original X
+    X
   } else {
     # extract the independent columns and remove
     p1 <- 1:qr_ob$rank
-    X <- R[p1, p1]
-    mm_keep <- which(colnames(mm) %in% colnames(X))
-    mm_dict <- mf_to_mm(mf)
-    mf_keep <- purrr::map_lgl(mm_dict, ~ all(.x %in% mm_keep))
-    rm_lindep(form, mf[c(T, mf_keep)])
+    X <- X[, colnames(R[p1, p1])]
+    rm_lindep(X)
   }
 }
 
-## Check for problems with p_max and n_folds
-check_cv <- function(n, p, binom, n_folds){
-  max_folds <- floor(n/5)
-  if(max_folds < 2){
-    if(binom){
-      stop("Your sample size for the minority class is too small.")
-    } else {
-      stop("Your sample size is too small.")
-    }
-  }
-  alt_folds <- min(n_folds, max_folds)
-  alt_p <- floor(n/alt_folds * (alt_folds - 1))
-  alt_p <- min(p, alt_p)
-  while(alt_folds < max_folds && alt_p < p){
-    alt_folds <- alt_folds + 1L
-    alt_p <- floor(n/alt_folds * (alt_folds - 1))
-    alt_p <- min(p, alt_p)
-  }
-  list(p = alt_p, folds = alt_folds)
-}

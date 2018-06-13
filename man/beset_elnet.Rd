@@ -4,9 +4,12 @@
 \alias{beset_elnet}
 \title{Beset GLM with Elasticnet Regularization}
 \usage{
-beset_elnet(form, data, test_data = NULL, family = "gaussian",
-  alpha = c(0.01, 0.5, 0.99), ..., n_folds = 5, n_repeats = 5,
-  seed = 42, n_cores = 2)
+beset_elnet(form, data, family = "gaussian", skinny = FALSE,
+  standardize = TRUE, nest_cv = FALSE, n_folds = 10, n_reps = 10,
+  seed = 42, alpha_seq = c(0.01, 0.5, 0.99), n_lambda = 100,
+  lambda_min_ratio = NULL, epsilon = 1e-07, maxit = 10^5,
+  contrasts = NULL, offset = NULL, weights = NULL, parallel_type = NULL,
+  n_cores = NULL, cl = NULL)
 }
 \arguments{
 \item{form}{A model \code{\link[stats]{formula}}.}
@@ -15,38 +18,164 @@ beset_elnet(form, data, test_data = NULL, family = "gaussian",
 to be used for both model training and testing, or a single data frame that
 will be used for model training only.}
 
-\item{test_data}{Optional data frame with the variables in \code{form} and
-the data to be used for model validation. Not necessary and ignored if a
-\code{\link{data_partition}} object is passed via the \code{data} parameter.}
+\item{family}{\code{Character} string naming the error distribution to be
+used in the model. Currently supported options are \code{"gaussian"}
+(default), \code{"binomial"}, and \code{"poisson"}.}
 
-\item{family}{Character string naming the error distribution to be used in
-the model. Currently supported options are \code{"gaussian"} (default),
-\code{"binomial"}, and \code{"poisson"}.}
+\item{skinny}{\code{Logical} value indicating whether or not to return a
+"skinny" model. If \code{FALSE} (the default), the return object will include
+a copy of the model \code{\link[stats]{terms}}, \code{data},
+\code{contrasts}, and a record of the \code{xlevels} of the factors used in
+fitting. This information will be necessary if you apply
+\code{\link{predict.beset_elnet}} to new data. If this feature is not needed,
+setting \code{skinny = TRUE} will prevent these copies from being made.}
 
-\item{alpha}{Numeric vector of alpha values between 0 and 1 to use as tuning
-parameters. \code{alpha = 0} results in ridge regression, and \code{alpha =
-1} results in lasso regression. Values in between result in a mixture of L1
-and L2 penalties. (Values closer to 0 weight the L2 penalty more heavily,
-and values closer to 1 weight the L1 penalty more heavily.)}
+\item{standardize}{Logical flag for x variable standardization, prior to
+fitting the model sequence. The coefficients are always returned on the
+original scale. Default is \code{standardize = TRUE}. If variables are in the
+same units already, you might not wish to standardize.}
 
-\item{n_folds}{Integer indicating the number of cross-validation folds.}
+\item{nest_cv}{\code{Logical} value indicating whether or not to perform a
+nested cross-validation that isolates the cross-validation used for tuning
+\code{alpha} and \code{lambda} from the cross-validation used to estimate
+prediction error. Setting to \code{TRUE} will increase run time considerably
+(by a factor equal to the number of folds), but useful for estimating
+uncertainty in the tuning procedure. Defaults to \code{FALSE}.}
 
-\item{n_repeats}{Number of times cross-validation should be repeated.}
+\item{n_folds}{Integer indicating the number of folds to use for
+cross-validation.}
 
-\item{seed}{Seed for random number generator, used for assigning observations
-to cross-validation folds.}
+\item{n_reps}{Integer indicating the number of times cross-validation should
+be repeated (with different randomized fold assignments).}
 
-\item{n_cores}{Number of cores to use for parallel execution. If not
-specified, the number of cores is set to 2. To determine the theoretical
-maximum number of cores you have available, see
-\code{\link[parallel]{detectCores}}, but note that the actual number of cores
-available may be less. See \code{\link[parallel]{parallel}} for
-more information.}
+\item{seed}{An integer used to seed the random number generator when
+assigning observations to folds.}
+
+\item{alpha_seq}{\code{Numeric} vector of alpha values between 0 and 1 to
+use as tuning parameters. \code{alpha = 0} results in ridge regression, and
+\code{alpha = 1} results in lasso regression. Values in between result in a
+mixture of L1 and L2 penalties. (Values closer to 0 weight the L2 penalty
+more heavily, and values closer to 1 weight the L1 penalty more heavily.) The
+default is to try three alpha values: 0.01 (emphasis toward ridge penalty),
+0.99 (emphasis toward lasso penalty), and 0.5 (equal mixture of L1 and L2).}
+
+\item{n_lambda}{Number of lambdas to be used in a search. Defaults to
+\code{100}.}
+
+\item{lambda_min_ratio}{(Optional) minimum \eqn{lambda} used in \eqn{lambda}
+search, specified as a ratio of \code{lambda_max} (the smallest \eqn{lambda}
+that drives all coefficients to zero). Default if omitted: if the number of
+observations is greater than the number of variables, then
+\code{lambda_min_ratio} is set to 0.0001; if the number of observations is
+less than the number of variables, then \code{lambda_min_ratio} is set to
+0.01.}
+
+\item{epsilon}{Convergence threshold for coordinate descent.}
+
+\item{maxit}{Maximum number of passes over the data for all lambda values}
+
+\item{contrasts}{{Optional} \code{list}. See the \code{contrasts.arg} of
+\code{\link[stats]{model.matrix.default}}.}
+
+\item{offset}{(Optional) vector of length equal to the number of observations
+that is included in the linear predictor. Useful for the "poisson" family
+(e.g. log of exposure time), or for refining a model by starting at a current
+fit.}
+
+\item{weights}{(Optional) \code{numeric} vector of observation weights
+of length equal to the number of cases.}
+
+\item{parallel_type}{(Optional) character string indicating the type of
+parallel operation to be used, either \code{"fork"} or \code{"sock"}. If
+omitted and \code{n_cores > 1}, the default is \code{"sock"} for Windows and
+\code{"fork"} for any other OS.}
+
+\item{n_cores}{Integer value indicating the number of workers to run in
+parallel during subset search and cross-validation. By default, this will
+be set to one fewer than the maximum number of physical cores you have
+available, as indicated by \code{\link[parallel]{detectCores}}. Set to 1 to
+disable parallel processing.}
+
+\item{cl}{(Optional) \code{\link[parallel]{parallel}} or
+\code{\link[snow]{snow}} cluster for use if \code{parallel_type = "sock"}.
+If not supplied, a cluster on the local machine is automatically created.}
+}
+\value{
+A "beset_elnet" or "nested" object inheriting class "beset_elnet"
+with the following components:
+
+\describe{
+\item{For "beset_elnet" objects:}{
+\describe{
+   \item{stats}{a list with three data frames:
+     \describe{
+       \item{fit}{
+         \describe{
+           \item{alpha}{value of L1-L2 mixing parameter}
+           \item{lambda}{value of shrinkage parameter}
+           \item{auc}{area under curve (binomial models only)}
+           \item{mae}{mean absolute error (not given for binomial models)}
+           \item{mce}{mean cross entropy, estimated as
+             \eqn{-log-likelihood/N}, where \eqn{N} is the number of
+             observations}
+           \item{mse}{mean squared error}
+           \item{rsq}{R-squared, calculated as
+             \eqn{1 - deviance/null deviance}}
+           }
+         }
+     \item{cv}{a data frame containing cross-validation statistics for each
+       \code{alpha} and \code{lambda} listed in \code{fit}. If run with
+       \code{nest_cv = TRUE}, this will correspond to the inner
+       cross-validation used to select \code{alpha} and \code{lambda}. Each
+       metric consists of the following list:
+       \describe{
+         \item{mean}{mean of the metric calculated on the aggregate holdout
+           folds for each repetition and averaged across repetitions}
+         \item{btwn_fold_se}{the variability between all holdout folds, given
+           as a standard error}
+         \item{btwn_rep_range}{after aggregating over all hold-out folds
+           within each repetition, the variability between repetitions, given
+           as a min-max range}
+       }
+     }
+     \item{test}{if a \code{\link{data_partition}} is provided, or if run
+     with \code{nest_cv = TRUE}, a data frame containing prediction metrics
+     for each \code{alpha} and \code{lambda} listed in \code{fit} as applied
+     to the independent test data or outer cross-validation holdout data}
+      }
+    }
+  \item{glmnet_parameters}{a list of all parameters that were passed to
+    \code{\link[glmnet]{glmnet}}}
+ }}}
+
+ \describe{
+ \item{For "nested" objects:}{
+ \describe{
+   \item{beset_elnet}{a list of "beset_elnet" objects, one for each train-
+     test partition of the outer cross-validation procedure, each consisting
+     of all of the elements listed above}
+ }}}
+
+ \describe{
+ \item{For both "nested" and unnested "beset_elnet" objects:}{
+ \describe{
+   \item{fold_assignments}{list giving the row indices for the holdout
+   observations for each fold and/or repetition of cross-validation}
+   \item{n_folds}{number of folds used in cross-validation}
+   \item{n_reps}{number of repetitions used in cross-validation}
+   \item{family}{names of error distribution used in the model}
+   \item{terms}{the \code{\link[stats]{terms}} object used}
+   \item{data}{the \code{data} argument}
+   \item{offset}{the offset vector used}
+   \item{contrasts}{(where relevant) the contrasts used}
+   \item{xlevels}{(where relevant) a record of the levels of the factors used
+     in fitting}
+ }}}
 }
 \description{
 \code{beset_elnet} is a wrapper to \code{\link[glmnet]{glmnet}} for fitting
  generalized linear models via penalized maximum likelihood, providing
- automated data preprocessing and selection of both the elasticnet penalty
+ automated data preprocessing and selection of both the elastic-net penalty
  and regularization parameter through repeated k-fold cross-validation.
 }
 \seealso{

@@ -1,12 +1,12 @@
-#' Partition Data into Training and Test Sets
+#' Partition Data into Training and Test Model Frames
 #'
-#' \code{partition} randomly splits a data frame into two data frames,
+#' \code{partition} randomly splits a data frame into two model frames,
 #' \code{train} and \code{test}, which are returned as a
-#' \code{\link{data_partition}} structure.
+#' "data_partition" structure.
 #'
 #' \code{partition} creates a train/test split among the rows of a data frame
 #' based on stratified random sampling within the factor levels of a
-#' classification outcome or the quintiles of a numeric outcome. This insures
+#' classification outcome or the quartiles of a numeric outcome. This insures
 #' that the training and test samples will be closely matched in terms of class
 #' incidence or frequency distribution of the outcome measure. \code{partition}
 #' includes a \code{seed} argument so that the randomized partitioning is
@@ -19,50 +19,66 @@
 #'
 #' @param data Data frame to be partitioned.
 #'
-#' @param y Name of the response variable, without quotes.
+#' @param frac The fraction of data that should be included in the training set.
+#'   Default is \code{0.5}.
 #'
-#' @param p The fraction of data that should be included in the training set.
+#' @param seed \code{Integer} value for seeding the random number generator. See
+#'   \code{\link[base]{set.seed}}.
 #'
-#' @param seed A single value, interpreted as an integer, for seeding the random
-#' number generator. See \code{\link[base]{set.seed}}.
+#' @inheritParams data_partition
 #'
-#' @return An object of class "data_partition": a list containing two data
+#' @return An object of class "data_partition": a list containing two model
 #' frames named \code{train} and \code{test}, containing the training and
 #' testing sets, respectively.
+#'
+#' @examples
+#' data <- mtcars
+#' factor_names <- c("cyl", "vs", "am", "gear", "carb")
+#' data[factor_names] <- purrr::map_dfc(data[factor_names], factor)
+#' data <- partition(data, y = "mpg")
 #'
 #' @seealso \code{\link[base]{set.seed}}, \code{\link{data_partition}}
 #'
 #' @export
 
-partition <- function(data, y, p = .75, seed = 42){
-  a <- as.list(match.call())
-  y <- eval(a$y, data)
-  if(length(unique(y)) == 2 && !is.factor(y)){
-    y <- factor(y)
+partition <- function(data, y, frac = 0.5, x = NULL, offset = NULL,
+                      weights = NULL, na_action = na.omit, seed = 42){
+  check_names(names(data))
+  if(is.null(x)) x <- setdiff(names(data), c(y, offset, weights))
+  missing_y <- is.na(data[[y]])
+  if(any(missing_y))
+    warning(paste(sum(missing_y), "rows missing response data were dropped."))
+  vars <- c(y, x, offset, weights)
+  data <- data[!missing_y, vars]
+  y_obs <- data[[y]]
+  if(length(unique(y_obs)) == 2 && !is.factor(y_obs)){
+    y_obs <- factor(y_obs)
   }
-  in_train <- vector("logical", length(y))
-  y_orig <- y
-  if(is.numeric(y)){
-    if(min(y_orig) == 0) y <- y[y != 0]
-    cuts <- floor(length(y)/2)
+  in_train <- vector("logical", length(y_obs))
+  strata <- y_obs
+  if(is.numeric(y_obs)){
+    if(min(y_obs) == 0) y_obs <- y_obs[y_obs != 0]
+    cuts <- floor(length(y_obs)/2)
     if(cuts < 2) cuts <- 2
     if(cuts > 5) cuts <- 5
-    breaks <- unique(quantile(y, probs = seq(0, 1, length = cuts)))
-    y <- cut(y, breaks, include.lowest = TRUE)
-    y <- as.integer(y)
-    if(min(y_orig) == 0){
-      y_orig[y_orig != 0] <- y
-      y <- y_orig
+    breaks <- unique(quantile(y_obs, probs = seq(0, 1, length = cuts)))
+    y_obs <- cut(y_obs, breaks, include.lowest = TRUE)
+    y_obs <- as.integer(y_obs)
+    if(min(strata) == 0){
+      strata[strata != 0] <- y_obs
+    } else {
+      strata <- y_obs
     }
   }
-  purrr::walk(unique(y), function(x){
-    n <- sum(y == x)
+  set.seed(seed, kind = "default")
+  purrr::walk(unique(strata), function(x){
+    n <- sum(strata == x)
     assignments <- vector("logical", n)
-    assignments[1:round(p*n)] <- TRUE
-    set.seed(seed, kind = "default")
-    in_train[y == x] <<- sample(assignments)
+    assignments[1:round(frac * n)] <- TRUE
+    in_train[strata == x] <<- sample(assignments)
   })
-  train <- data[in_train,]
-  test <- data[!in_train,]
-  data_partition(train, test, as.character(a$y))
+  data_partition(train = data[in_train,], test = data[!in_train,], y = y,
+                 x = x, offset = offset, weights = weights,
+                 na_action = na_action)
 }
+

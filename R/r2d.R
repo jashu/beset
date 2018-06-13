@@ -5,8 +5,7 @@
 #' regression models, but, unlike traditional R-squared, generalizes to
 #' exponential family regression models. With optional additional arguments,
 #' \code{r2d} can also returns a predictive R-squared for how well the model
-#' predicts responses for new observations and/or a cross-validated R-squared
-#' with a bootstrapped confidence interval.
+#' predicts responses for new observations and/or a cross-validated R-squared.
 #'
 #' For standard linear regression models fit with \code{\link[stats]{lm}}, the
 #' familiar coefficient of determination, R-squared, can be obtained with
@@ -14,10 +13,11 @@
 #' generalized linear models (GLMs) fit with \code{\link[stats]{glm}},
 #' presumably because it can have undesirable properties when applied to GLMs
 #' with non-normal error distributions (e.g., binomial, Poisson, etc.). For
-#' example, R-squared is no longer guaranteed to lie within the [0,1] interval
-#' or to uniformly increase as more predictors are added. Most importantly, the
-#' interpretation of R-squared as the fraction of uncertainty explained by the
-#' model does not generally hold for exponential family regression models.
+#' such distributions, R-squared is no longer guaranteed to lie within the [0,1]
+#' interval or to uniformly increase as more predictors are added. Most
+#' importantly, the interpretation of R-squared as the fraction of uncertainty
+#' explained by the model does not generally hold for exponential family
+#' regression models.
 #'
 #' Cameron and Windmeijer (1997) proposed an R-squared measure (termed
 #' \eqn{R_{KL}^2}) for GLMs based on Kullback-Leibler (KL) divergence
@@ -43,7 +43,7 @@
 #' which to calculate a predictive R-squared
 #'
 #' @param cv A switch indicating if a predictive R-squared should be estimated
-#' by cross-validation via a call to \code{\link{cv_r2}}.
+#' by cross-validation via a call to \code{\link{validate}}.
 #'
 #' @param ... Additional arguments to be passed to \code{\link{cv_r2}}.
 #'
@@ -55,11 +55,11 @@
 #'   \item{R2new}{if \code{newdata} was provided, an R-squared
 #'   statistic for how well the model predicts new data}}
 #'  \item\describe{
-#'   \item{R2cv}{if \code{cv = TRUE}, an object returned by \code{\link{cv_r2}}}
+#'   \item{R2cv}{if \code{cv = TRUE}, the cross-validated predictive R-squared
+#'   returned by \code{\link{validate}}}
 #'   }}
 #'
-#' @seealso \code{\link{predict_metrics}}, \code{\link{deviance.zeroinfl}},
-#' \code{\link{cv_r2}}
+#' @seealso \code{\link{predict_metrics}}, \code{\link{validate}}
 #'
 #' @references
 #' Colin Cameron A, Windmeijer FAG. (1997) An R-squared measure of goodness
@@ -78,14 +78,15 @@ r2d <- function (object, newdata = NULL, cv = FALSE, ...) {
                     stats::var(object$model[[1]]),
                   glm = 1 - object$deviance / object$null.deviance,
                   negbin = 1 - object$deviance / object$null.deviance,
-                  zeroinfl = predict_metrics(object, object$model)$R_squared)
+                  zeroinfl = predict_metrics(object, object$model)$rsq,
+                  glmnet = object$dev.ratio)
   R2new <- NULL
   if(!is.null(newdata)){
     R2new <- predict_metrics(object, newdata)$R_squared
   }
   R2cv <- NULL
   if(cv){
-    R2cv <- cv_r2(object, ...)
+    R2cv <- validate(object, ...)$rsq
   }
   structure(list(R2fit = R2fit, R2new = R2new, R2cv = R2cv), class = "R2")
 }
