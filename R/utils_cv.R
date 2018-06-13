@@ -1,4 +1,4 @@
-#' Utility functions for cross-validation methods
+# Utility functions for cross-validation methods
 #' @import dplyr
 #' @import purrr
 
