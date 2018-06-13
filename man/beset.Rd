@@ -17,7 +17,7 @@ vignettes: \code{browseVignettes(package = "beset")}
   \item Provide a fast and easy way to cross-validate GLMs.
   \item Establish a common, user-friendly interface for best subset selection
     that works with several model fitting functions (\code{\link[stats]{lm}},
-    \code{\link[stats]{glm}}, and \code{\link[MASS]{glm.nb}}.
+    \code{\link[stats]{glm}}, and \code{\link[MASS]{glm.nb}}).
   \item Make elastic-net regression more accessible and interpretable by
     providing a wrapper to \code{\link[glmnet]{glmnet}} that maintains the
     same user interface as \code{\link[stats]{lm}} and
