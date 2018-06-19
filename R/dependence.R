@@ -27,6 +27,12 @@
 #'
 #' @param ... Additional arguments affecting the plots produced.
 #'
+#' @param order If plotting a grid, order in which partial dependence plots
+#' should appear. Options are \code{"delta"} (default), which arranges plots
+#' based on the magnitude of change in \code{y} over the range of each \code{x},
+#' and \code{"import"}, which arranges plots based on the variable importance
+#' scores returned by the object's \code{\link{importance}} method.
+#'
 #' @param p_max Maximum number of partial dependence effects to plot.
 #' Default is 16, resulting in a 4 X 4 grid.
 #'
@@ -125,7 +131,7 @@ dependence.beset <- function(
   )
   partial_effects <- data_frame(
     variable = x_lab,
-    impact = impact
+    delta = impact
   )
   structure(
     list(plot_data = plot_data, partial_effects = partial_effects),
@@ -148,6 +154,9 @@ dependence.nested_elnet <- function(
   y <- setdiff(all.vars(object$terms), labels(object$terms))
   if(is.null(x_lab)) x_lab <- x
   if(is.null(y_lab)) y_lab <- y
+  variable_importance <- importance(object, alpha = alpha, lambda = lambda,
+                                    metric = metric, oneSE = oneSE) %>%
+    filter(variable == x) %>% mutate(variable = x_lab)
   if(is.null(n_cores) || n_cores > 1){
     parallel_control <- setup_parallel(
       parallel_type = parallel_type, n_cores = n_cores, cl = cl)
@@ -184,7 +193,7 @@ dependence.nested_elnet <- function(
   if(length(x) > 1){
     pd <- transpose(pd)
     names(pd) <- x_lab
-    impact <- map(pd, ~ map_dbl(.x, ~.x$partial_effects$impact))
+    impact <- map(pd, ~ map_dbl(.x, ~.x$partial_effects$delta))
     plot_data <- map(pd, ~ imap_dfr(.x, function(x, i){
       df <- x$plot_data; df$model <- i; df}))
     partial_dependence <- imap(
@@ -194,11 +203,11 @@ dependence.nested_elnet <- function(
         stat_summary(aes(group=1), fun.y=mean, geom="line",
                      colour="tomato2", size = 1.5)
       } else {
-        geom_smooth(method = "loess", size = 1.5, color = "tomato2")
+        geom_smooth(method = "lm", size = 1.5, color = "tomato2")
       }) + xlab(.y) + ylab(y_lab) + theme_bw()
     )
   } else {
-    impact <- map_dbl(pd, ~.x$partial_effects$impact)
+    impact <- map_dbl(pd, ~.x$partial_effects$delta)
     plot_data <- imap_dfr(pd, function(x, i){
       df <- x$plot_data; df$model <- i; df})
     partial_dependence <- ggplot(data = plot_data, aes(x = x, y = y)) +
@@ -207,14 +216,13 @@ dependence.nested_elnet <- function(
           stat_summary(aes(group=1), fun.y=mean, geom="line",
                        colour="tomato2", size = 1.5)
         } else {
-          geom_smooth(method = "loess", size = 1.5, color = "tomato2")
+          geom_smooth(method = "lm", size = 1.5, color = "tomato2")
         }) + xlab(x_lab) + ylab(y_lab) + theme_bw()
   }
-  variable_importance <- data_frame(
-    variable = x_lab,
-    impact = map_dbl(impact, median),
-    impact_low = map_dbl(impact, ~ quantile(.x, .025)),
-    impact_high = map_dbl(impact, ~ quantile(.x, .975))
+  variable_importance <- mutate(
+    delta = map_dbl(impact, median),
+    delta_low = map_dbl(impact, ~ quantile(.x, .025)),
+    delta_high = map_dbl(impact, ~ quantile(.x, .975))
   )
   structure(
     list(partial_dependence = partial_dependence,
@@ -282,7 +290,7 @@ dependence.randomForest <- function(
   } else plot_data
   variable_importance <- data_frame(
     variable = x_lab,
-    impact = impact
+    delta = impact
   )
   structure(
     list(partial_dependence = partial_dependence,
@@ -297,7 +305,7 @@ dependence.beset_rf <- function(object, x = NULL, cond = NULL,
                                x_lab = NULL, y_lab = NULL, ...,
                                parallel_type = NULL, n_cores = NULL, cl = NULL){
   if(is.null(n_cores) || n_cores > 1){
-    parallel_control <- setup_parallel(
+    parallel_control <- beset:::setup_parallel(
       parallel_type = parallel_type, n_cores = n_cores, cl = cl)
     have_mc <- parallel_control$have_mc
     n_cores <- parallel_control$n_cores
@@ -306,26 +314,29 @@ dependence.beset_rf <- function(object, x = NULL, cond = NULL,
   if(is.null(x)) x <- labels(terms(object$data))
   y <- setdiff(names(object$data), x)
   if(is.null(x_lab)) x_lab <- x; if(is.null(y_lab)) y_lab <- y
+  variable_importance <- importance(object) %>%
+    filter(variable == x) %>% mutate(variable = x_lab)
   data <- object$data
   attr(data, "terms") <- NULL
   pd <- if(n_cores > 1L){
     if(have_mc){
-      parallel::mclapply(object$forests, dependence.randomForest,
+      parallel::mclapply(object$forests, beset:::dependence.randomForest,
                          data = data, x = x, y = y, cond = cond,
                          x_lab = x_lab, y_lab = y_lab, make_plot = FALSE,
                          mc.cores = n_cores)
     } else {
-      parallel::parLapply(cl, object$forests, dependence.randomForest,
+      parallel::parLapply(cl, object$forests, beset:::dependence.randomForest,
                           data = data, x = x, y = y, cond = cond,
                           x_lab = x_lab, y_lab = y_lab)
     }
   } else {
-    lapply(object$forests, dependence.randomForest, data = data,
+    lapply(object$forests, beset:::dependence.randomForest, data = data,
            x = x, y = y, cond = cond, x_lab = x_lab, y_lab = y_lab)
   }
+  if(!is.null(cl)) parallel::stopCluster(cl)
   if(length(x) > 1){
     pd <- transpose(pd)
-    impact <- pd$variable_importance %>% map("impact") %>% transpose %>%
+    impact <- pd$variable_importance %>% map("delta") %>% transpose %>%
       simplify_all
     names(impact) <- x_lab
     plot_data <- transpose(pd$partial_dependence)
@@ -342,25 +353,11 @@ dependence.beset_rf <- function(object, x = NULL, cond = NULL,
           geom_smooth(method = "loess", size = 1.5, color = "tomato2")
         }) + xlab(.y) + ylab(y_lab) + theme_bw()
     )
-  } else {
-    # impact <- map_dbl(pd, ~.x$partial_effects$impact)
-    # plot_data <- imap_dfr(pd, function(x, i){
-    #   df <- x$plot_data; df$model <- i; df})
-    # partial_dependence <- ggplot(data = plot_data, aes(x = x, y = y)) +
-    #   geom_line(aes(group = model), alpha = .1) +
-    #   (if(is.factor(plot_data$x)) {
-    #     stat_summary(aes(group=1), fun.y=mean, geom="line",
-    #                  colour="tomato2", size = 1.5)
-    #   } else {
-    #     geom_smooth(method = "loess", size = 1.5, color = "tomato2")
-    #   }) + xlab(x_lab) + ylab(y_lab) + theme_bw()
   }
-  variable_importance <- data_frame(
-    variable = x_lab,
-    impact = map_dbl(impact, median),
-    impact_low = map_dbl(impact, ~ quantile(.x, .025)),
-    impact_high = map_dbl(impact, ~ quantile(.x, .975))
-  )
+  variable_importance <- variable_importance %>%
+    mutate(delta = map_dbl(impact, median),
+           delta_low = map_dbl(impact, ~ quantile(.x, .025)),
+           delta_high = map_dbl(impact, ~ quantile(.x, .975)))
   structure(
     list(partial_dependence = partial_dependence,
          variable_importance = variable_importance),
@@ -371,11 +368,16 @@ dependence.beset_rf <- function(object, x = NULL, cond = NULL,
 
 #' @export
 #' @rdname dependence
-plot.part_depend <- function(x, p_max = 16, ...){
+plot.part_depend <- function(x, order = "delta", p_max = 16, ...){
   plot_data <- x$partial_dependence
   n_vars <- length(plot_data)
   if(n_vars == 1) return(plot_data)
-  varimp <- x$variable_importance %>% arrange(desc(impact))
+  varimp <- x$variable_importance
+  varimp <- if(order == "import"){
+    arrange(varimp, desc(importance))
+  } else {
+    arrange(varimp, desc(delta))
+  }
   min_y <- plot_data %>% map(~.x$data$y) %>% map_dbl(min) %>% min
   max_y <- plot_data %>% map(~.x$data$y) %>% map_dbl(max) %>% max
   p_max <- min(length(plot_data), p_max)

@@ -22,7 +22,7 @@ dependence(object, ...)
 \method{dependence}{beset_rf}(object, x = NULL, cond = NULL, x_lab = NULL,
   y_lab = NULL, ..., parallel_type = NULL, n_cores = NULL, cl = NULL)
 
-\method{plot}{part_depend}(x, p_max = 16, ...)
+\method{plot}{part_depend}(x, order = "delta", p_max = 16, ...)
 }
 \arguments{
 \item{object}{A "beset" model object for which partial dependence plots
@@ -80,6 +80,12 @@ disable parallel processing.}
 \item{cl}{(Optional) \code{\link[parallel]{parallel}} or
 \code{\link[snow]{snow}} cluster for use if \code{parallel_type = "sock"}.
 If not supplied, a cluster on the local machine is automatically created.}
+
+\item{order}{If plotting a grid, order in which partial dependence plots
+should appear. Options are \code{"delta"} (default), which arranges plots
+based on the magnitude of change in \code{y} over the range of each \code{x},
+and \code{"import"}, which arranges plots based on the variable importance
+scores returned by the object's \code{\link{importance}} method.}
 
 \item{p_max}{Maximum number of partial dependence effects to plot.
 Default is 16, resulting in a 4 X 4 grid.}
