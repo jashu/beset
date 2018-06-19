@@ -2,19 +2,49 @@
 #'
 #' Generate data for partial dependence plots.
 #'
-#' @param object Model or list of resampled models
+#' @param object A "beset" model object for which partial dependence plots
+#' are desired.
 #'
-#' @param x Character string giving name(s)
+#' @param x (Optional) \code{character} vector giving name(s) of predictors
+#' for which partial dependence effects should be estimated. If omitted,
+#' partial dependence effects will be estimated for all predictors in the
+#' model.
 #'
-#' @inheritParams get_best
+#' @param cond (Optional) named \code{list} of the values to use for one or more
+#' predictors when estimating the partial effect of the predictor(s) named in
+#' \code{x}. Any predictor omitted from this list will be assigned the mean
+#' observed value for continuous variables, or the modal level for factors.
+#'
+#' @param x_lab (Optional) \code{character} vector giving replacement labels
+#' for \code{x}. Labels should be listed in the same order as the predictor
+#' names in \code{x}, or, if \code{x} is omitted, the same column order as the
+#' predictors in the model data frame. If omitted, plots will be labeled with
+#' the names of the predictors as they appear in the model object.
+#'
+#' @param y_lab (Optional) \code{character} string giving replacement label
+#' for the response variable in the model. If omitted, plots will be labeled
+#' with the name of the response as it appears in the model object.
+#'
+#' @param ... Additional arguments affecting the plots produced.
+#'
+#' @param p_max Maximum number of partial dependence effects to plot.
+#' Default is 16, resulting in a 4 X 4 grid.
+#'
+#' @inheritParams summary.beset
+#' @inheritParams beset_glm
 
 #' @export
 dependence <- function(object, ...){
   UseMethod("dependence")
 }
 
-
-dependence.nested <- function(object, ...){
+#' @rdname dependence
+#' @export
+dependence.nested <- function(object, x = NULL, cond = NULL,
+                              alpha = NULL, lambda = NULL, n_pred = NULL,
+                              metric = "auto", oneSE = TRUE,
+                              x_lab = NULL, y_lab = NULL, ...,
+                              parallel_type = NULL, n_cores = NULL, cl = NULL){
   if(inherits(object, "elnet"))
     do.call(dependence.nested_elnet, as.list(match.call())[-1])
   else
@@ -30,11 +60,9 @@ dependence.nested <- function(object, ...){
 
 #' @rdname dependence
 #' @export
-dependence.beset_elnet <- function(
-  object, x = NULL, cond = NULL, alpha = NULL, lambda = NULL,
-  metric = c("mce", "auc", "mae", "mce", "mse"),
-  error = c("auto", "btwn_fold_se", "btwn_rep_range", "none"),
-  x_lab = NULL, y_lab = NULL, ...
+dependence.beset <- function(
+  object, x = NULL, cond = NULL, alpha = NULL, lambda = NULL, n_pred = NULL,
+  metric = "auto", oneSE = TRUE, x_lab = NULL, y_lab = NULL, ...
 ){
   model_data <- list(...)
   if(is.null(object$data)){
@@ -57,10 +85,10 @@ dependence.beset_elnet <- function(
   if(is.null(y_lab)) y_lab <- y
   if(length(x) > 1){
     return(map2(x, x_lab,
-                ~ dependence.beset_elnet(object, x = .x, cond = cond,
-                                         alpha = alpha, lambda = lambda,
-                                         metric = metric, error = error,
-                                         x_lab = .y, y_lab = y_lab)))
+                ~ dependence.beset(object, x = .x, cond = cond,
+                                   alpha = alpha, lambda = lambda,
+                                   metric = metric, oneSE = oneSE,
+                                   n_pred = n_pred, x_lab = .y, y_lab = y_lab)))
   }
   xes <- setdiff(labels(object$terms), x)
   covars <- data[xes]
@@ -85,14 +113,12 @@ dependence.beset_elnet <- function(
   plot_data <- map_df(plot_data, ~ return(covars))
   plot_data <- bind_cols(x = x_plot, plot_data)
   names(plot_data)[1] <- x
-  minima <- NA_character_
-  maxima <- NA_character_
   y_hat <- predict(object, newdata = plot_data,
-                   newoffset = object$parameters$fit$offset,
+                   newoffset = object$parameters$offset,
                    alpha = alpha, lambda = lambda,
-                   metric = metric, error = error)
+                   metric = metric, oneSE = oneSE)
   impact <- (max(y_hat) - min(y_hat)) /
-    (max(object$parameters$fit$y) - min(object$parameters$fit$y))
+    (max(object$parameters$y) - min(object$parameters$y))
   plot_data <- data_frame(
     x = x_plot,
     y = y_hat
@@ -107,14 +133,10 @@ dependence.beset_elnet <- function(
   )
 }
 
-#' @rdname dependence
-#' @export
 dependence.nested_elnet <- function(
   object, x = NULL, cond = NULL, alpha = NULL, lambda = NULL,
-  metric = c("mce", "auc", "mae", "mce", "mse"),
-  error = c("auto", "btwn_fold_se", "btwn_rep_range", "none"),
-  x_lab = NULL, y_lab = NULL,
-  parallel_type = NULL, n_cores = NULL, cl = NULL, ...
+  metric = "auto", oneSE = TRUE, x_lab = NULL, y_lab = NULL, ...,
+  parallel_type = NULL, n_cores = NULL, cl = NULL
 ){
   if(is.null(object$data)){
     stop(
@@ -137,14 +159,14 @@ dependence.nested_elnet <- function(
     if(have_mc){
       parallel::mclapply(object$beset, dependence, x = x, cond = cond,
                          alpha = alpha, lambda = lambda, metric = metric,
-                         error = error, x_lab = x_lab, y_lab = y_lab,
+                         oneSE = oneSE, x_lab = x_lab, y_lab = y_lab,
                          data = object$data, terms = object$terms,
                          contrasts = object$contrasts,
                          xlevels = object$xlevels, mc.cores = n_cores)
         } else {
           parallel::parLapply(cl, object$beset, dependence, x = x,
                               cond = cond, alpha = alpha, lambda = lambda,
-                              metric = metric, error = error,
+                              metric = metric, oneSE = oneSE,
                               x_lab = x_lab, y_lab = y_lab,
                               data = object$data, terms = object$terms,
                               contrasts = object$contrasts,
@@ -153,11 +175,12 @@ dependence.nested_elnet <- function(
       } else {
       lapply(object$beset, dependence, x = x, cond = cond,
              alpha = alpha, lambda = lambda, metric = metric,
-             error = error,  x_lab = x_lab, y_lab = y_lab,
+             oneSE = oneSE,  x_lab = x_lab, y_lab = y_lab,
              data = object$data, terms = object$terms,
              contrasts = object$contrasts,
              xlevels = object$xlevels)
       }
+  if(!is.null(cl)) parallel::stopCluster(cl)
   if(length(x) > 1){
     pd <- transpose(pd)
     names(pd) <- x_lab
@@ -201,7 +224,6 @@ dependence.nested_elnet <- function(
 }
 
 #' @export
-#' @rdname dependence
 dependence.randomForest <- function(
   object, data = NULL, x = NULL, y = NULL, cond = NULL, x_lab = NULL,
   y_lab = NULL, make_plot = TRUE, ...
@@ -373,9 +395,9 @@ plot.part_depend <- function(x, p_max = 16, ...){
                            left = x$partial_dependence[[1]]$labels$y)
   )
   plot(gout)
-  invisible(gout)
 }
 
+#' @export
 print.part_depend <- function(x, ...){
   plot(x, ...)
 }

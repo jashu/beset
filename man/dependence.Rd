@@ -2,28 +2,22 @@
 % Please edit documentation in R/dependence.R
 \name{dependence}
 \alias{dependence}
-\alias{dependence.beset_elnet}
-\alias{dependence.nested_elnet}
-\alias{dependence.randomForest}
+\alias{dependence.nested}
+\alias{dependence.beset}
 \alias{dependence.beset_rf}
 \alias{plot.part_depend}
 \title{Partial-Dependence Effects}
 \usage{
 dependence(object, ...)
 
-\method{dependence}{beset_elnet}(object, x = NULL, cond = NULL,
-  alpha = NULL, lambda = NULL, metric = c("mce", "auc", "mae", "mce",
-  "mse"), error = c("auto", "btwn_fold_se", "btwn_rep_range", "none"),
+\method{dependence}{nested}(object, x = NULL, cond = NULL, alpha = NULL,
+  lambda = NULL, n_pred = NULL, metric = "auto", oneSE = TRUE,
+  x_lab = NULL, y_lab = NULL, ..., parallel_type = NULL, n_cores = NULL,
+  cl = NULL)
+
+\method{dependence}{beset}(object, x = NULL, cond = NULL, alpha = NULL,
+  lambda = NULL, n_pred = NULL, metric = "auto", oneSE = TRUE,
   x_lab = NULL, y_lab = NULL, ...)
-
-\method{dependence}{nested_elnet}(object, x = NULL, cond = NULL,
-  alpha = NULL, lambda = NULL, metric = c("mce", "auc", "mae", "mce",
-  "mse"), error = c("auto", "btwn_fold_se", "btwn_rep_range", "none"),
-  x_lab = NULL, y_lab = NULL, parallel_type = NULL, n_cores = NULL,
-  cl = NULL, ...)
-
-\method{dependence}{randomForest}(object, data = NULL, x = NULL, y = NULL,
-  cond = NULL, x_lab = NULL, y_lab = NULL, make_plot = TRUE, ...)
 
 \method{dependence}{beset_rf}(object, x = NULL, cond = NULL, x_lab = NULL,
   y_lab = NULL, ..., parallel_type = NULL, n_cores = NULL, cl = NULL)
@@ -31,26 +25,64 @@ dependence(object, ...)
 \method{plot}{part_depend}(x, p_max = 16, ...)
 }
 \arguments{
-\item{object}{Model or list of resampled models}
+\item{object}{A "beset" model object for which partial dependence plots
+are desired.}
 
-\item{x}{Character string giving name(s)}
+\item{...}{Additional arguments affecting the plots produced.}
 
-\item{alpha}{(Optional) \code{numeric} value to force selection of
-elastic-net model with the given \code{alpha} parameter. If left \code{NULL},
-the best value of \code{alpha} will be chosen using the cross-validation
-\code{metric} and \code{oneSE} rule.}
+\item{x}{(Optional) \code{character} vector giving name(s) of predictors
+for which partial dependence effects should be estimated. If omitted,
+partial dependence effects will be estimated for all predictors in the
+model.}
 
-\item{lambda}{(Optional) \code{numeric} value to force selection of elastic-
-net model with the given \code{lambda} parameter. If left \code{NULL},
-the best value of \code{lambda} will be chosen using the cross-validation
-\code{metric} and \code{oneSE} rule.}
+\item{cond}{(Optional) named \code{list} of the values to use for one or more
+predictors when estimating the partial effect of the predictor(s) named in
+\code{x}. Any predictor omitted from this list will be assigned the mean
+observed value for continuous variables, or the modal level for factors.}
+
+\item{n_pred}{(Optional) \code{integer} number of predictors that the best
+model should contain. If specified, all other arguments are ignored.}
 
 \item{metric}{\code{Character} string giving prediction metric on which to
-base model selection. Can be one of \code{"mce"} (mean cross entropy--the
-default), \code{"mse"} (mean squared error), \code{"aic"} (Akaike informatio
-criterion, not applicable for elastic net), \code{"auc"} (area under the ROC
-curve--only applicable if response is binomial), or \code{"mae"} (mean
-absolute error--only applicable if response is numeric).}
+base model selection. Can be one of \code{"auc"} for area under the (ROC)
+curve (only available for binomial family), \code{"mae"} for mean absolute
+error (not available for binomial family), \code{"mae"} for mean absolute
+error, \code{"mce"} for mean cross entropy, or \code{"mse"} for mean squared
+error. Default is \code{"auto"} which plots MSE for Gaussian-family models
+and MCE for all other families.}
+
+\item{oneSE}{\code{Logical} indicating whether or not to use the "one
+standard error" rule. If \code{TRUE} (default) the simplest model within one
+standard error of the optimal model is returned. If \code{FALSE} the model
+with the optimal cross-validation performance is returned.}
+
+\item{x_lab}{(Optional) \code{character} vector giving replacement labels
+for \code{x}. Labels should be listed in the same order as the predictor
+names in \code{x}, or, if \code{x} is omitted, the same column order as the
+predictors in the model data frame. If omitted, plots will be labeled with
+the names of the predictors as they appear in the model object.}
+
+\item{y_lab}{(Optional) \code{character} string giving replacement label
+for the response variable in the model. If omitted, plots will be labeled
+with the name of the response as it appears in the model object.}
+
+\item{parallel_type}{(Optional) character string indicating the type of
+parallel operation to be used, either \code{"fork"} or \code{"sock"}. If
+omitted and \code{n_cores > 1}, the default is \code{"sock"} for Windows and
+\code{"fork"} for any other OS.}
+
+\item{n_cores}{Integer value indicating the number of workers to run in
+parallel during subset search and cross-validation. By default, this will
+be set to one fewer than the maximum number of physical cores you have
+available, as indicated by \code{\link[parallel]{detectCores}}. Set to 1 to
+disable parallel processing.}
+
+\item{cl}{(Optional) \code{\link[parallel]{parallel}} or
+\code{\link[snow]{snow}} cluster for use if \code{parallel_type = "sock"}.
+If not supplied, a cluster on the local machine is automatically created.}
+
+\item{p_max}{Maximum number of partial dependence effects to plot.
+Default is 16, resulting in a 4 X 4 grid.}
 }
 \description{
 Generate data for partial dependence plots.
