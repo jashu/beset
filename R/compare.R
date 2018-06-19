@@ -1,9 +1,9 @@
 #' Compare Predictive Performance of Two Models
 #'
 #' @param yhat1 A data frame consisting of cross-validated predictions from a
-#' benchmark model, or an object containing such a data frame, e.g., a
-#' "cross_valid" object returned by \code{\link{validate}} with argument
-#' \code{keep_pred = TRUE}.
+#' benchmark model, an object containing such a data frame, e.g., a
+#' "cross_valid" object returned by \code{\link{validate}}, or an object that
+#' can be passed to \code{\link{validate}}.
 #'
 #' @param yhat2 An object of the same type as \code{yhat1} to be compared
 #'
@@ -126,6 +126,13 @@ resample_pred_diff <- function(seed, y, yhat1, yhat2, family, phi = NULL,
 }
 
 #' @export
+#' @describeIn compare S3 method for class 'numeric'
 compare.numeric <- function(yhat1, yhat2, y, ...){
   compare.data.frame(yhat1, yhat2, y, ...)
+}
+
+#' @export
+#' @describeIn compare two 'beset' class models
+compare.beset <- function(yhat1, yhat2, ...){
+  compare.cross_valid(validate(yhat1), validate(yhat2), ...)
 }

@@ -4,6 +4,8 @@
 \alias{compare}
 \alias{compare.cross_valid}
 \alias{compare.data.frame}
+\alias{compare.numeric}
+\alias{compare.beset}
 \title{Compare Predictive Performance of Two Models}
 \usage{
 compare(yhat1, yhat2, ...)
@@ -14,12 +16,16 @@ compare(yhat1, yhat2, ...)
 \method{compare}{data.frame}(yhat1, yhat2, y, n_rep = 1000, conf = 0.95,
   family = "gaussian", phi = NULL, theta = NULL, parallel_type = NULL,
   n_cores = NULL, cl = NULL, ...)
+
+\method{compare}{numeric}(yhat1, yhat2, y, ...)
+
+\method{compare}{beset}(yhat1, yhat2, ...)
 }
 \arguments{
 \item{yhat1}{A data frame consisting of cross-validated predictions from a
-benchmark model, or an object containing such a data frame, e.g., a
-"cross_valid" object returned by \code{\link{validate}} with argument
-\code{keep_pred = TRUE}.}
+benchmark model, an object containing such a data frame, e.g., a
+"cross_valid" object returned by \code{\link{validate}}, or an object that
+can be passed to \code{\link{validate}}.}
 
 \item{yhat2}{An object of the same type as \code{yhat1} to be compared}
 
@@ -58,5 +64,9 @@ Compare Predictive Performance of Two Models
 \item \code{cross_valid}: S3 method for class 'cross_valid'
 
 \item \code{data.frame}: S3 method for class 'data.frame'
+
+\item \code{numeric}: S3 method for class 'numeric'
+
+\item \code{beset}: two 'beset' class models
 }}
 
