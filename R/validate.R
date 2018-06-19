@@ -311,6 +311,44 @@ validate.glmnet <- function(object, x = NULL, y = NULL, lambda = NULL,
   class = "cross_valid")
 }
 
+validate.beset <- function(object, metric = "auto", oneSE = TRUE, ...){
+  metric <- tryCatch(
+    match.arg(metric, c("auto", "auc", "mae", "mce", "mse", "rsq")),
+    error = function(c){
+      c$message <- gsub("arg", "metric", c$message)
+      c$call <- NULL
+      stop(c)
+    }
+  )
+  tryCatch(
+    if(
+      (metric == "auc" && object$family != "binomial") ||
+      (metric == "mae" && object$family == "binomial")
+    ) error = function(c){
+      c$message <- paste(metric, "not available for", object$family, "models")
+      c$call <- NULL
+      stop(c)
+    }
+  )
+  if(metric == "auto"){
+    metric <- if(object$family == "gaussian") "mse" else "mce"
+  }
+  family <- object$family
+  fold_ids <- object$fold_assignments
+  n_folds <- object$n_folds
+  n_reps <- object$n_reps
+  repeats <- paste("Rep", 1:n_reps, "$", sep = "")
+  rep_idx <- map(repeats, ~ grepl(.x, names(object$beset)))
+  best_models <- map(
+    object$beset, ~
+      if(inherits(.x, "elnet")){
+        beset:::get_best.beset_elnet(.x,  metric = metric, oneSE = oneSE)
+      } else {
+        beset:::get_best.beset_glm(.x,  metric = metric, oneSE = oneSE)
+      }
+  )
+}
+
 #' @describeIn validate Extract test error estimates from "beset_elnet"
 #' objects with nested cross-validation
 #' @export
@@ -352,18 +390,32 @@ validate.nested <- function(object,
         beset:::get_best.beset_glm(.x,  metric = metric, oneSE = oneSE)
       }
   )
+  alpha <- NULL
+  lambda <- NULL
   if(inherits(object, "elnet")){
     alphas <- map_dbl(best_models, "alpha")
     lambdas <- map_dbl(best_models, "best_lambda")
     best_idx <- pmap_int(
       list(s = map(object$beset, ~.x$stats$test), a = alphas, l = lambdas),
       function(s, a, l) with(s, which(alpha == a & lambda == l)))
+    alpha <- list(
+      mean = mean(alphas),
+      btwn_fold_se = sd(alphas)/sqrt(n_folds),
+      btwn_fold_range = map_dbl(rep_idx, ~ mean(alphas[.x])) %>% range
+    )
+    lambda <- list(
+      mean = mean(lambdas),
+      btwn_fold_se = sd(lambdas)/sqrt(n_folds),
+      btwn_fold_range = map_dbl(rep_idx, ~ mean(lambdas[.x])) %>% range
+    )
   } else {
     best_form <- map_chr(best_models, "formula")
     best_idx <- map2_int(map(object$beset, ~.x$stats$test), best_form,
                          ~ which(.x$form == .y))
   }
   test_stats <- map2_df(object$beset, best_idx, ~.x$stats$test[.y,])
+  stat_names <- intersect(names(test_stats),
+                          c("auc", "mae", "mce", "mse", "rsq"))
   tt <- terms(object)
   y0 <-  model.response(model.frame(tt, object$data))
   Terms <- delete.response(tt)
@@ -388,26 +440,40 @@ validate.nested <- function(object,
     } else {
       map2(
         best_models, fold_ids,
-        ~ .x$family$linkinv(X[.y, names(coef(.x))] %*% coef(.x) + newoffset[.y]))
+        ~ .x$family$linkinv(
+          X[.y, names(coef(.x)), drop = FALSE] %*% coef(.x) + newoffset[.y]
+          )
+        )
     }
   y_hat <- map(rep_idx, ~ y_hat[.x]) %>% map(simplify_all) %>% map(as_vector)
   theta <- NULL
   if(family == "negbin"){
-    theta <- map_dbl(best_models, "theta") %>% mean
+    rep_stats <- map(rep_idx,
+                     ~ map_dbl(test_stats[.x, stat_names],
+                               ~ mean(.x, na.rm = TRUE))
+                     ) %>% transpose %>% simplify_all %>% as_data_frame
+    test_stats <- list(
+      mean = map_dbl(rep_stats, mean),
+      btwn_fold_se = map(test_stats[stat_names],
+                         ~ sd(.x, na.rm = TRUE) / sqrt(n_folds)),
+      btwn_rep_range =  map(rep_stats, ~ range(.x, na.rm = TRUE))
+    ) %>% transpose
+    theta <- map_dbl(best_models, "theta")
+    theta_by_rep <- map(rep_idx, ~ theta[.x]) %>% map_dbl(mean)
+    theta <- list(mean = mean(theta_by_rep),
+                  btwn_fold_se = sd(theta)/sqrt(n_folds),
+                  btwn_rep_range = range(theta_by_rep))
+  } else {
+    rep_stats <- map2(y, y_hat,
+        ~ predict_metrics_(y = .x, y_hat = .y, family = family)
+    ) %>% transpose %>% simplify_all %>% as_data_frame
+    test_stats <- list(
+      mean = map(rep_stats, ~ mean(.x, na.rm = TRUE)),
+      btwn_fold_se = map(test_stats[stat_names],
+                         ~ sd(.x, na.rm = TRUE) / sqrt(n_folds)),
+      btwn_rep_range =  map(rep_stats, ~ range(.x, na.rm = TRUE))
+    ) %>% transpose
   }
-  rep_stats <- map2(
-    y, y_hat,
-    ~ predict_metrics_(y = .x, y_hat = .y, family = family, theta = theta)
-  ) %>% transpose %>% simplify_all %>% as_data_frame
-  stat_names <- intersect(names(test_stats),
-                          c("auc", "mae", "mce", "mse", "rsq"))
-  test_stats <- list(
-    mean = map(rep_stats, ~ mean(.x, na.rm = TRUE)),
-    btwn_fold_se = map(test_stats[stat_names],
-                       ~ sd(.x, na.rm = TRUE) / sqrt(n_folds)),
-    btwn_rep_range =  map(rep_stats, ~ range(.x, na.rm = TRUE))
-  ) %>% transpose
-
   fold_assignments <- get_fold_ids(fold_ids, n_reps)
   fold_ids <- map(rep_idx, ~ fold_ids[.x]) %>% map(as_vector)
   names(fold_ids) <- names(y_hat) <- names(fold_assignments)
@@ -417,11 +483,13 @@ validate.nested <- function(object,
       predictions = map2_df(y_hat, fold_ids, ~ .x[order(.y)]),
       fold_assignments = fold_assignments,
       parameters = list(family = family,
+                        metric = metric,
                         n_obs = nrow(fold_assignments),
                         n_folds = n_folds,
                         n_reps = n_reps,
-                        seed = object[[1]]$parameters$cv$seed,
-                        y = y0)
+                        oneSE = oneSE,
+                        y = y0,
+                        alpha = alpha, lambda = lambda, theta = theta)
       ), class = "cross_valid"
   )
 }
