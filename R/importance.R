@@ -19,6 +19,10 @@
 #' @param ... Additional named arguments that define the model selection rules.
 #' See \code{\link{summary.beset}}.
 #'
+#' @examples
+#' rf <- beset_rf(Fertility ~ ., data = swiss)
+#' importance(rf)
+#'
 #' @export
 
 importance <- function(object, ...){
@@ -73,6 +77,22 @@ importance.beset_rf <- function(object, ...){
     max_import = import + import_sd
   )
   structure(varimp, class = c("variable_importance", class(varimp)))
+}
+
+#' @export
+#' @describeIn importance Relative importance based on partial dependence
+importance.part_depend <- function(object, ...){
+import <- object$variable_importance$delta
+min_import <- object$variable_importance$delta_low
+max_import <- object$variable_importance$delta_high
+scale_by <- sum(import)
+varimp <- data_frame(
+  variable = object$variable_importance$variable,
+  importance = import / scale_by,
+  min_import = min_import / scale_by,
+  max_import = max_import / scale_by
+)
+structure(varimp, class = c("variable_importance", class(varimp)))
 }
 
 #' @export

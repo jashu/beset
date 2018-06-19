@@ -4,6 +4,7 @@
 \alias{importance}
 \alias{importance.nested}
 \alias{importance.beset_rf}
+\alias{importance.part_depend}
 \alias{plot.variable_importance}
 \title{Relative Variable Importance}
 \usage{
@@ -12,6 +13,8 @@ importance(object, ...)
 \method{importance}{nested}(object, ...)
 
 \method{importance}{beset_rf}(object, ...)
+
+\method{importance}{part_depend}(object, ...)
 
 \method{plot}{variable_importance}(x, p_max = 20, labels = NULL)
 }
@@ -43,6 +46,13 @@ of the first argument.
 
 \item \code{beset_rf}: Relative importance method for "beset_rf" objects
 
+\item \code{part_depend}: Relative importance based on partial dependence
+
 \item \code{variable_importance}: Plot method for "variable_importance" objects
 }}
 
+\examples{
+rf <- beset_rf(Fertility ~ ., data = swiss)
+importance(rf)
+
+}
