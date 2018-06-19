@@ -17,16 +17,35 @@
 #' @inheritParams get_best
 
 #' @export
-predict.beset_elnet <- function(object, newdata, type = "response",
-                                newoffset = NULL, alpha = NULL, lambda = NULL,
-                                metric = c("mce", "auc", "mae", "mce", "mse"),
-                                error = c("auto", "btwn_fold_se",
-                                          "btwn_rep_range", "none"),
-                                na.action = na.pass, ...){
+predict.beset <- function(object, newdata, type = "response",
+                          newoffset = NULL, alpha = NULL, lambda = NULL,
+                          n_pred = NULL, metric = "auto", oneSE = TRUE,
+                          na.action = na.pass, ...){
+  metric <- tryCatch(
+    match.arg(metric, c("auto", "auc", "mae", "mce", "mse", "rsq")),
+    error = function(c){
+      c$message <- gsub("arg", "metric", c$message)
+      c$call <- NULL
+      stop(c)
+    }
+  )
+  tryCatch(
+    if(
+      (metric == "auc" && object$family != "binomial") ||
+      (metric == "mae" && object$family == "binomial")
+    ) error = function(c){
+      c$message <- paste(metric, "not available for", object$family, "models")
+      c$call <- NULL
+      stop(c)
+    }
+  )
+  if(metric == "auto"){
+    metric <- if(object$family == "gaussian") "mse" else "mce"
+  }
   tt <- terms(object)
   if (missing(newdata) || is.null(newdata)) {
     X <- model.matrix(object)
-    newoffset <- object$glmnet_parameters$offset
+    newoffset <- object$parameters$offset
   }
   else {
     Terms <- delete.response(tt)
@@ -37,9 +56,22 @@ predict.beset_elnet <- function(object, newdata, type = "response",
     if(is.null(newoffset) && all(object$parameters$fit$offset == 0))
       newoffset <- rep(0, nrow(X))
   }
-  model <- get_best(object, alpha = alpha, lambda = lambda, metric = metric,
-                    error = error, ...)
-  yhat <- glmnet::predict.glmnet(model, newx = X, s = model$best_lambda,
-                                 type = type, newoffset = newoffset, ...)
+  if(inherits(object, "elnet")){
+    model <- get_best.beset_elnet(object, alpha = alpha, lambda = lambda,
+                                  metric = metric, oneSE = oneSE, ...)
+    yhat <- glmnet::predict.glmnet(model, newx = X, s = model$best_lambda,
+                                   type = type, newoffset = newoffset, ...)
+  } else {
+    model <- get_best.beset_glm(object, alpha = alpha, lambda = lambda,
+                                  metric = metric, oneSE = oneSE, ...)
+    yhat <- object$family$linkinv(
+      X[, names(coef(object))] %*% coef(object) + newoffset)
+  }
   as.vector(yhat)
 }
+
+#' @export
+model.matrix.beset <- function(object, ...){
+  object$parameters$x
+}
+
