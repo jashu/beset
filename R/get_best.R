@@ -30,14 +30,11 @@
 #' net model with the given \code{lambda} parameter. If left \code{NULL},
 #' the best value of \code{lambda} will be chosen using the cross-validation
 #' \code{metric} and \code{oneSE} rule.
-#'
-#' @export
+
 get_best <- function(object, ...){
   UseMethod("get_best")
 }
 
-#' @export
-#' @describeIn get_best Get best model from a "beset_glm" object
 get_best.beset_glm <- function(object, n_pred = NULL,
                                metric, oneSE = TRUE){
   minimize <- TRUE; if(metric == "auc") minimize <- FALSE
@@ -70,14 +67,13 @@ get_best.beset_glm <- function(object, n_pred = NULL,
   best_model <- do.call(fitter, model_data)
   if(!inherits(best_model, "glm")) class(best_model) <- c("glm", "lm")
   best_model$formula <- cv_stats$form[best_idx]
+  if(is.null(names(best_model$coefficients)))
+    names(best_model$coefficients) <- "(Intercept)"
   best_model
 }
 
-#' @export
-#' @describeIn get_best Get best model from a "beset_elnet" object
 get_best.beset_elnet <- function(object, alpha = NULL, lambda = NULL,
-                                 metric = c("mce", "auc", "mae", "mce", "mse"),
-                                 oneSE = TRUE){
+                                 metric, oneSE = TRUE){
   # if alpha value given, check to make sure this value was cross-validated
   if(!is.null(alpha)){
     if(!alpha %in% object$stats$fit$alpha)
@@ -96,14 +92,6 @@ get_best.beset_elnet <- function(object, alpha = NULL, lambda = NULL,
     }
   best_lambda <- lambda
   if(is.null(alpha) || is.null(lambda)){
-    metric <- metric[1]
-    metric <- tryCatch(
-      match.arg(metric, c("auc", "mae", "mce", "mse")),
-      error = function(c){
-        c$message <- gsub("arg", "metric", c$message)
-        c$call <- NULL
-        stop(c)
-      })
     minimize <- TRUE; if(metric == "auc") minimize <- FALSE
     cv_stats <- object$stats$cv
     metric <- switch(metric,

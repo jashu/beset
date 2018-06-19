@@ -2,16 +2,9 @@
 % Please edit documentation in R/get_best.R
 \name{get_best}
 \alias{get_best}
-\alias{get_best.beset_glm}
-\alias{get_best.beset_elnet}
 \title{Get best model from a "beset" class object}
 \usage{
 get_best(object, ...)
-
-\method{get_best}{beset_glm}(object, n_pred = NULL, metric, oneSE = TRUE)
-
-\method{get_best}{beset_elnet}(object, alpha = NULL, lambda = NULL,
-  metric = c("mce", "auc", "mae", "mce", "mse"), oneSE = TRUE)
 }
 \arguments{
 \item{object}{A \code{\link{beset_glm}} or \code{\link{beset_elnet}} object.}
@@ -46,10 +39,3 @@ the best value of \code{lambda} will be chosen using the cross-validation
 predictive model from \code{\link{beset}} objects based on information
 or cross-validation metrics.
 }
-\section{Methods (by class)}{
-\itemize{
-\item \code{beset_glm}: Get best model from a "beset_glm" object
-
-\item \code{beset_elnet}: Get best model from a "beset_elnet" object
-}}
-
