@@ -8,6 +8,14 @@
 #' @param object A model object for which variable importance scores are
 #' desired.
 #'
+#' @param p_max Maximum number of predictors to include in variable importance
+#' plot
+#'
+#' @param labels (Optional) two-column \code{data.frame} where column 1
+#' gives the variable names used in the model and column 2 gives a corresponding
+#' descriptive label. If \code{labels} are defined, the variable importance plot
+#' will replace the model variable names with their descriptive labels.
+#'
 #' @param ... Additional named arguments that define the model selection rules.
 #' See \code{\link{summary.beset}}.
 #'
