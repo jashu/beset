@@ -61,7 +61,7 @@ summary.beset <- function(object, n_pred = NULL, alpha = NULL, lambda = NULL,
     structure(list(best = best_model, r2 = r2, r2_cv = r2_cv, r2_test = r2_test),
               class = "summary_beset_elnet")
   } else {
-    best_model <- get_best.beset_glm(
+    best_model <- beset:::get_best.beset_glm(
       object, n_pred = n_pred, metric = metric, oneSE = oneSE)
     loglik <- stats::logLik(best_model)
     best <- summary(best_model, ...)
@@ -108,23 +108,21 @@ summary.nested <- function(object, metric = "auto", oneSE = TRUE, ...){
   if(metric == "auto"){
     metric <- if(object$family == "gaussian") "mse" else "mce"
   }
-  CALL <- as.list(match.call())[-1]
-  CALL$metric <- metric
   if(inherits(object, "elnet"))
-    do.call(summary.nested_elnet, CALL)
+    summary.nested_elnet(object, metric = metric, oneSE = oneSE, ...)
   else
-    do.call(summary.nested_beset, CALL)
+    summary.nested_beset(object, metric = metric, oneSE = oneSE, ...)
 }
 
-summary.nested_elnet <- function(object, metric, oneSE = TRUE, ...){
+summary.nested_elnet <- function(object, metric = "rsq", oneSE = TRUE, ...){
   family <- object$family
   n_folds <- object$n_folds
   n_reps <- object$n_reps
-  repeats <- paste("Rep", 1:object$n_reps, "$", sep = "")
+  repeats <- paste("Rep", n_reps, "$", sep = "")
   rep_idx <- map(repeats, ~ grepl(.x, names(object$beset)))
   best_models <- map(
     object$beset,
-    ~ beset:::get_best.beset_elnet(.x,  metric = metric[1], oneSE = oneSE)
+    ~ beset:::get_best.beset_elnet(.x,  metric = metric, oneSE = oneSE)
   )
   alphas <- map_dbl(best_models, "alpha")
   lambdas <- map_dbl(best_models, "best_lambda")
@@ -166,27 +164,28 @@ summary.nested_elnet <- function(object, metric, oneSE = TRUE, ...){
       cv_stats[, 3:6], function(x)
         map(rep_idx, ~ mean(map_dbl(x, "mean")[.x])) %>% range)
   ) %>% transpose
-  test_stats <- validate(object, oneSE = oneSE)$stats
+  validation_metrics <- validate(object, metric = metric, oneSE = oneSE)
+  test_stats <- validation_metrics$stats
   best_lambda <- list(
-    mean = mean(lambdas),
+    mean = map(rep_idx, ~ mean(lambdas[.x])) %>% mean,
     btwn_fold_se = sd(lambdas) / sqrt(n_folds),
     btwn_rep_range = map(rep_idx, ~ mean(lambdas[.x])) %>% range
   )
   best_alpha <- list(
-    mean = mean(alphas),
+    mean = map(rep_idx, ~ mean(alphas[.x])) %>% mean,
     btwn_fold_se = sd(alphas) / sqrt(n_folds),
     btwn_rep_range = map(rep_idx, ~ mean(alphas[.x])) %>% range
   )
   structure(list(
     stats = list(fit = fit_stats, cv = cv_stats, test = test_stats),
-    param = list(alpha = best_alpha, lambda = best_lambda),
+    parameters = c(list(alpha = best_alpha, lambda = best_lambda),
+                   validation_metrics$parameters),
     coefs = list(unstandardized = betas, standardized = stnd_betas)
-    ), class = "summary_nested_elnet", n_folds = n_folds, n_reps = n_reps,
-    oneSE = oneSE, family = family
+    ), class = "summary_nested_elnet"
     )
 }
 
-summary.nested_beset <- function(object, metric, oneSE = TRUE, ...){
+summary.nested_beset <- function(object, metric = "rsq", oneSE = TRUE, ...){
   family <- object$family
   n_folds <- object$n_folds
   n_reps <- object$n_reps
@@ -196,7 +195,7 @@ summary.nested_beset <- function(object, metric, oneSE = TRUE, ...){
     object$beset, ~ beset:::get_best.beset_glm(.x,  metric = metric,
                                                oneSE = oneSE)
   )
-  if(family == "binomial"){
+  if(family != "gaussian"){
     # Menard's standardization of y for logistic models
     var_logit_yhat <- map_dbl(best_models, ~ var(predict(.x)))
     rsq <- map_dbl(best_models, ~ r2d(.x)$R2fit)
@@ -251,7 +250,8 @@ summary.nested_beset <- function(object, metric, oneSE = TRUE, ...){
       cv_stats[, stat_names], function(x)
         map(rep_idx, ~ mean(map_dbl(x, "mean")[.x])) %>% range)
   ) %>% transpose
-  test_stats <- validate(object, metric = metric, oneSE = oneSE)$stats
+  validation_metrics <- validate(object, metric = metric, oneSE = oneSE)
+  test_stats <- validation_metrics$stats
   form <- table(best_form)[order(table(best_form), decreasing = TRUE)]
   n_pred <- map2_int(object$beset, best_idx, ~.x$stats$fit$n_pred[.y])
   n_pred <- list(
@@ -259,11 +259,12 @@ summary.nested_beset <- function(object, metric, oneSE = TRUE, ...){
     btwn_fold_iqr = IQR(n_pred),
     btwn_rep_range = map(rep_idx, ~ median(n_pred[.x])) %>% range
   )
-  structure(list(
-    stats = list(fit = fit_stats, cv = cv_stats, test = test_stats),
-    param = list(n_pred = n_pred, form = form),
-    coefs = list(unstandardized = betas, standardized = stnd_betas)
-  ), class = "summary_nested_beset", n_folds = n_folds, n_reps = n_reps,
-  oneSE = oneSE, family = family
+  structure(
+    list(
+      stats = list(fit = fit_stats, cv = cv_stats, test = test_stats),
+      parameters = c(list(n_pred = n_pred, form = form),
+                validation_metrics$parameters),
+      coefs = list(unstandardized = betas, standardized = stnd_betas)
+      ), class = "summary_nested_beset"
   )
 }
