@@ -4,12 +4,12 @@
 \alias{beset_elnet}
 \title{Beset GLM with Elasticnet Regularization}
 \usage{
-beset_elnet(form, data, family = "gaussian", skinny = FALSE,
-  standardize = TRUE, nest_cv = FALSE, n_folds = 10, n_reps = 10,
-  seed = 42, alpha_seq = c(0.01, 0.5, 0.99), n_lambda = 100,
-  lambda_min_ratio = NULL, epsilon = 1e-07, maxit = 10^5,
-  contrasts = NULL, offset = NULL, weights = NULL, parallel_type = NULL,
-  n_cores = NULL, cl = NULL)
+beset_elnet(form, data, family = "gaussian", alpha = c(0.01, 0.5, 0.99),
+  n_lambda = 100, nest_cv = FALSE, n_folds = 10, n_reps = 10,
+  seed = 42, remove_collinear_columns = FALSE, skinny = FALSE,
+  standardize = TRUE, epsilon = 1e-07, maxit = 10^5,
+  lambda_min_ratio = NULL, contrasts = NULL, offset = NULL,
+  weights = NULL, parallel_type = NULL, n_cores = NULL, cl = NULL)
 }
 \arguments{
 \item{form}{A model \code{\link[stats]{formula}}.}
@@ -22,18 +22,16 @@ will be used for model training only.}
 used in the model. Currently supported options are \code{"gaussian"}
 (default), \code{"binomial"}, and \code{"poisson"}.}
 
-\item{skinny}{\code{Logical} value indicating whether or not to return a
-"skinny" model. If \code{FALSE} (the default), the return object will include
-a copy of the model \code{\link[stats]{terms}}, \code{data},
-\code{contrasts}, and a record of the \code{xlevels} of the factors used in
-fitting. This information will be necessary if you apply
-\code{\link{predict.beset_elnet}} to new data. If this feature is not needed,
-setting \code{skinny = TRUE} will prevent these copies from being made.}
+\item{alpha}{\code{Numeric} vector of alpha values between 0 and 1 to
+use as tuning parameters. \code{alpha = 0} results in ridge regression, and
+\code{alpha = 1} results in lasso regression. Values in between result in a
+mixture of L1 and L2 penalties. (Values closer to 0 weight the L2 penalty
+more heavily, and values closer to 1 weight the L1 penalty more heavily.) The
+default is to try three alpha values: 0.01 (emphasis toward ridge penalty),
+0.99 (emphasis toward lasso penalty), and 0.5 (equal mixture of L1 and L2).}
 
-\item{standardize}{Logical flag for x variable standardization, prior to
-fitting the model sequence. The coefficients are always returned on the
-original scale. Default is \code{standardize = TRUE}. If variables are in the
-same units already, you might not wish to standardize.}
+\item{n_lambda}{Number of lambdas to be used in a search. Defaults to
+\code{100}.}
 
 \item{nest_cv}{\code{Logical} value indicating whether or not to perform a
 nested cross-validation that isolates the cross-validation used for tuning
@@ -51,16 +49,25 @@ be repeated (with different randomized fold assignments).}
 \item{seed}{An integer used to seed the random number generator when
 assigning observations to folds.}
 
-\item{alpha_seq}{\code{Numeric} vector of alpha values between 0 and 1 to
-use as tuning parameters. \code{alpha = 0} results in ridge regression, and
-\code{alpha = 1} results in lasso regression. Values in between result in a
-mixture of L1 and L2 penalties. (Values closer to 0 weight the L2 penalty
-more heavily, and values closer to 1 weight the L1 penalty more heavily.) The
-default is to try three alpha values: 0.01 (emphasis toward ridge penalty),
-0.99 (emphasis toward lasso penalty), and 0.5 (equal mixture of L1 and L2).}
+\item{remove_collinear_columns}{\code{Logical}. In case of linearly dependent
+columns, remove some of the dependent columns. Defaults to FALSE.}
 
-\item{n_lambda}{Number of lambdas to be used in a search. Defaults to
-\code{100}.}
+\item{skinny}{\code{Logical} value indicating whether or not to return a
+"skinny" model. If \code{FALSE} (the default), the return object will include
+a copy of the model \code{\link[stats]{terms}}, \code{data},
+\code{contrasts}, and a record of the \code{xlevels} of the factors used in
+fitting. This information will be necessary if you apply
+\code{\link{predict.beset_elnet}} to new data. If this feature is not needed,
+setting \code{skinny = TRUE} will prevent these copies from being made.}
+
+\item{standardize}{Logical flag for x variable standardization, prior to
+fitting the model sequence. The coefficients are always returned on the
+original scale. Default is \code{standardize = TRUE}. If variables are in the
+same units already, you might not wish to standardize.}
+
+\item{epsilon}{Convergence threshold for coordinate descent.}
+
+\item{maxit}{Maximum number of passes over the data for all lambda values}
 
 \item{lambda_min_ratio}{(Optional) minimum \eqn{lambda} used in \eqn{lambda}
 search, specified as a ratio of \code{lambda_max} (the smallest \eqn{lambda}
@@ -69,10 +76,6 @@ observations is greater than the number of variables, then
 \code{lambda_min_ratio} is set to 0.0001; if the number of observations is
 less than the number of variables, then \code{lambda_min_ratio} is set to
 0.01.}
-
-\item{epsilon}{Convergence threshold for coordinate descent.}
-
-\item{maxit}{Maximum number of passes over the data for all lambda values}
 
 \item{contrasts}{{Optional} \code{list}. See the \code{contrasts.arg} of
 \code{\link[stats]{model.matrix.default}}.}

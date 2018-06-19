@@ -30,7 +30,7 @@
 #' (by a factor equal to the number of folds), but useful for estimating
 #' uncertainty in the tuning procedure. Defaults to \code{FALSE}.
 #'
-#' @param alpha_seq \code{Numeric} vector of alpha values between 0 and 1 to
+#' @param alpha \code{Numeric} vector of alpha values between 0 and 1 to
 #' use as tuning parameters. \code{alpha = 0} results in ridge regression, and
 #' \code{alpha = 1} results in lasso regression. Values in between result in a
 #' mixture of L1 and L2 penalties. (Values closer to 0 weight the L2 penalty
@@ -68,6 +68,9 @@
 #'
 #' @param contrasts {Optional} \code{list}. See the \code{contrasts.arg} of
 #' \code{\link[stats]{model.matrix.default}}.
+#'
+#' @param remove_collinear_columns \code{Logical}. In case of linearly dependent
+#' columns, remove some of the dependent columns. Defaults to FALSE.
 #'
 #' @return A "beset_elnet" or "nested" object inheriting class "beset_elnet"
 #' with the following components:
@@ -147,15 +150,18 @@
 #' @export
 
 beset_elnet <- function(
-  form, data, family = "gaussian", skinny = FALSE, standardize = TRUE,
+  form, data, family = "gaussian", alpha = c(.01, .5, .99), n_lambda = 100,
   nest_cv = FALSE, n_folds = 10, n_reps = 10, seed = 42,
-  alpha_seq = c(.01, .5, .99), n_lambda = 100, lambda_min_ratio = NULL,
-  epsilon = 1e-7, maxit = 10^5, contrasts = NULL, offset = NULL, weights = NULL,
-  parallel_type = NULL, n_cores = NULL, cl = NULL){
+  remove_collinear_columns = FALSE, skinny = FALSE, standardize = TRUE,
+  epsilon = 1e-7, maxit = 10^5, lambda_min_ratio = NULL,
+  contrasts = NULL, offset = NULL, weights = NULL,
+  parallel_type = NULL, n_cores = NULL, cl = NULL
+  ){
 
   #==================================================================
-  # Check family and cross-validation arguments
+  # Check variable names and family
   #------------------------------------------------------------------
+  check_names(names(data))
   family <- tryCatch(
     match.arg(family, c("binomial", "gaussian", "poisson")),
     error = function(c){
@@ -163,6 +169,33 @@ beset_elnet <- function(
       c$call <- NULL
       stop(c)
     })
+  #==================================================================
+  # Check for missing values and linear dependence
+  #------------------------------------------------------------------
+  if(inherits(data, "data.frame")){
+    mf <- model.frame(form, data = data)
+    n_omit <- nrow(data) - nrow(mf)
+    if(n_omit > 0){
+      warning(paste("Dropping", n_omit, "rows with missing data."),
+              immediate. = TRUE)
+      attr(data, "na.action") <- NULL
+    }
+    terms <- terms(mf)
+    xlevels = .getXlevels(terms, mf)
+    attr(mf, "terms") <- NULL
+    data <- mf
+    if(remove_collinear_columns){
+      data <- check_lindep(mf)
+      mf <- model.frame(form, data = data)
+      terms <- terms(mf)
+      xlevels = .getXlevels(terms, mf)
+    }
+  } else if(inherits(data, "data_partition")){
+    terms <- terms(data$train)
+    xlevels <- .getXlevels(terms, data$train)
+  } else {
+    stop("`data` argument must inherit class 'data.frame' or 'data_partition'")
+  }
 
   #======================================================================
   # Set up parallel operations
@@ -174,9 +207,9 @@ beset_elnet <- function(
     if(is.null(n_cores) || n_cores > 1){
       if(!nest_cv){
         if(is.null(n_cores)){
-          n_cores <- length(alpha_seq)
+          n_cores <- length(alpha)
         } else {
-          n_cores <- min(n_cores, length(alpha_seq))
+          n_cores <- min(n_cores, length(alpha))
         }
       } else {
         if(is.null(parallel_type)) parallel_type <- "sock"
@@ -185,18 +218,6 @@ beset_elnet <- function(
         parallel_type = parallel_type, n_cores = n_cores, cl = cl)
       n_cores <- parallel_control$n_cores
       cl <- parallel_control$cl
-    }
-  }
-
-  #======================================================================
-  # Drop rows with missing values
-  #----------------------------------------------------------------------
-  if(inherits(data, "data.frame")){
-    data <- na.omit(data)
-    n_omit <- length(attr(data, "na.action"))
-    if(n_omit > 0){
-      warning(paste("Dropping", n_omit, "rows with missing data."),
-              immediate. = TRUE)
     }
   }
 
@@ -242,7 +263,7 @@ beset_elnet <- function(
       if(is.null(cl)){
         parallel::mclapply(all_partitions, function(x){
           beset_elnet(form = form, data = x, family = family,
-                      contrasts = contrasts, alpha_seq = alpha_seq,
+                      contrasts = contrasts, alpha = alpha,
                       n_lambda = n_lambda,
                       lambda_min_ratio = lambda_min_ratio, skinny = TRUE,
                       standardize = standardize, epsilon = epsilon,
@@ -252,7 +273,7 @@ beset_elnet <- function(
         } else {
           parallel::parLapply(cl, all_partitions, function(x){
             beset_elnet(form = form, data = x, family = family,
-                        contrasts = contrasts, alpha_seq = alpha_seq,
+                        contrasts = contrasts, alpha = alpha,
                         n_lambda = n_lambda,
                         lambda_min_ratio = lambda_min_ratio, skinny = TRUE,
                         standardize = standardize, epsilon = epsilon,
@@ -263,7 +284,7 @@ beset_elnet <- function(
       } else {
         lapply(all_partitions, function(x){
         beset_elnet(form = form, data = x, family = family,
-                    contrasts = contrasts, alpha_seq = alpha_seq,
+                    contrasts = contrasts, alpha = alpha,
                     n_lambda = n_lambda,
                     lambda_min_ratio = lambda_min_ratio, skinny = TRUE,
                     standardize = standardize, epsilon = epsilon,
@@ -273,16 +294,10 @@ beset_elnet <- function(
       }
     if(skinny){
       terms <- data <- contrasts <- xlevels <- NULL
-    } else {
-      arguments <- make_args(form = form, data = data, family = family,
-                             link = NULL, contrasts = contrasts,
-                             epsilon = epsilon, maxit = maxit)
-      terms <- arguments$terms
-      xlevels <- arguments$xlevels
     }
     out <- structure(
       list(
-        beset_elnet = nested_cv, fold_assignments = fold_ids,
+        beset = nested_cv, fold_assignments = fold_ids,
         n_folds = n_folds, n_reps = n_reps,
         family = family, terms = terms, data = data, offset = offset,
         contrasts = contrasts, xlevels = xlevels
@@ -296,14 +311,14 @@ beset_elnet <- function(
   #==================================================================
   # Create model matrices
   #------------------------------------------------------------------
-  m <- map(alpha_seq, ~ make_args(
+  m <- map(alpha, ~ make_args(
     form = form, data = data, family = family, link = NULL, nlambda = n_lambda,
     contrasts = contrasts, weights = weights, offset = offset,
     epsilon = epsilon, maxit = maxit, alpha = .x, standardize = standardize)
   )
   n_obs <- nrow(m[[1]]$train$x)
   cv_params <- set_cv_par(n_obs, n_folds, n_reps)
-  names(m) <- alpha_seq
+  names(m) <- alpha
   # glmnet handles intercept differently from other predictors
   # so should not be included in model matrix
   walk(seq_along(m), function(i){
@@ -328,10 +343,10 @@ beset_elnet <- function(
       parallel::parLapply(cl, m, function(x) do.call(glmnet::glmnet, x$train))
     }
   } else lapply(m, function(x) do.call(glmnet::glmnet, x$train))
-  names(fits) <- alpha_seq
+  names(fits) <- alpha
   lambda_seq <- map(fits, "lambda")
-  alpha_seq <- map2(alpha_seq, lambda_seq, ~ rep(.x, length(.y)))
-  fit_stats <- data.frame(alpha = unlist(alpha_seq),
+  alpha <- map2(alpha, lambda_seq, ~ rep(.x, length(.y)))
+  fit_stats <- data.frame(alpha = unlist(alpha),
                           lambda = unlist(lambda_seq))
   y_hats <- map2(fits, m,
                  ~ predict(.x, .y$train$x, type = "response",
@@ -348,7 +363,7 @@ beset_elnet <- function(
   #------------------------------------------------------------------
   test_stats <- NULL; test_preds <- NULL
   if(!is.null(m[[1]]$test)){
-    test_stats <- data.frame(alpha = unlist(alpha_seq),
+    test_stats <- data.frame(alpha = unlist(alpha),
                              lambda = unlist(lambda_seq))
     y_hats <- map2(fits, m,
                    ~ predict(.x, .y$test$x, type = "response",
@@ -378,8 +393,6 @@ beset_elnet <- function(
   if(skinny){
     terms <- data <- contrasts <- xlevels <- fold_ids <- NULL
   } else {
-    terms <- m[[1]]$terms
-    xlevels <- m[[1]]$xlevels
     fold_ids <- create_folds(y_obs, n_folds, n_reps, seed)
   }
   if(!is.null(cl)) stopCluster(cl)
