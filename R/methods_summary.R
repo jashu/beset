@@ -114,11 +114,11 @@ summary.nested <- function(object, metric = "auto", oneSE = TRUE, ...){
     summary.nested_beset(object, metric = metric, oneSE = oneSE, ...)
 }
 
-summary.nested_elnet <- function(object, metric = "rsq", oneSE = TRUE, ...){
+summary.nested_elnet <- function(object, metric, oneSE, ...){
   family <- object$family
   n_folds <- object$n_folds
   n_reps <- object$n_reps
-  repeats <- paste("Rep", n_reps, "$", sep = "")
+  repeats <- paste("Rep", 1:n_reps, "$", sep = "")
   rep_idx <- map(repeats, ~ grepl(.x, names(object$beset)))
   best_models <- map(
     object$beset,
@@ -167,14 +167,14 @@ summary.nested_elnet <- function(object, metric = "rsq", oneSE = TRUE, ...){
   validation_metrics <- validate(object, metric = metric, oneSE = oneSE)
   test_stats <- validation_metrics$stats
   best_lambda <- list(
-    mean = map(rep_idx, ~ mean(lambdas[.x])) %>% mean,
+    mean = map_dbl(rep_idx, ~ mean(lambdas[.x])) %>% mean,
     btwn_fold_se = sd(lambdas) / sqrt(n_folds),
-    btwn_rep_range = map(rep_idx, ~ mean(lambdas[.x])) %>% range
+    btwn_rep_range = map_dbl(rep_idx, ~ mean(lambdas[.x])) %>% range
   )
   best_alpha <- list(
-    mean = map(rep_idx, ~ mean(alphas[.x])) %>% mean,
+    mean = map_dbl(rep_idx, ~ mean(alphas[.x])) %>% mean,
     btwn_fold_se = sd(alphas) / sqrt(n_folds),
-    btwn_rep_range = map(rep_idx, ~ mean(alphas[.x])) %>% range
+    btwn_rep_range = map_dbl(rep_idx, ~ mean(alphas[.x])) %>% range
   )
   structure(list(
     stats = list(fit = fit_stats, cv = cv_stats, test = test_stats),
@@ -185,7 +185,7 @@ summary.nested_elnet <- function(object, metric = "rsq", oneSE = TRUE, ...){
     )
 }
 
-summary.nested_beset <- function(object, metric = "rsq", oneSE = TRUE, ...){
+summary.nested_beset <- function(object, metric = "auto", oneSE = TRUE, ...){
   family <- object$family
   n_folds <- object$n_folds
   n_reps <- object$n_reps
