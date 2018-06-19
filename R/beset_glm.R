@@ -191,6 +191,29 @@ beset_glm <- function(form, data, family = "gaussian", link = NULL,
   family <- check_family(family)
   fitter <- if(family == "negbin") "glm_nb" else "glm.fit"
 
+  #==================================================================
+  # Check for missing values and linear dependence
+  #------------------------------------------------------------------
+  if(inherits(data, "data.frame")){
+    data <- model.frame(form, data = data)
+    n_omit <- length(attr(data, "na.action"))
+    if(n_omit > 0){
+      warning(paste("Dropping", n_omit, "rows with missing data."),
+              immediate. = TRUE)
+      attr(data, "na.action") <- NULL
+    }
+    data <- check_lindep(data)
+    mf <- model.frame(form, data = data)
+    terms <- terms(mf)
+    xlevels = .getXlevels(terms, mf)
+
+  } else if(inherits(data, "data_partition")){
+    terms <- terms(data$train)
+    xlevels <- .getXlevels(terms, data$train)
+  } else {
+    stop("`data` argument must inherit class 'data.frame' or 'data_partition'")
+  }
+
   #======================================================================
   # Set up parallel operations
   #----------------------------------------------------------------------
@@ -204,17 +227,7 @@ beset_glm <- function(form, data, family = "gaussian", link = NULL,
       n_cores <- parallel_control$n_cores
       cl <- parallel_control$cl
   }
-  #======================================================================
-  # Drop rows with missing values
-  #----------------------------------------------------------------------
-  if(inherits(data, "data.frame")){
-    data <- na.omit(data)
-    n_omit <- length(attr(data, "na.action"))
-    if(n_omit > 0){
-      warning(paste("Dropping", n_omit, "rows with missing data."),
-              immediate. = TRUE)
-    }
-  }
+
   #======================================================================
   # Recursive function for performing nested cross-validation
   #----------------------------------------------------------------------
@@ -279,14 +292,6 @@ beset_glm <- function(form, data, family = "gaussian", link = NULL,
     }
     if(skinny){
       terms <- data <- contrasts <- xlevels <- NULL
-    } else {
-      arguments <- make_args(form = form, data = data, family = family,
-                             link = link, contrasts = contrasts,
-                             weights = weights, offset = offset, start = start,
-                             etastart = etastart, mustart = mustart,
-                             epsilon = epsilon, maxit = maxit)
-      terms <- arguments$terms
-      xlevels <- arguments$xlevels
     }
     out <- structure(
       list(
@@ -392,8 +397,6 @@ beset_glm <- function(form, data, family = "gaussian", link = NULL,
   if(skinny){
     terms <- data <- contrasts <- xlevels <- fold_ids <- NULL
   } else {
-    terms <- m[[1]]$terms
-    xlevels <- m[[1]]$xlevels
     fold_ids <- create_folds(m$train$y, n_folds, n_reps, seed)
   }
   if(!is.null(cl)) stopCluster(cl)

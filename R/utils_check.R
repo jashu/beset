@@ -1,5 +1,23 @@
 # CHECKING UTILS
 
+# create a dictionary that maps names of model frame to column indices of
+# model matrix
+mf_to_mm <- function(mf){
+  idx_start <- 2L
+  lapply(mf[-1], function(x){
+    idx <- idx_start
+    if(is.factor(x)){
+      idx_stop <- idx_start + length(levels(x)) - 2L
+      idx <- idx_start:idx_stop
+      idx_start <<- idx_stop + 1L
+    } else {
+      idx_start <<- idx_start + 1L
+    }
+    idx
+  })
+}
+
+
 ## Error argument
 check_error <- function(
   error = c("auto", "btwn_fold_se", "btwn_rep_range", "none")
@@ -68,10 +86,16 @@ check_link <- function(family, link){
     })
 }
 ## Check for linear dependencies and remove them
-check_lindep <- function(X){
+check_lindep <- function(mf){
+  X <- stats::model.matrix(terms(mf), mf)
+  attr(mf, "terms") <- NULL
   new_X <- rm_lindep(X)
-  if(!identical(X, new_X)){
-    lindep_vars <- setdiff(colnames(X), colnames(new_X))
+  mm_keep <- which(colnames(new_X) %in% colnames(X))
+  mm_dict <- mf_to_mm(mf)
+  mf_keep <- purrr::map_lgl(mm_dict, ~ all(.x %in% mm_keep))
+  new_mf <- mf[mf_keep]
+  if(!identical(mf, new_mf)){
+    lindep_vars <- setdiff(names(mf), colnames(new_mf))
     dependx <- "dependency"; predx <- "predictor"
     if(length(lindep_vars) > 1){
       dependx <- "dependencies"; predx <- "predictors"
@@ -84,8 +108,9 @@ check_lindep <- function(X){
       immediate. = TRUE
     )
   }
-  new_X
+  new_mf
 }
+
 rm_lindep <- function(X){
   # factor the matrix using QR decomposition
   qr_ob <- qr(X)
@@ -101,4 +126,3 @@ rm_lindep <- function(X){
     rm_lindep(X)
   }
 }
-
