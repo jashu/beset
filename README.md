@@ -1,6 +1,8 @@
 # beset: Best Subset Predictive Modeling
 
-`beset` is a portmanteau of BEst subSET, which is the common thread connecting the functions in this package: to explore large multivariate data sets and mine useful features from high-dimensional spaces where many, if not most, of the features are expected to be redundant or irrelevant. `beset` brings together predictive modeling methods from other packages that perform variable selection either explicitly (e.g., best subset selection) or implicitly (e.g., lasso regression) as a part of model fitting.
+`beset` is a portmanteau of BEst subSET, which references the overall
+objective of this package: to identify the best subset of variables for
+a predictive model.
 
 ## Installation instructions
 
@@ -12,5 +14,10 @@ To install `beset` in R, you first need to install the `devtools` package if you
 
 Once `devtools` is installed, use the following command to install `beset` on your system:
 ```
-	devtools::install_github("jashu/beset")
+	devtools::install_github("jashu/beset", build_vignettes = TRUE")
+```
+
+After intalling, to learn more about `beset`, start with the vignettes:
+```
+  browseVignettes(package = "beset")
 ```
