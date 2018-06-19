@@ -16,9 +16,7 @@ make_args <- function(form, data, family, link, contrasts,
                           check, ...)$train,
         test = make_args(form, data$test, family, link, contrasts, weights,
                          offset, start, etastart, mustart, epsilon, maxit,
-                         check = FALSE, ...)$train,
-        terms = terms(data$train),
-        xlevels = .getXlevels(terms(data$train), data$train)
+                         check = FALSE, ...)$train
       )
     )
   }
@@ -41,18 +39,9 @@ make_args <- function(form, data, family, link, contrasts,
   } else {
     data
   }
-  # Warn user if any rows were dropped
-  n_drop <- nrow(data) - nrow(mf)
-  if(n_drop > 0){
-    warning(paste(
-      "Dropping", n_drop, "rows with missing data.\n"),
-      immediate. = TRUE)
-  }
   x <- stats::model.matrix(form, mf, contrasts)
   todrop <- which(colnames(x) %in% c("`(offset)`", "`(weights)`"))
   if(length(todrop)) x <- x[, -todrop]
-  # Screen for linear dependencies among predictors
-  if(check) x <- check_lindep(x)
   y <- model.response(mf)
   # insure y is a factor if family is binomial
   if(family == "binomial" && !is.factor(y)) y <- factor(y)
@@ -71,9 +60,7 @@ make_args <- function(form, data, family, link, contrasts,
              offset = offset, intercept = "(Intercept)" %in% colnames(x)),
         list(...)
       ),
-      test = NULL,
-      terms = terms(mf),
-      xlevels = .getXlevels(terms(mf), mf)
+      test = NULL
     )
   } else {
     list(
@@ -82,9 +69,7 @@ make_args <- function(form, data, family, link, contrasts,
         mustart = mustart, offset = offset, family = family, control = control,
         intercept = "(Intercept)" %in% colnames(x)
       ),
-      test = NULL,
-      terms = terms(mf),
-      xlevels = .getXlevels(terms(mf), mf)
+      test = NULL
     )
   }
 }
