@@ -15,6 +15,11 @@ vignette: >
 
 # Introduction
 
+```{r, echo = FALSE}
+library(beset)
+suppressPackageStartupMessages(library(tidyverse))
+```
+
 ## Limitations of subset selection
 
 Best subset selection, as performed by the `beset_lm` and `beset_glm` functions, performs variable selection explicitly by trying out a bunch of models with all possible combinations of predictors and choosing the one that performs best under cross-validation. The major appeal of this approach is that it is simple: the underlying fitting procedure is the familiar and easy-to-understand generalized linear model (GLM). However, this algorithm scales very poorly with increasing numbers of predictors ($p$), running in $O(2^p)$ time. 
@@ -51,23 +56,13 @@ In summary, like ridge regression, the elastic net detects which variables are c
 
 # Data 
 
-To illustrate elastic net regression with linear models, we will use the [Prostate Cancer Data](https://www.rdocumentation.org/packages/ElemStatLearn/versions/2015.6.26/topics/prostate) from the `ElemStatLearn` package. These data come from a study by Stamey et al. (1989) of 97 men. Measurements include the log of prostate specific antigen (PSA, `lpsa`), log of cancer volume (`lcavol`), log of prostate weight (`lweight`), `age`, log of benign prostatic hyperplasia amount (`lbph`), seminal vesicle invasion (`svi`), log of capsular penetration (`lcp`), Gleason score (`gleason`), and percent of Gleason scores 4 or 5 (`pgg45`).).
-
-```{r, echo = FALSE}
-library(beset)
-library(tidyverse)
-library(ElemStatLearn)
-data(prostate)
-summary(prostate)
-```
-
-The prostate data includes a suggested train/test split variable, `train`. Let's use this to construct a `data_partition` object. Like `beset_lm` and `beset_glm`, `beset_elnet` can work with `data_partition` objects directly: it will tune alpha and lambda by cross-validating the training data, and use the test data to assess performance of the model. 
+To illustrate best subset selection with linear models, we will add 5 random noise variables to the [Swiss Fertility and Socioeconomic Indicators (1888) Data](https://stat.ethz.ch/R-manual/R-devel/library/datasets/html/swiss.html):
 
 ```{r}
-train <- prostate %>% filter(train) %>% select(-train)
-test <- prostate %>% filter(!train) %>% select(-train)
-prostate <- prostate %>% select(-train)
-data <- data_partition(train, test, y = "lpsa")
+set.seed(42)
+data <- cbind(swiss, 
+                    matrix(replicate(5, rnorm(nrow(swiss))), ncol = 5))
+names(data)[7:11] <- paste0("noise", names(data)[7:11])
 ```
 
 # `beset_elnet`
@@ -75,7 +70,7 @@ data <- data_partition(train, test, y = "lpsa")
 To perform elastic net regression with linear models, use `beset_elnet`. Only 2 arguments are required: a model formula and training data. The following example shows the formula for a typical use case, in which the `.` indicates that all of the variables in the data frame should be considered as candidate predictors of the response.
 
 ```{r}
-mod <- beset_elnet(lpsa ~ ., data)
+mod <- beset_elnet(Fertility ~ ., data)
 ```
 
 There are several optional arguments that we will explore in greater detail later on. By default, all `beset` functions use $10 \times 10\ CV$, or 10 repetitions of 10-fold cross-validation. 
@@ -96,15 +91,15 @@ Note the horizontal and vertical dashed lines. The vertical line identifies the 
 summary(mod, oneSE = FALSE)
 ```
 
-In this example, the minima is at $\alpha = 0.01$ and $\lambda = 0.075$, which is a predominantly ridge regression favoring the inclusion of all 8 predictors, which are ranked in the coefficient table by order of the absolute value of standardized coefficient. Note that the cross-validated $R^2$ (0.6), while not as overly optimistic as the train-sample $R^2$ (0.69), overestimates prediction performance as compared to the independent test sample ($R^2 = 0.53$). The bracketed numbers after the cross-validated $R^2$ give the range of $R^2$ values that were observed over the 10 repetitions of cross-validation and thus gauge the sensitivity of the cross-validation average to the specific randomized fold assignments.  
+In this example, the minima is at $\alpha = 0.01$ and $\lambda = 1.22$, which is a predominantly ridge regression favoring the inclusion of all predictors, which are ranked in the coefficient table by order of the absolute value of standardized coefficient. Note that the cross-validated $R^2$ (0.55) is much less optimistic than the train-sample $R^2$ (0.72).
 
-The horizontal line in the plot corresponds to the upper error limit of this minima. As a rule-of-thumb (called the "1SE rule"), points on the curve that fall beneath this line indicate performance that is practically equivalent to the very best. In practice, one can often increase the generalizability of a model by picking a greater penalty than the one that achieves the absolute minimum cross-validation error. Note that there are `lambda` values at every value of `alpha` that fall beneath this line, and that with greater sparsity (larger values of `alpha`), smaller values of `lambda` are needed to optimize prediction. By default, the `summary` method will first pick the largest `alpha` that has part of its tuning curve within 1SE of the minimum cross-validation error, and then the largest value of `lambda` within the 1SE limit for that value of `alpha`:
+The horizontal line in the above plot corresponds to the upper error limit of this minima. As a rule-of-thumb (called the "1SE rule"), points on the curve that fall beneath this line indicate performance that is practically equivalent to the very best. In practice, one can often increase the generalizability of a model by picking a greater penalty than the one that achieves the absolute minimum cross-validation error. Note that there are `lambda` values at every value of `alpha` that fall beneath this line, and that with greater sparsity (larger values of `alpha`), smaller values of `lambda` are needed to optimize prediction. By default, the `summary` method will first pick the largest `alpha` that has part of its tuning curve within 1SE of the minimum cross-validation error, and then the largest value of `lambda` within the 1SE limit for that value of `alpha`:
 
 ```{r}
 summary(mod)
 ```
 
-Notice that this leads to a much sparser model with only 3 predictors, and the gap between the $R^2$ estimated for the test sample vs. the tune sample has been eradicated by using the 1SE rule.
+Notice that this leads to a much sparser model with only 4 predictors, and the gap between the $R^2$ estimated for the test sample vs. the tune sample has been reduced by using the 1SE rule, and all noise predictors have been eliminated.
 
 If you want to apply the 1SE rule within a given value of alpha (rather than the default of choosing the sparsest model), simply specify it as an argument to `summary`:
 
@@ -114,56 +109,29 @@ summary(mod, alpha = 0.01)
 
 Notice that this has the effect of retaining all of the predictors, while applying a greater amount of shrinkage to all coefficients than when we set `oneSE = FALSE`.
 
-You may have noticed something odd when comparing the graphs to the summary output. The graphs seem to suggest that performance on the single test holdout is actually *better* than what the cross-validation error would predict; for that matter, there are parts of the curve where it is even better than what the *training* error would predict. Yet, the summary output shows that the `Test` $R^2$ is either the same or worse than the `CV` $R^2$.
-
-The reason for this points out the limitations of using a single `Test` set, especially with small sample sizes such as this one. It so happens that the range of values for the response is much greater for the training set that it is for the test set:
-
-```{r}
-range(train$lpsa)
-range(test$lpsa)
-```
-
-Relatedly there is more variance in the training set than in the test set:
-
-```{r}
-var(train$lpsa)
-var(test$lpsa)
-```
-
-So the fact that `Test` MSE is lower than `CV` MSE simply reflects that the `Test` set tends to have smaller residuals because it is less variable overall. You don't see this with the $R^2$ statistic because it, by definition, normalizes the MSE by the variance. So in this case a plot of $R^2$ may provide a more valid comparison:
-
-```{r, fig.height=4, fig.width=5}
-plot(mod, "rsq")
-```
-
 ## Performing a nested cross-validation
 
-As you can see from the above example, a single test set may not provide a repesentative example of general test error, but also cross-validation estimates of test error may be biased they are used to select model parameters. One solution is to perform a nested cross-validation, i.e., have an outer cross-validation for estimating test error and an inner cross-validation (nested within the training folds of the outer cross-validation) for tuning. This can be accomplished by using the argument `nest_cv` = TRUE, but be warned: this can be computationally expensive.
-
-To make things more interesting, let's add an equal number of variables that we know to be noise to see if the elastic net is able to effectively deal with these.
+Cross-validation estimates of test error tend to be optimistically biased if they have been used to select model parameters. One solution is to perform a nested cross-validation, i.e., have an outer cross-validation for estimating test error and an inner cross-validation (nested within the training folds of the outer cross-validation) for tuning. This can be accomplished by using the argument `nest_cv` = TRUE, but be warned: this can be computationally expensive.
 
 ```{r}
-set.seed(42)
-noise <- sample_frac(prostate) %>% select(-lpsa)
-names(noise) <- paste("noise", 1:ncol(noise), sep = "")
-prostate <- bind_cols(prostate, noise)
+mod <- beset_elnet(Fertility ~ ., data, nest_cv = TRUE)
 ```
 
-Observe where the red curve intersects with the horizontal dashed line and how this reliably captures the approximate point at which the CV holdout and Test holdout curves converge. Thus, one can be reasonably confident that the if the parameters are selected with the 1SE rule, the associated error is not optimistically biased by the selection. And even when selecting the based on the optimal tuning parameters, the bias is not large.
+Observe where the red curve intersects with the horizontal dashed line and how this reliably captures the approximate point at which the CV holdout and Test holdout curves converge. Thus, one can be reasonably confident that if the parameters are selected with the 1SE rule, the associated error is not optimistically biased by the selection. And even when selecting based on the optimal tuning parameters, the bias is not large.
 
 ```{r, fig.height=4, fig.width=5}
-mod <- beset_elnet(lpsa ~ ., prostate, nest_cv = TRUE)
-plot(mod, "rsq")
+plot(mod)
 ```
 
 Running a nested cross-validation has other advantages besides unbiased estimates of test error. Namely, it allows us to gauge the uncertainty in the selection of optimal tuning parameters and its impact on the coefficient estimates. If you run the `summary` function on a `"nested"` `beset_elnet` object, you will see that there is now a standard error and min-max range for the chosen values of alpha and lambda. 
+
 ```{r}
 summary(mod)
 ```
 
-In this case, using the 1SE rule, a predominantly lasso penalty is always selected ($\alpha = 0.99$), nor does the regularization vary that much ($\lambda = 0.24-0.25$). This universal preference for lasso over ridge regression may reflect that half of the predictors were engineered to be irrelevant; lasso regression should be preferred under this circumstance.
+In this case, using the 1SE rule, a predominantly lasso penalty is always selected ($\alpha = 0.99$), nor does the regularization vary that much ($\lambda = 1.8 - 2.2$). This universal preference for lasso over ridge regression may reflect that half of the predictors were engineered to be irrelevant; lasso regression should be preferred under this circumstance.
 
-You will also see a standard error and min-max range for the standardized coefficients and for the variance explained in the train sample, tune holdout, and test holdout. Note that the standard-error refers to the standard deviation between folds divided by the square root of the number of folds. The min-max range refers to the repetitions of cross-validation, after averaging over the folds of each repetition. In either case, these numbers reflects uncertainty due to running the procedure on different subsamples of the data set, which may be useful when comparing the relative importance of predictors to the model and performance of different models validated using the same subsampling schema.
+You will also see a standard error and min-max range for the standardized coefficients and for the variance explained in the train sample, tune holdout, and test holdout. Note that the standard-error refers to the standard deviation between folds divided by the square root of the number of folds. The min-max range refers to the repetitions of cross-validation, after averaging over the folds of each repetition. In either case, these numbers reflect uncertainty due to running the procedure on different subsamples of the data set, which may be useful when comparing the relative importance of predictors to the model and performance of different models validated using the same subsampling schema.
 
 What happens if we don't use the 1SE rule?
 
@@ -171,7 +139,7 @@ What happens if we don't use the 1SE rule?
 summary(mod, oneSE = FALSE)
 ```
 
-On the one hand, this has a bad result in that some of the noise predictors make it into the model, two of them (`noise2` and `noise4`) reliably so. (The others are shrunk to 0 on at least some cross-validation runs, which is indicated by a `0.000` value in either the `Min` or `Max` column.) On the other hand, the drop-off in variance explained between the CV and Test holdouts is minimal (about 1% point), and the performance on the Test holdouts is slightly better than what was obtained under the 1SE rule. 
+On the one hand, this has a bad result in that some of the noise predictors make it into the model, two of them (`noise2` and `noise4`) reliably so. (The others are shrunk to 0 on at least some cross-validation runs, which is indicated by a `0.000` value in either the `Min` or `Max` column.) On the other hand, the drop-off in variance explained between the CV and Test holdouts is not severe, and the performance on the Test holdouts is slightly better than what was obtained under the 1SE rule. 
 
 By default, variance explained (or deviance explained for non-Gaussian models) appears at the end of the `summary` output. You can instead obtain mean absolute error, mean squared error, or mean cross entropy by setting the `metric` argument to `"mae"`, `"mse"`, or `"mce"`, respectively, in the `print` method. For example, to see mean squared error in the summary, you could code the following:
 
@@ -182,7 +150,7 @@ summary(mod) %>% print(metric = "mse")
 To see the estimated test performance using all metrics, use `validate`. Include any arguments that specify model selection rules other than the defaults, which are spelled out explicitly in the following example:
 
 ```{r}
-validate(mod, metric = "mce", oneSE = TRUE, alpha = NULL, lambda = NULL)
+validate(mod, metric = "auto", oneSE = TRUE, alpha = NULL, lambda = NULL)
 ```
 
 ## Other model families
@@ -190,15 +158,11 @@ validate(mod, metric = "mce", oneSE = TRUE, alpha = NULL, lambda = NULL)
 `beset_elnet` can also perform logistic and Poisson regression. An example of logistic regression will be shown here using baseline exam results on prostate cancer patients from Dr. Donn Young at The Ohio State University Comprehensive Cancer Center, which is a data set that is included in the textbook *Applied Logistic Regression: Second Edition* by Hosmer and Lemeshow (2000). The data set contains 380 patients, 153 with cancer. Variables are similar to the previous example and include age, race, results of digital rectal exam (DPROS), detection of capsular involvement in rectal exam (DCAPS), prostate specific antigen (PSA), tumor volume from ultrasound (VOLUME), and total Gleason score (GLEASON). Except the goal this time is to predict whether or not prostate cancer is present.
 
 ```{r}
-prostate <- read_csv("https://raw.github.com/0xdata/h2o/master/smalldata/logreg/prostate.csv") %>% 
-  select(-ID) %>%
-  mutate(RACE = factor(RACE, levels = c(1,2), labels = c("white", "black")),
-         DCAPS = factor(DCAPS, labels = c("no", "yes")))
 summary(prostate)
 ```
 
 ```{r}
-mod <- beset_elnet(CAPSULE ~ ., data = prostate, family = "binomial",
+mod <- beset_elnet(tumor ~ ., data = prostate, family = "binomial",
                    nest_cv = TRUE)
 summary(mod)
 ```

@@ -35,7 +35,7 @@ To perform best subset selection with linear models, use `beset_lm` (or equivale
 mod <- beset_lm(Fertility ~ ., train_data)
 ```
 
-There are several optional arguments that can be used to set a cap on the number of predictors, and control parallel processing and cross-validation. We will explore the optional parameters in greater detail later on.
+There are several optional arguments that can be used to set a cap on the number of predictors and control parallel processing and cross-validation. We will explore the optional parameters in greater detail later on.
 
 # Plotting cross-validation error curves
 
@@ -45,13 +45,13 @@ The plot method for `beset_lm` and `beset_glm` allows one to plot any of the fol
 plot(mod)
 ```
 
-In the above plot, `Train` refers to how well the model fits the training data. For linear models, train `MSE` is guaranteed to always decrease with the addition of more predictors, even if the predictors being added are completely useless (as we know to be the case here for at least the 5 random noise predictors). This graph shows a typical pattern in which the training error continues to decrease, while the cross-validation error (`CV`, plotted in red, which estimates how well the model will predict new data) decreases to a point and then begins to level off or increase with the addition of more predictors. The `CV` curves are plotted with standard errors based on the variance in the errors when predicting the left-out folds. A plot of $R^2$ (`"rsq"`) shows the opposite pattern: `Train` $R^2$ will continuously increase with the addition of more predictors, while `CV` $R^2$ will increase to a point and then level off or begin decreasing:
+In the above plot, `Train Sample` refers to how well the model fits the training data. For linear models, train MSE is guaranteed to always decrease with the addition of more predictors, even if the predictors being added are completely useless (as we know to be the case here for at least the 5 random noise predictors). This graph shows a typical pattern in which the training error continues to decrease, while the cross-validation error (`CV Holdout`, plotted in red, which estimates how well the model will predict new data) decreases to a point and then begins to level off or increase with the addition of more predictors. The `CV Holdout` curves are plotted with standard errors based on the variance in the errors when predicting the left-out folds. A plot of $R^2$ (`"rsq"`) shows the opposite pattern: `Train Sample` $R^2$ will continuously increase with the addition of more predictors, while `CV Holdout` $R^2$ will increase to a point and then level off or begin decreasing:
 
 ```{r, fig.height=4, fig.width=5}
 plot(mod, "rsq")
 ```
 
-Note that unlike Train $R^2$, which is bounded between 0 and 1, it is possible for CV $R^2$ to be negative, as is the case when the number of predictors is 0, which corresponds to the null, or intercept-only, model, which is simply the mean of the train sample. Given that the train sample's mean cannot predict the test sample better than the test sample's own mean, the predictive $R^2$ for the null model will almost always be negative and can never be positive. More generally, the predictive $R^2$ will be negative whenever a model is bad, i.e., instead of reducing uncertainty, the model adds to it. This can also happen with non-null models if they include too few observations and too many useless predictors. Note that the error bars are much wider for $R^2$ than for `MSE`. This is because $R^2$ is a ratio and there are *two* sources of error: the numerator (reflecting variability in `MSE` when predicting each fold) and the denominator (reflecting variability in the variance of the sample in each fold). The within-fold estimate of $R^2$ is especially unstable for small sample sizes such as this one.
+Note that unlike the train $R^2$, which is bounded between 0 and 1, it is possible for the cross-validation $R^2$ to be negative, as is the case when the number of predictors is 0, which corresponds to the null, or intercept-only, model, which is simply the mean of the train sample. Given that the train sample's mean cannot predict the test sample better than the test sample's own mean, the predictive $R^2$ for the null model can never be positive. More generally, the predictive $R^2$ will be negative whenever a model is bad, i.e., instead of reducing uncertainty, the model adds to it. This can also happen with non-null models if they include too few observations and too many useless predictors. Note that the error bars are much wider for $R^2$ than for MSE. This is because $R^2$ is a ratio and there are *two* sources of error: the numerator (reflecting variability in `MSE` when predicting each fold) and the denominator (reflecting variability in the variance of the sample in each fold). The within-fold estimate of $R^2$ is especially unstable for small sample sizes such as this one.
 
 # Summarizing the best model
 
@@ -142,23 +142,22 @@ Note that withholding a single test set is presented for illustration purposes o
 
 # Performing a nested cross-validation
 
-As you can see from the above example, a single test set may not provide a representative example of general test error, but cross-validation estimates of test error may be biased if they are used to select model parameters. One solution is to perform a nested cross-validation, i.e., have an outer cross-validation for estimating test error and an inner cross-validation (nested within the training folds of the outer cross-validation) for tuning the optimal number of predictors. This can be accomplished by using the argument `nest_cv` = TRUE, but be warned: this can be computationally expensive.
+As you can see from the above example, a single test set may not provide a representative example of general test error, but cross-validation estimates of test error may be biased if they are used to select model parameters. One solution is to perform a nested cross-validation, i.e., have an outer cross-validation for estimating test error and an inner cross-validation (nested within the training folds of the outer cross-validation) for tuning the optimal number of predictors. This can be accomplished by using the argument `nest_cv` = TRUE, but be warned: this can be computationally expensive when there are a large number of predictors. To get this example to run more quickly, we will constrain the model search to a maximum of 5 predictors using the **`p_max`** parameter.
 
 Note that here you should use the full data set as the argument rather than the `data_partition` object. `beset_` modeling functions can either estimate test error using a single train-test partition or using nested cross-validation, and will instruct you to pick one or the other if you ask for both. 
 
 ```{r, fig.height=4, fig.width=5}
-mod <- beset_lm(Fertility ~ ., data = train_data, nest_cv = TRUE,
-                p_max = 5)
+mod <- beset_lm(Fertility ~ ., data = train_data, nest_cv = TRUE, p_max = 5)
 plot(mod)
 ```
 
-Note that the graph looks much the same as before, but the `Test Holdout` now refers to the outer cross-validation (which provides the estimate of test error) whereas the `CV Holdout` refers to the inner cross-validation (which is used to select the optimum number of predictors). Also, the Test Holdout is now accompanied by a standard error because it is based on averaging several holdout samples. Because the errors of the two cross-validations typically share a lot of overlap, the error bars have been replaced with error ribbons for easier visualization. Incidentally, you can always turn off the error display by setting `se = FALSE`.
+Note that the graph looks much the same as before, but the `Test Holdout` now refers to the outer cross-validation (which provides the estimate of test error) whereas the `CV Holdout` refers to the inner cross-validation (which is used to select the optimum number of predictors). Also, the `Test Holdout` is now accompanied by a standard error because it is based on averaging several holdout samples. Because the errors of the inner and outer cross-validations typically share a lot of overlap, the error bars have been replaced with error ribbons for easier visualization. Incidentally, you can always turn off the error display by setting `se = FALSE`.
 
 ```{r, fig.height=4, fig.width=5}
 plot(mod, se = FALSE)
 ```
 
-For this sample, we see that the cross-validation error which would be used for selecting the model tends to be optimistic relative to the cross-validation error that remains independent of selection decisions. However, over the range of model complexity that is under serious consideration for the best model (3-5 predictors) the difference is minimal.
+For this sample, we see that the cross-validation error, which would be used for selecting the model, tends to be optimistic relative to the cross-validation error that remains independent of selection decisions. However, over the range of model complexity that is under serious consideration for the best model (3-5 predictors) the difference is minimal.
 
 Running a nested cross-validation has other advantages besides unbiased estimates of test error. Namely, it allows us to gauge the uncertainty in the selection of optimal tuning parameters and its impact on the coefficient estimates. If you run the `summary` function on a `"nested"` `"beset"` object, you will see a breakdown of how often each model was selected as "best" using the given criteria, and that there is now a standard error and min-max range for the model coefficients and for the variance explained in the train sample, tune holdout, and test holdout.
 
@@ -166,7 +165,13 @@ Running a nested cross-validation has other advantages besides unbiased estimate
 summary(mod)
 ```
 
-In this case we see that the 3-predictor model of Education, Catholic, and Infant.Mortality is selected as the best model 73% of the time. The coefficients reported are not the coefficients of a single model, but rather the ranked (by absolute value) average of the standardized coefficients across all of the resampled models. (If a variable was not selected for a given model, then its coefficient is treated as 0 for that model when the coefficients are averaged.) Note that the standard-error refers to the standard deviation between folds divided by the square root of the number of folds. The min-max range refers to the repetitions of cross-validation, after averaging over the folds of each repetition. In either case, these numbers reflect uncertainty due to running the procedure on different subsamples of the data set, which may be useful when comparing the relative importance of predictors to the model and performance of different models validated using the same subsampling schema.
+In this case we see that the 3-predictor model of Education, Catholic, and Infant.Mortality is selected as the best model 76% of the time. The coefficients reported are not the coefficients of a single model, but rather the average of the coefficients across all of the resampled models. (If a variable was not selected for a given model, then its coefficient is treated as 0 for that model when the coefficients are averaged.) Standardized coefficients (`Stnd.Coef`) are shown by default and ranked in order of absolute magnitude. If you would like to see the unstandardized coefficients instead, call the `print` method explicitly and set the argument `standardize` to `FALSE`:
+
+```{r}
+summary(mod) %>% print(standardize = FALSE)
+```
+
+Note that the standard-error refers to the standard deviation between folds divided by the square root of the number of folds. The min-max range refers to the repetitions of cross-validation, after averaging over the folds of each repetition. In either case, these numbers reflect uncertainty due to running the procedure on different subsamples of the data set, which may be useful when comparing the relative importance of predictors to the model and performance of different models validated using the same subsampling scheme.
 
 What happens if we don't use the 1SE rule and instead select the model with the very best cross-validation error?
 
@@ -174,7 +179,7 @@ What happens if we don't use the 1SE rule and instead select the model with the 
 summary(mod, oneSE = FALSE)
 ```
 
-Observe that this results in a far less stable solution, and that one or more noise variables are frequently selected. By default, variance explained (or deviance explained for non-Gaussian models) appears at the end of the `summary` output. Observe that the gap between the three different estimates (train, tune, and test) is smaller when the 1SE rule is used. Instead of variance/deviance explained, you can instead obtain mean absolute error, mean squared error, or mean cross entropy by setting the `metric` argument to `"mae"`, `"mse"`, or `"mce"`, respectively, in the `print` method. For example, to see mean squared error in the summary, you could code the following:
+Observe that this results in a less stable solution, and that noise variables are frequently selected. By default, variance explained (or deviance explained for non-Gaussian models) appears at the end of the `summary` output. Observe that the gap between the three different estimates (train, tune, and test) is smaller when the 1SE rule is used. Instead of variance/deviance explained, you can instead obtain mean absolute error, mean squared error, or mean cross entropy by setting the `metric` argument to `"mae"`, `"mse"`, or `"mce"`, respectively, in the `print` method. For example, to see mean squared error in the summary, you could code the following:
 
 ```{r}
 summary(mod) %>% print(metric = "mse")
@@ -194,8 +199,7 @@ If you do not want to search over all the variables in your data frame, simply w
 
 ```{r}
 mod <- beset_lm(Fertility ~ Agriculture + Examination + Education +
-                  Catholic + Infant.Mortality, train_data, 
-                nest_cv = TRUE)
+                  Catholic + Infant.Mortality, train_data)
 summary(mod)
 ```
 
@@ -211,10 +215,10 @@ First of all, this expands the number of model parameters from 5 to 31. The comp
 
 ```{r}
 mod <- beset_lm(Fertility ~ Education * Catholic * Infant.Mortality,
-                train_data, nest_cv = TRUE)
+                train_data)
 ```
 
-We see that the best predictors of Fertility are the two-way interaction terms `Education` $\times$ `Catholic` and `Catholic` $\times$ `Infant.Mortality` *without any lower order, non-interaction terms that comprise the interaction*. Given that this is no longer a hierarchical linear model, the interpretation of these terms as interaction effects is no longer valid.
+we see that the best predictors of Fertility are the two-way interaction terms `Education` $\times$ `Catholic` and `Catholic` $\times$ `Infant.Mortality` *without any lower order, non-interaction terms that comprise the interaction*. Given that this is no longer a hierarchical linear model, the interpretation of these terms as interaction effects is no longer valid.
 
 ```{r}
 summary(mod)
@@ -236,11 +240,10 @@ This shows that, among hierarchically complete models, the additive model is sti
 
 ## Using a different number of folds or repetitions of cross-validation
 
-This is accomplished with the `n_folds` and `n_reps` arguments. For example, here is the same model but with a $10 \times 5$ cross-validation instead of the default $10 \times 10$:
+This is accomplished with the `n_folds` and `n_reps` arguments. For example, here is the same model but with a $5 \times 5$ cross-validation instead of the default $10 \times 10$:
 
 ```{r}
-mod <- beset_lm(Fertility ~ ., train_data, nest_cv = TRUE, p_max = 5,
-                n_folds = 5, n_reps = 10)
+mod <- beset_lm(Fertility ~ ., train_data, n_folds = 5, n_reps = 5)
 summary(mod)
 ```
 
@@ -248,7 +251,7 @@ summary(mod)
 plot(mod)
 ```
 
-5-fold cross-validation is known to give overly pessimistic estimates of test error, particularly with smaller sample sizes. So using 5-fold cross-validation to perform model selection will tend to result in simpler models being chosen than would 10-fold cross-validation. This tendency will be less evident with larger sample sizes, and reducing the number of folds and/or repetitions will speed up compute times. More information about setting these parameters is given in the `vignette("validate")`.
+5-fold cross-validation tends to give more pessimistic estimates of test error as compared to 10-fold. This tendency will be less evident with larger sample sizes, and reducing the number of folds and/or repetitions will speed up compute times. For more information about setting these parameters, check out `vignette("validate", "beset")`.
 
 # Generalized linear models
 
@@ -256,21 +259,17 @@ plot(mod)
 
 ## Classification models
 
-An example of logistic regression will be shown here using baseline exam results on prostate cancer patients from Dr. Donn Young at The Ohio State University Comprehensive Cancer Center, which is a data set that is included in the textbook *Applied Logistic Regression: Second Edition* by Hosmer and Lemeshow (2000). The data set contains 380 patients, 153 with cancer. Variables are age, race, results of digital rectal exam (`DPROS`), detection of capsular involvement in rectal exam (`DCAPS`), prostate specific antigen (`PSA`), tumor volume from ultrasound (`VOLUME`), and total Gleason score (`GLEASON`). The goal is to predict whether or not prostate cancer is present (`CAPSULE`).
+An example of logistic regression will be shown here using baseline exam results on prostate cancer patients from Dr. Donn Young at The Ohio State University Comprehensive Cancer Center. See `?prostate` for details. 
 
 ```{r}
-prostate <- read_csv("https://raw.github.com/0xdata/h2o/master/smalldata/logreg/prostate.csv") %>% 
-  select(-ID) %>%
-  mutate(RACE = factor(RACE, levels = c(1,2), labels = c("white", "black")),
-         DCAPS = factor(DCAPS, labels = c("no", "yes")))
+data("prostate")
 summary(prostate)
 ```
 
 The syntax for fitting a logistic model with `beset_glm` is much the same as you would use with `glm`:
 
 ```{r}
-mod <- beset_glm(CAPSULE ~ ., data = prostate, family = "binomial",
-                   nest_cv = TRUE)
+mod <- beset_glm(tumor ~ ., data = prostate, family = "binomial")
 ```
 
 Note that beset issues a warning that 3 rows with missing data are being dropped. As with lm and glm, missing values are not allowed and listwise deletion of missing values is performed, but `beset` does you the courtesy of letting you know that this is happening.
@@ -283,14 +282,14 @@ summary(mod)
 
 ```{r, eval = FALSE}
 # Incorrect syntax
-beset_glm(CAPSULE ~ ., data = prostate, family = binomial("probit"))
+beset_glm(tumor ~ ., data = prostate, family = binomial("probit"))
 ```
 
 If you want to use a non-default link function (e.g., `"probit"`), this will also be passed as a string via a separate `link` parameter:
 
 ```{r, eval = FALSE}
 # Correct syntax
-beset_glm(CAPSULE ~ ., data = prostate, family = "binomial", 
+beset_glm(tumor ~ ., data = prostate, family = "binomial", 
           link = "probit") %>% summary()
 ```
 
@@ -314,62 +313,56 @@ For binomial classification only, one may also both plot and select models by th
 plot(mod, metric = "auc")
 ```
 
-Classification goodness levels off after about 2 predictors and does not appear to worsen even with the inclusion of all predictors. 
+Classification goodness levels off after about 2 predictors and does not appear to worsen even with the inclusion of all predictors. Based on this metric `DPROS` and `GLEASON` are still the best predictors.
 
 ```{r}
 summary(mod, metric = "auc")
 ```
 
-### Use of deviance-based $R_D^2$
-
-Ordinary $R^2$ can show undesirable properties when applied to GLMs with non-normal error distributions, such as the training $R^2$ not uniformly increasing as more predictors are added. However, `beset` calculates the deviance-based $R_D^2$, which can be reliably used with all of the model families it supports to indicate the fraction of uncertainty in the outcome that the model is explaining. This is labeled explicitly when you ask for a plot of `"r2"`, but the $R^2$s that appear in the summary output are calculated in the same way. See the help file for `beset`'s `r2d` function for more info.
-
-```{r, fig.height=4, fig.width=5}
-plot(mod, metric = "rsq")
-```
-
 ## Count models
 
-Consider this distribution of adolescent depression scores from a study by Dainer-Best et al. (2018). See `?adolescents` for details.[^1]
+Consider this distribution of adolescent depression scores from a study by Dainer-Best et al. (2018).[^1] (See `?adolescents` for details.)
 
-[^1]: Note that this study searched over 20 candidate predictors, which takes a considerable amount of compute time. For the sake of brevity, the example data set in this package has been reduced to 8 candidate predictors.
+[^1]: Note that this study searched over 20 candidate predictors, which takes a considerable amount of compute time. For the sake of brevity, the example data set in this package has been reduced to 10 candidate predictors.
 
 ```{r}
 data("adolescents")
-qplot(x = dep, bins = 10, data = adolescents) + theme_classic()
+qplot(x = dep, bins = 10, data = na.omit(adolescents)) + theme_classic()
 ```
 
-Given this distribution, linear models, which assume that prediction errors are normally distributed, cannot hope to fit the data very well. In fact, this distribution bears a strong resemblance to count data, i.e., the number of occurences of an event within a fixed period, such as the number of soccer goals scored for each game in a season. Although it may seem strange to think of a depression questionairre in this way, one could view these instruments as counting the number of depression symptoms scored for each person in a study. More importantly, depression scores cannot be negative and can only take on integer values. Models of count data respect these properties.
+Given this distribution, linear models, which assume that prediction errors are normally distributed, cannot hope to fit the data very well. In fact, this distribution bears a strong resemblance to count data, i.e., the number of occurrences of an event within a fixed period, such as the number of soccer goals scored for each game in a season. Although it may seem strange to think of a depression questionnaire in this way, one could view these instruments as counting the number of depression symptoms scored for each person in a study. More importantly, depression scores cannot be negative and can only take on integer values. Models of count data respect these properties.
 
-After creating a train/test partition as before, the first option one might consider is a **Poisson regression**, which can be performed as follows:
+The first option one might consider is a **Poisson regression**, which can be performed as follows:
 
 ```{r}
-mod <- beset_glm(dep ~ ., data = adolescents, family = "poisson", 
-                 nest_cv = TRUE)
+mod_poisson <- beset_glm(dep ~ ., data = adolescents, family = "poisson")
 ```
+
+```{r, fig.height=4, fig.width=5}
+plot(mod_poisson)
+```
+
+Given the clear minimum at 4 predictors and how little divergence we observe between the cross-validation and training error at the minimum (which is a function of the large sample size), I would opt here for not using the 1SE rule:
 
 ```{r}
-plot(mod)
+poisson_summary <- summary(mod_poisson, oneSE = FALSE)
+poisson_summary
 ```
-
-```{r}
-summary(mod)
-```
-
-About 3/4 of the subsamples found that a two predictor model of number of negative words and number of positive words endorsed as self descriptive was the best model. The remaining 1/4 of the subsamples selected only the number of negative words endorsed as the best model. On average, the selected models explain about 35% of the deviance in the test holdout.
 
 Of course, the Poisson distribution, which has a variance equal to its mean, does not describe these data very well either because there is too much *overdispersion*, i.e., the variance of this distribution is greater than the mean. A potentially better way to fit the data is with a **negative binomial regression**, which `beset_glm` will perform if `family` is set to `"negbin"`. Note that this is not a family supported by the `glm` function in R; rather, `beset_glm` calls an internal modified version of the `glm.nb` function from the `MASS` package to fit an extra parameter called *theta* to model overdispersion.
 
 ```{r}
-mod <- beset_glm(dep ~ ., data = adolescents, family = "negbin", 
-                 nest_cv = TRUE)
+mod_negbin <- beset_glm(dep ~ ., data = adolescents, family = "negbin")
 ```
+
+```{r, fig.height=4, fig.width=5}
+plot(mod_negbin) 
+```
+
 
 ```{r}
-plot(mod, "rsq")
+negbin_summary <- summary(mod_negbin, oneSE = FALSE)
+negbin_summary
 ```
 
-
-```{r}
-summary(mod)
-```
+Note that we obtain the same predictors in this model, but the quality of fit, given by the AIC, is better: `r round(negbin_summary$best$aic)` for the negative binomial model vs. `r round(poisson_summary$best$aic)` for the Poisson model, a `r round(100 * (1 -  negbin_summary$best$aic / poisson_summary$best$aic), 1)`% improvement. Also note that **the $R^2_D$ values from the two different models should not be used to compare models that assume a different family of error distribution**. This is because the null model on which the deviance calculation is based differs between the two models: the null model for the Poisson model is an intercept-only model whereas the null model for the negative binomial model has an intercept plus the parameter $\theta$ to account for the overdispersion of the model. If you compare the mean cross entropy scores for the 0 predictor models between the two plots, you will see that there is already an improvement in the negative binomial model just from accounting for this overdispersion.

@@ -14,7 +14,7 @@ vignette: >
 ---
 
 ```{r, echo = FALSE}
-suppressPackageStartupMessages(library(beset))
+library(beset)
 suppressPackageStartupMessages(library(ggplot2))
 ```
 
@@ -25,8 +25,7 @@ For example, consider this example model that uses the [Prostate Cancer Data](ht
 Suppose we have a hypothesis that Gleason score predicts PSA. Since there are only 4 unique Gleason scores (6, 7, 8, and 9), let's first convert this from a numeric to a factor variable.
 
 ```{r}
-library(ElemStatLearn)
-data(prostate)
+data("prostate", package = "ElemStatLearn")
 prostate$gleason <- factor(prostate$gleason)
 qplot(gleason, lpsa, data = prostate, geom = "boxplot") + geom_jitter()
 ```
@@ -49,23 +48,24 @@ summary(lin_mod)
 To obtain cross-validation metrics using default settings, simply pass the model object to the S3 generic function `validate`. If you have not specified the number of folds or repetitions to use, a 10 X 10 cross-validation will be performed by default (10-fold c.v. repeated 10 times). 
 
 ```{r}
-validate(lin_mod)
+cv_results <- validate(lin_mod)
+cv_results
 ```
 
 ## Prediction Metrics
 
 The print method for objects returned by `validate` will report 4 summary statistics of prediction error on the hold-out data and, provided more than one repetition was performed, the range of each statistic observed across the different repetitions.
 
-1. **Mean absolute error.** This corresponds to the mean of the absolute value of the prediction residuals. On average, our model predictions tend to miss the true PSA score by 0.765 log units. 
+1. **Mean absolute error.** This corresponds to the mean of the absolute value of the prediction residuals. On average, our model predictions tend to miss the true PSA score by `r round(cv_results$stats$mae$mean, 2)` log units. 
 
 2. **Mean cross entropy.** This is an information-theory metric that corresponds to the mean negative log-likelihood of the observations. Smaller is better, but the magnitude of this value is not particularly informative by itself. It is mainly useful for evaluating models that optimize a loss function other than the residual sum of squares, especially binary classification models that minimize logistic loss. (Cross entropy in this case is identical to "log loss".) To obtain a benchmark, you can always compare this metric to the expected negative log-likelihood of a null (intercept-only) model:
 
 ```{r}
 null_model <- lm(lpsa ~ 1, data = prostate)
--logLik(null_model) / nobs(null_model)
+mce <- as.numeric(-logLik(null_model) / nobs(null_model))
 ```
 
-In this case, we can see that our model reduces the mean cross entropy from 1.56 to 1.44, a 7.7% improvement.
+In this case, we can see that our model reduces the mean cross entropy from `r signif(mce, 3)` to `r signif(cv_results$stats$mce$mean, 3)`.
 
 3. **Mean squared error.** The traditional performance metric for regression models of a continuous response.  
 
