@@ -5,12 +5,70 @@
 \alias{plot.beset_rf}
 \title{Beset Random Forest}
 \usage{
-beset_rf(form, data, n_trees = 500, sample_rate = 0.632, mtry = NULL,
-  min_obs_in_node = NULL, n_folds = 10, n_reps = 10, seed = 42,
-  class_wt = NULL, cutoff = NULL, strata = NULL, parallel_type = NULL,
-  n_cores = NULL, cl = NULL)
+beset_rf(form, data, n_trees = 500, sample_rate = 0.6320000291,
+  mtry = NULL, min_obs_in_node = NULL, n_folds = 10, n_reps = 10,
+  seed = 42, class_wt = NULL, cutoff = NULL, strata = NULL,
+  parallel_type = NULL, n_cores = NULL, cl = NULL)
 
 \method{plot}{beset_rf}(x, metric = c("auto", "mse", "rsq"), ...)
+}
+\arguments{
+\item{form}{A model \code{\link[stats]{formula}}.}
+
+\item{data}{Data frame containing the variables in the model.}
+
+\item{n_trees}{Number of trees. Defaults to 500.}
+
+\item{sample_rate}{Row sample rate per tree (from \code{0 to 1}). Defaults to
+\code{0.6320000291}.}
+
+\item{mtry}{(Optional) \code{integer} number of variables randomly sampled
+as candidates at each split. If omitted, defaults to the square root of the
+number of predictors for classification and one-third the number of
+predictors for regression.}
+
+\item{min_obs_in_node}{(Optional) \code{integer} number specifying the
+fewest allowed observations in a terminal node. If omitted, defaults to 1 for
+classification and 5 for regression.}
+
+\item{n_folds}{Integer indicating the number of folds to use for
+cross-validation.}
+
+\item{n_reps}{Integer indicating the number of times cross-validation should
+be repeated (with different randomized fold assignments).}
+
+\item{seed}{An integer used to seed the random number generator when
+assigning observations to folds.}
+
+\item{class_wt}{Priors of the classes. Ignored for regression.}
+
+\item{cutoff}{(Classification only)  A vector of length equal to
+    number of classes.  The `winning' class for an observation is the
+    one with the maximum ratio of proportion of votes to cutoff.
+    Default is 1/k where k is the number of classes (i.e., majority vote
+    wins).}
+
+\item{strata}{A (factor) variable that is used for stratified sampling.}
+
+\item{parallel_type}{(Optional) character string indicating the type of
+parallel operation to be used, either \code{"fork"} or \code{"sock"}. If
+omitted and \code{n_cores > 1}, the default is \code{"sock"} for Windows and
+\code{"fork"} for any other OS.}
+
+\item{n_cores}{Integer value indicating the number of workers to run in
+parallel during subset search and cross-validation. By default, this will
+be set to one fewer than the maximum number of physical cores you have
+available, as indicated by \code{\link[parallel]{detectCores}}. Set to 1 to
+disable parallel processing.}
+
+\item{cl}{(Optional) \code{\link[parallel]{parallel}} or
+\code{\link[snow]{snow}} cluster for use if \code{parallel_type = "sock"}.
+If not supplied, a cluster on the local machine is automatically created.}
+
+\item{x}{a \code{"beset_rf"} object to plot}
+
+\item{...}{optional parameters to be passed to the low level function
+    \code{randomForest.default}.}
 }
 \description{
 \code{beset_rf} is a wrapper to \code{\link[randomForest]{randomForest}} that

@@ -7,8 +7,31 @@
 #' information is retained for compatibility with \code{beset} methods such as
 #' variable \code{\link{importance}} and partial \code{\link{dependence}}.
 #'
+#' @param data Data frame containing the variables in the model.
+#'
+#' @param n_trees Number of trees. Defaults to 500.
+#'
+#' @param sample_rate Row sample rate per tree (from \code{0 to 1}). Defaults to
+#' \code{0.6320000291}.
+#'
+#' @param mtry (Optional) \code{integer} number of variables randomly sampled
+#' as candidates at each split. If omitted, defaults to the square root of the
+#' number of predictors for classification and one-third the number of
+#' predictors for regression.
+#'
+#' @param min_obs_in_node (Optional) \code{integer} number specifying the
+#' fewest allowed observations in a terminal node. If omitted, defaults to 1 for
+#' classification and 5 for regression.
+#'
+#' @param class_wt Priors of the classes. Ignored for regression.
+#'
+#' @param x a \code{"beset_rf"} object to plot
+#'
+#' @inheritParams beset_glm
+#' @inheritParams randomForest::randomForest
+#'
 #' @export
-beset_rf <- function(form, data, n_trees = 500, sample_rate = 0.632,
+beset_rf <- function(form, data, n_trees = 500, sample_rate = 0.6320000291,
                      mtry = NULL, min_obs_in_node = NULL,
                      n_folds = 10, n_reps = 10, seed = 42,
                      class_wt = NULL, cutoff = NULL, strata = NULL,
@@ -87,7 +110,7 @@ beset_rf <- function(form, data, n_trees = 500, sample_rate = 0.632,
       forests = cv_fits,
       stats = cv_stats,
       data = data
-    ), class = "beset_rf"
+    ), class = c("beset_rf", "beset")
   )
 }
 
