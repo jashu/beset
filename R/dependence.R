@@ -123,8 +123,9 @@ dependence.beset <- function(
                    newoffset = object$parameters$offset,
                    alpha = alpha, lambda = lambda,
                    metric = metric, oneSE = oneSE)
-  impact <- (max(y_hat) - min(y_hat)) /
-    (max(object$parameters$y) - min(object$parameters$y))
+  y_obs <- object$parameters$y
+  if(is.factor(y_obs)) y_obs <- as.integer(y_obs) - 1
+  impact <- (max(y_hat) - min(y_hat)) / (max(y_obs) - min(y_obs))
   plot_data <- data_frame(
     x = x_plot,
     y = y_hat
@@ -155,17 +156,23 @@ dependence.nested_elnet <- function(
   if(is.null(x_lab)) x_lab <- x
   if(is.null(y_lab)) y_lab <- y
   variable_importance <- importance(object, alpha = alpha, lambda = lambda,
-                                    metric = metric, oneSE = oneSE) %>%
-    filter(variable == x) %>% mutate(variable = x_lab)
+                                    metric = metric, oneSE = oneSE)
+  keep <- map(x, ~ grep(.x, variable_importance$variable)) %>% as_vector
+  variable_importance <- variable_importance[keep,]
+  matching_labels <- map(x, ~ grep(.x, variable_importance$variable))
+  walk2(x_lab, matching_labels,
+       function(x, i) variable_importance$variable[i] <<- x)
+  variable_importance <- variable_importance %>% group_by(variable) %>%
+    summarize_all(max)
   if(is.null(n_cores) || n_cores > 1){
-    parallel_control <- setup_parallel(
+    parallel_control <- beset:::setup_parallel(
       parallel_type = parallel_type, n_cores = n_cores, cl = cl)
     have_mc <- parallel_control$have_mc
     n_cores <- parallel_control$n_cores
     cl <- parallel_control$cl
   }
   pd <- if(n_cores > 1L){
-    if(have_mc){
+    if(is.null(cl)){
       parallel::mclapply(object$beset, dependence, x = x, cond = cond,
                          alpha = alpha, lambda = lambda, metric = metric,
                          oneSE = oneSE, x_lab = x_lab, y_lab = y_lab,
@@ -219,11 +226,14 @@ dependence.nested_elnet <- function(
           geom_smooth(method = "lm", size = 1.5, color = "tomato2")
         }) + xlab(x_lab) + ylab(y_lab) + theme_bw()
   }
-  variable_importance <- mutate(
-    delta = map_dbl(impact, median),
-    delta_low = map_dbl(impact, ~ quantile(.x, .025)),
-    delta_high = map_dbl(impact, ~ quantile(.x, .975))
-  )
+  variable_importance <- variable_importance %>%
+    inner_join(
+      data_frame(
+        variable = names(impact),
+        delta = map_dbl(impact, median),
+        delta_low = map_dbl(impact, ~ quantile(.x, .025)),
+        delta_high = map_dbl(impact, ~ quantile(.x, .975))
+      ), by = "variable")
   structure(
     list(partial_dependence = partial_dependence,
          variable_importance = variable_importance),

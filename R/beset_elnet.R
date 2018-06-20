@@ -188,6 +188,8 @@ beset_elnet <- function(
     }
     terms <- terms(mf)
     xlevels = .getXlevels(terms, mf)
+    data <- mf
+    attr(data, "terms") <- NULL
   } else if(inherits(data, "data_partition")){
     terms <- terms(data$train)
     xlevels <- .getXlevels(terms, data$train)
