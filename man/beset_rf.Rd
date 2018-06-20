@@ -83,3 +83,7 @@ variable \code{\link{importance}} and partial \code{\link{dependence}}.
 \item \code{plot}: Plot method for "beset_rf" objects
 }}
 
+\examples{
+data("prostate", package = "beset")
+rf <- beset_rf(tumor ~ ., data = prostate)
+}

@@ -62,11 +62,15 @@ importance.nested <- function(object, ...){
 #' @export
 #' @describeIn importance Relative importance method for "beset_rf" objects
 importance.beset_rf <- function(object, ...){
-  import <- map(object$forests, ~ .x$importance[,1]) %>% transpose %>%
-    simplify_all %>% map_dbl(mean)
-  import_sd <- map(object$forests, ~ .x$importanceSD) %>% transpose %>%
-    simplify_all %>% map_dbl(mean)
-  max_idx <- which.max(import)
+  import_name <- c("MeanDecreaseAccuracy", "%IncMSE")
+  import_name <- intersect(import_name, colnames(object$forests[[1]]$importance))
+  import <- map(object$forests, ~ .x$importance[, import_name]) %>%
+    transpose %>% simplify_all %>% map_dbl(mean)
+  import_sd <- map(object$forests, ~.x$importanceSD)
+  if(inherits(import_sd[[1]], "matrix")){
+    import_sd <- map(import_sd, ~.x[, import_name])
+  }
+  import_sd <- import_sd %>% transpose %>% simplify_all %>% map_dbl(mean)
   scale_by <- sum(import)
   import <- import / scale_by
   import_sd <- import_sd / scale_by

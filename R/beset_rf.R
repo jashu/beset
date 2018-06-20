@@ -30,6 +30,9 @@
 #' @inheritParams beset_glm
 #' @inheritParams randomForest::randomForest
 #'
+#' @examples
+#' data("prostate", package = "beset")
+#' rf <- beset_rf(tumor ~ ., data = prostate)
 #' @export
 beset_rf <- function(form, data, n_trees = 500, sample_rate = 0.6320000291,
                      mtry = NULL, min_obs_in_node = NULL,
@@ -46,13 +49,14 @@ beset_rf <- function(form, data, n_trees = 500, sample_rate = 0.6320000291,
   }
   data <- model.frame(form, data = data)
   y <- data[[1]]
+  if(n_distinct(y) == 2) y <- factor(y)
   names(y) <- row.names(data)
   x <- data[-1]
   n_obs <- length(y)
-  cv_par <- set_cv_par(n_obs, n_folds, n_reps)
+  cv_par <- beset:::set_cv_par(n_obs, n_folds, n_reps)
   n_folds <- cv_par$n_folds; n_reps <- cv_par$n_reps
-  fold_ids <- create_folds(y = y, n_folds = n_folds, n_reps = n_reps,
-                           seed = seed)
+  fold_ids <- beset:::create_folds(y = y, n_folds = n_folds, n_reps = n_reps,
+                                   seed = seed)
   rf_par <- list(
     ntree = n_trees,
     mtry = if(!is.null(y) && !is.factor(y)){
@@ -60,7 +64,11 @@ beset_rf <- function(form, data, n_trees = 500, sample_rate = 0.6320000291,
     } else {
       floor(sqrt(ncol(x)))
     },
-    replace = FALSE, classwt = class_wt, cutoff = cutoff, strata = strata,
+    replace = FALSE, classwt = class_wt,
+    cutoff = if(is.null(cutoff) && is.factor(y)){
+      n_class <- length(levels(y))
+      rep(1/n_class, n_class)
+    } else cutoff, strata = strata,
     sampsize = ceiling(sample_rate * nrow(x)),
     nodesize = if(is.null(min_obs_in_node)){
       if(!is.null(y) && !is.factor(y)) 5 else 1
@@ -75,7 +83,7 @@ beset_rf <- function(form, data, n_trees = 500, sample_rate = 0.6320000291,
       rf_par)
   )
   cv_fits <- if(n_cores > 1L){
-    if(have_mc){
+    if(is.null(cl)){
       parallel::mclapply(train_data, function(x){
         set.seed(seed); a <- do.call(randomForest::randomForest, x)
       }, mc.cores = n_cores)
@@ -89,9 +97,17 @@ beset_rf <- function(form, data, n_trees = 500, sample_rate = 0.6320000291,
       set.seed(seed); do.call(randomForest::randomForest, x)
     })
   }
-  y_hat <- map2(cv_fits, train_data, ~ as.matrix(predict(.x, .y$xtest)))
-  family <- ifelse(n_distinct(y) == 2, "binomial", "gaussian")
-  cv_stats <- get_cv_stats(y = y, y_hat = y_hat, family = family,
+  if(!is.null(cl)) parallel::stopCluster(cl)
+  type <- if(is.factor(y)) "prob" else "response"
+  y_hat <- map2(cv_fits, train_data,
+                ~ as.matrix(predict(.x, .y$xtest, type = type)))
+  if(is.factor(y)){
+    y_hat <- map(y_hat, ~ .x[, 2, drop = FALSE])
+    family <- "binomial"
+  } else {
+    family <- "gaussian"
+  }
+  cv_stats <- beset:::get_cv_stats(y = y, y_hat = y_hat, family = family,
                            n_folds = n_folds, n_reps = n_reps)
   fold_assignments <- get_fold_ids(fold_ids, n_reps)
   cv_stats <- structure(

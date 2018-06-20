@@ -256,7 +256,6 @@ dependence.randomForest <- function(
   }
   xes <- setdiff(names(data), x)
   x_obs <- as_vector(data[x])
-  print(x); print(x_obs)
   covars <- data[xes]
   covars <- map_df(covars, function(x){
     if(is.factor(x))
@@ -278,8 +277,12 @@ dependence.randomForest <- function(
   plot_data <- map_df(plot_data, ~ return(covars))
   plot_data <- bind_cols(x = x_plot, plot_data)
   names(plot_data)[1] <- x
-  y_hat <- predict(object, newdata = plot_data, type = "response")
-  impact <- (max(y_hat) - min(y_hat)) / (max(object$y) - min(object$y))
+  type <- if(object$type == "classification") "prob" else "response"
+  y_hat <- predict(object, newdata = plot_data, type = type)
+  if(inherits(y_hat, "matrix")) y_hat <- y_hat[, "1"]
+  y_obs <- object$y
+  if(is.factor(y_obs)) y_obs <- as.integer(y_obs) - 1
+  impact <- (max(y_hat) - min(y_hat)) / (max(y_obs) - min(y_obs))
   plot_data <- data_frame(
     x = x_plot,
     y = y_hat
@@ -327,11 +330,12 @@ dependence.beset_rf <- function(object, x = NULL, cond = NULL,
     } else {
       parallel::parLapply(cl, object$forests, beset:::dependence.randomForest,
                           data = data, x = x, y = y, cond = cond,
-                          x_lab = x_lab, y_lab = y_lab)
+                          x_lab = x_lab, y_lab = y_lab, make_plot = FALSE)
     }
   } else {
     lapply(object$forests, beset:::dependence.randomForest, data = data,
-           x = x, y = y, cond = cond, x_lab = x_lab, y_lab = y_lab)
+           x = x, y = y, cond = cond, x_lab = x_lab, y_lab = y_lab,
+           make_plot = FALSE)
   }
   if(!is.null(cl)) parallel::stopCluster(cl)
   if(length(x) > 1){
