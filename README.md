@@ -14,7 +14,7 @@ To install `beset` in R, you first need to install the `devtools` package if you
 
 Once `devtools` is installed, use the following command to install `beset` on your system:
 ```
-	devtools::install_github("jashu/beset", build_vignettes = TRUE")
+	devtools::install_github("jashu/beset", build_vignettes = TRUE)
 ```
 
 After intalling, to learn more about `beset`, start with the vignettes:
