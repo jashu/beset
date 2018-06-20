@@ -25,10 +25,22 @@
 #'
 #' @param class_wt Priors of the classes. Ignored for regression.
 #'
-#' @param x a \code{"beset_rf"} object to plot
+#' @param x A \code{"beset_rf"} object to plot
+#'
+#' @param metric Prediction metric to plot. Options are mean squared error
+#' (\code{"mse"}) or R-squared (\code{"rsq"}) for regression, and
+#' misclassification error (\code{"err.rate"}) for classification. Default
+#' \code{"auto"} plots MSE for regression and error rate for classification.
 #'
 #' @inheritParams beset_glm
 #' @inheritParams randomForest::randomForest
+#'
+#' @return A "beset_rf" object with the following components:
+#' \describe{
+#'   \item{forests}{list of "randomForest" objects for each fold and repetition}
+#'   \item{stats}{a "cross_valid" object giving cross-validation metrics}
+#'   \item{data}{the data frame used to train random forest}
+#'  }
 #'
 #' @examples
 #' data("prostate", package = "beset")
@@ -39,24 +51,55 @@ beset_rf <- function(form, data, n_trees = 500, sample_rate = 0.6320000291,
                      n_folds = 10, n_reps = 10, seed = 42,
                      class_wt = NULL, cutoff = NULL, strata = NULL,
                      parallel_type = NULL, n_cores = NULL, cl = NULL){
+  #======================================================================
+  # Set up x and y arguments for randomForest.default
+  #----------------------------------------------------------------------
   data <- mutate_if(data, is.logical, factor)
-  if(is.null(n_cores) || n_cores > 1){
+  data <- model.frame(form, data = data)
+  n_omit <- length(attr(data, "na.action"))
+  if(n_omit > 0){
+    warning(paste("Dropping", n_omit, "rows with missing data."),
+            immediate. = TRUE)
+    attr(data, "na.action") <- NULL
+  }
+  x <- data[-1]
+  y <- data[[1]]
+  names(y) <- row.names(data)
+  if(is.factor(y)){
+    if(n_distinct(y) > 2){
+      stop(
+        paste("Multinomial classification not supported by beset at this time.",
+              "Please use the `randomForest` package directly for this.",
+              sep = "\n")
+      )
+    }
+  } else {
+    if(n_distinct(y) == 2) y <- factor(y)
+  }
+  #======================================================================
+  # Set up parallel operations
+  #----------------------------------------------------------------------
+  if(!is.null(cl)){
+    if(!inherits(cl, "cluster")) stop("Not a valid parallel socket cluster")
+    n_cores <- length(cl)
+  } else if(is.null(n_cores) || n_cores > 1){
+    if(is.null(parallel_type)) parallel_type <- "sock"
     parallel_control <- setup_parallel(
       parallel_type = parallel_type, n_cores = n_cores, cl = cl)
-    have_mc <- parallel_control$have_mc
     n_cores <- parallel_control$n_cores
     cl <- parallel_control$cl
   }
-  data <- model.frame(form, data = data)
-  y <- data[[1]]
-  if(n_distinct(y) == 2) y <- factor(y)
-  names(y) <- row.names(data)
-  x <- data[-1]
+  #======================================================================
+  # Set up cross-validation
+  #----------------------------------------------------------------------
   n_obs <- length(y)
   cv_par <- beset:::set_cv_par(n_obs, n_folds, n_reps)
   n_folds <- cv_par$n_folds; n_reps <- cv_par$n_reps
   fold_ids <- beset:::create_folds(y = y, n_folds = n_folds, n_reps = n_reps,
                                    seed = seed)
+  #======================================================================
+  # Set up arguments for randomForest
+  #----------------------------------------------------------------------
   rf_par <- list(
     ntree = n_trees,
     mtry = if(!is.null(y) && !is.factor(y)){
@@ -82,6 +125,9 @@ beset_rf <- function(form, data, n_trees = 500, sample_rate = 0.6320000291,
            ytest = y[i]),
       rf_par)
   )
+  #======================================================================
+  # Train and cross-validate random forests
+  #----------------------------------------------------------------------
   cv_fits <- if(n_cores > 1L){
     if(is.null(cl)){
       parallel::mclapply(train_data, function(x){
@@ -131,41 +177,46 @@ beset_rf <- function(form, data, n_trees = 500, sample_rate = 0.6320000291,
 }
 
 #' @export
-#' @describeIn beset_rf Plot method for "beset_rf" objects
-plot.beset_rf <- function(x, metric = c("auto", "mse", "rsq"), ...){
+#' @describeIn beset_rf Plot OOB and holdout MSE, R-squared, or error rate as a
+#'  function of number of trees in forest
+#'
+plot.beset_rf <- function(x, metric = c("auto", "mse", "rsq", "err.rate"), ...){
   metric <- tryCatch(
-    match.arg(metric, c("auto", "mse", "rsq")),
+    match.arg(metric, c("auto", "mse", "rsq", "err.rate")),
     error = function(c){
       c$message <- gsub("arg", "metric", c$message)
       c$call <- NULL
       stop(c)
     }
   )
-    if(metric == "auto"){
-      metric <- if(x$forests[[1]]$type == "regression") "mse" else "err.rate"
-    }
-    oob <- map(x$forests, ~ .x[[metric]]) %>% transpose %>% simplify_all %>%
-      map_dbl(mean)
-    oob <- data_frame(
-      sample = "Out-of-Bag",
-      n_trees = seq(1:length(oob)),
-      mean = oob
-    )
-    cv <- map(x$forests, ~ .x$test[[metric]]) %>% transpose %>%
-      simplify_all %>% map_dbl(mean)
-    cv <- data_frame(
-      sample = "Test Hold-out",
-      n_trees = seq(1:length(cv)),
-      mean = cv
-    )
-    data <- bind_rows(oob, cv)
-    y_lab <- switch(metric,
-                    err.rate = ylab("Misclassification Rate"),
-                    mse = ylab("Mean Squared Error"),
-                    rsq = ylab(bquote(~R^2)))
-    p <- ggplot(data = data, aes(x = n_trees, y = mean, color = sample)) +
-       theme_classic() + xlab("Number of trees") + y_lab +
-      geom_line(size = 1) + theme(legend.title = element_blank())
-    suppressWarnings(print(p))
+  if(metric == "auto"){
+    metric <- if(x$forests[[1]]$type == "regression") "mse" else "err.rate"
+  }
+  if(metric %in% c("mse", "rsq") && x$forests[[1]]$type != "regression"){
+    warning(paste(metric, " plots not available for classification.\n",
+                  "Misclassification rate plotted instead.", sep = ""))
+    metric <- "err.rate"
+  }
+  oob <- map(x$forests, ~ .x[[metric]])
+  if(inherits(oob[[1]], "matrix")) oob <- map(oob, ~ .x[,1])
+  oob <- oob %>% transpose %>% simplify_all %>% map_dbl(mean)
+  oob <- data_frame(
+    sample = "Out-of-Bag", n_trees = seq(1:length(oob)), mean = oob
+  )
+  cv <- map(x$forests, ~ .x$test[[metric]])
+  if(inherits(cv[[1]], "matrix")) cv <- map(cv, ~ .x[,1])
+  cv <- cv %>% transpose %>% simplify_all %>% map_dbl(mean)
+  cv <- data_frame(
+    sample = "Test Holdout", n_trees = seq(1:length(cv)), mean = cv
+  )
+  data <- bind_rows(oob, cv)
+  y_lab <- switch(metric,
+                  err.rate = ylab("Misclassification Rate"),
+                  mse = ylab("Mean Squared Error"),
+                  rsq = ylab(bquote(~R^2)))
+  p <- ggplot(data = data, aes(x = n_trees, y = mean, color = sample)) +
+    theme_classic() + xlab("Number of trees") + y_lab +
+    geom_line(size = 1) + theme(legend.title = element_blank())
+  suppressWarnings(print(p))
 }
 
