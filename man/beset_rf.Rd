@@ -10,7 +10,7 @@ beset_rf(form, data, n_trees = 500, sample_rate = 0.6320000291,
   seed = 42, class_wt = NULL, cutoff = NULL, strata = NULL,
   parallel_type = NULL, n_cores = NULL, cl = NULL)
 
-\method{plot}{beset_rf}(x, metric = c("auto", "mse", "rsq"), ...)
+\method{plot}{beset_rf}(x, metric = c("auto", "mse", "rsq", "err.rate"), ...)
 }
 \arguments{
 \item{form}{A model \code{\link[stats]{formula}}.}
@@ -65,10 +65,23 @@ disable parallel processing.}
 \code{\link[snow]{snow}} cluster for use if \code{parallel_type = "sock"}.
 If not supplied, a cluster on the local machine is automatically created.}
 
-\item{x}{a \code{"beset_rf"} object to plot}
+\item{x}{A \code{"beset_rf"} object to plot}
+
+\item{metric}{Prediction metric to plot. Options are mean squared error
+(\code{"mse"}) or R-squared (\code{"rsq"}) for regression, and
+misclassification error (\code{"err.rate"}) for classification. Default
+\code{"auto"} plots MSE for regression and error rate for classification.}
 
 \item{...}{optional parameters to be passed to the low level function
     \code{randomForest.default}.}
+}
+\value{
+A "beset_rf" object with the following components:
+\describe{
+  \item{forests}{list of "randomForest" objects for each fold and repetition}
+  \item{stats}{a "cross_valid" object giving cross-validation metrics}
+  \item{data}{the data frame used to train random forest}
+ }
 }
 \description{
 \code{beset_rf} is a wrapper to \code{\link[randomForest]{randomForest}} that
@@ -80,7 +93,8 @@ variable \code{\link{importance}} and partial \code{\link{dependence}}.
 }
 \section{Methods (by generic)}{
 \itemize{
-\item \code{plot}: Plot method for "beset_rf" objects
+\item \code{plot}: Plot OOB and holdout MSE, R-squared, or error rate as a
+function of number of trees in forest
 }}
 
 \examples{
