@@ -70,16 +70,16 @@ test_that("neg binomial  R_squared = 1 - deviance/null_dev",{
   expect_equal(metrics$rsq, r2)
 })
 
-test_that("zeroinfl poisson cross entropy = -logLik/N", {
-  object <- pscl::zeroinfl(art ~ ., data = pscl::bioChemists, dist = "poisson")
-  metrics <- predict_metrics(object, object$model)
-  expect_equal(metrics$mce,
-               -1 * as.numeric(stats::logLik(object))/nrow(object$model))
-})
-
-test_that("zeroinfl negbin cross entropy = -logLik/N", {
-  object <- pscl::zeroinfl(art ~ ., data = pscl::bioChemists, dist = "negbin")
-  metrics <- predict_metrics(object, object$model)
-  expect_equal(metrics$mce,
-               -1 * as.numeric(stats::logLik(object))/nrow(object$model))
-})
+# test_that("zeroinfl poisson cross entropy = -logLik/N", {
+#   object <- pscl::zeroinfl(art ~ ., data = pscl::bioChemists, dist = "poisson")
+#   metrics <- predict_metrics(object, object$model)
+#   expect_equal(metrics$mce,
+#                -1 * as.numeric(stats::logLik(object))/nrow(object$model))
+# })
+#
+# test_that("zeroinfl negbin cross entropy = -logLik/N", {
+#   object <- pscl::zeroinfl(art ~ ., data = pscl::bioChemists, dist = "negbin")
+#   metrics <- predict_metrics(object, object$model)
+#   expect_equal(metrics$mce,
+#                -1 * as.numeric(stats::logLik(object))/nrow(object$model))
+# })
