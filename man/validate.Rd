@@ -66,7 +66,8 @@ object call}
 \item{parallel_type}{(Optional) character string indicating the type of
 parallel operation to be used, either \code{"fork"} or \code{"sock"}. If
 omitted and \code{n_cores > 1}, the default is \code{"sock"} for Windows and
-\code{"fork"} for any other OS.}
+otherwise either \code{"fork"} or \code{"sock"} depending on which process is
+being run.}
 
 \item{n_cores}{Integer value indicating the number of workers to run in
 parallel during subset search and cross-validation. By default, this will

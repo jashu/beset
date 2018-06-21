@@ -4,7 +4,16 @@
 #' workhorse function analagous to \code{\link[stats]{glm.fit}} where the
 #' response vector, design matrix, and family have already been calculated.
 #'
-#' @inheritParams stats::glm
+#' @inheritParams beset_glm
+#' @param x A design matrix of dimension \code{n * p}
+#' @param y A vector of observations of length \code{n}.
+#' @param offset A vector of length \code{nobs} specifying an \emph{a priori}
+#'               known component that will be added to the linear predictor
+#'               before applying the link function. Default is NULL.
+#' @param family The result of a call to either \code{\link[stats]{poisson}} or
+#'               \code{\link[MASS]{negative.binomial}}.
+#' @param control A list of parameters for controlling the fitting process to be
+#'                passed to \code{\link[stats]{glm.control}}
 #' @export
 
 glm_nb <- function(x, y, weights = rep(1, nobs), start = NULL, etastart = NULL,
@@ -13,6 +22,12 @@ glm_nb <- function(x, y, weights = rep(1, nobs), start = NULL, etastart = NULL,
   loglik <- function(th, mu, y, w){
     sum(w * (lgamma(th + y) - lgamma(th) - lgamma(y + 1) + th * log(th) + y *
                log(mu + (y == 0)) - (th + y) * log(th + mu)))
+  }
+  if(!grepl("(poisson)|(Negative Binomial)", family$family)){
+    stop(paste(
+      "`family` argument must be an object returned by",
+      "`poisson()` or `negative.binomial()`", sep = "\n")
+    )
   }
   control <- do.call("glm.control", control)
   xnames <- dimnames(x)[[2L]]
@@ -79,4 +94,58 @@ logLik.negbin <- function (object, ...) {
   attr(val, "nobs") <- sum(!is.na(object$residuals))
   class(val) <- "logLik"
   val
+}
+
+theta_ml <- function(y, mu, n = sum(weights), weights, limit = 10,
+                     eps = .Machine$double.eps^0.25, trace = FALSE)
+{
+  score <- function(n, th, mu, y, w){
+    sum(
+      w * (
+        digamma(th + y) - digamma(th) + log(th) + 1 - log(th + mu) -
+          (y + th)/(mu + th)
+        )
+      )
+  }
+  info <- function(n, th, mu, y, w){
+    sum(
+      w * (
+        -trigamma(th + y) + trigamma(th) - 1/th + 2/(mu + th) -
+          (y + th)/(mu + th)^2
+        )
+      )
+  }
+  if (inherits(y, "lm")) {
+    mu <- y$fitted.values
+    y <- if (is.null(y$y))
+      mu + residuals(y)
+    else y$y
+  }
+  if (missing(weights))
+    weights <- rep(1, length(y))
+  t0 <- n/sum(weights * (y/mu - 1)^2)
+  it <- 0
+  del <- 1
+  if (trace)
+    message(sprintf("theta.ml: iter %d 'theta = %f'", it,
+                    signif(t0)), domain = NA)
+  while ((it <- it + 1) < limit && abs(del) > eps) {
+    t0 <- abs(t0)
+    del <- score(n, t0, mu, y, weights)/(i <- info(n, t0,
+                                                   mu, y, weights))
+    t0 <- t0 + del
+    if (trace)
+      message("theta.ml: iter", it, " theta =", signif(t0))
+  }
+  if (t0 < 0) {
+    t0 <- 0
+    warning("estimate truncated at zero")
+    attr(t0, "warn") <- gettext("estimate truncated at zero")
+  }
+  if (it == limit) {
+    warning("iteration limit reached")
+    attr(t0, "warn") <- gettext("iteration limit reached")
+  }
+  attr(t0, "SE") <- sqrt(1/i)
+  t0
 }

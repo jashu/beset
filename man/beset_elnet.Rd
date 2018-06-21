@@ -40,13 +40,13 @@ prediction error. Setting to \code{TRUE} will increase run time considerably
 (by a factor equal to the number of folds), but useful for estimating
 uncertainty in the tuning procedure. Defaults to \code{FALSE}.}
 
-\item{n_folds}{Integer indicating the number of folds to use for
+\item{n_folds}{\code{Integer} indicating the number of folds to use for
 cross-validation.}
 
-\item{n_reps}{Integer indicating the number of times cross-validation should
+\item{n_reps}{\code{Integer} indicating the number of times cross-validation should
 be repeated (with different randomized fold assignments).}
 
-\item{seed}{An integer used to seed the random number generator when
+\item{seed}{\code{Integer} used to seed the random number generator when
 assigning observations to folds.}
 
 \item{remove_collinear_columns}{\code{Logical}. In case of linearly dependent
@@ -91,7 +91,8 @@ of length equal to the number of cases.}
 \item{parallel_type}{(Optional) character string indicating the type of
 parallel operation to be used, either \code{"fork"} or \code{"sock"}. If
 omitted and \code{n_cores > 1}, the default is \code{"sock"} for Windows and
-\code{"fork"} for any other OS.}
+otherwise either \code{"fork"} or \code{"sock"} depending on which process is
+being run.}
 
 \item{n_cores}{Integer value indicating the number of workers to run in
 parallel during subset search and cross-validation. By default, this will

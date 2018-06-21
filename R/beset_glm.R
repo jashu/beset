@@ -84,14 +84,34 @@
 #' predictor variables that should be included in every model. (Note that if
 #' there is an intercept, it is forced into every model by default.)
 #'
-#' @param n_folds Integer indicating the number of folds to use for
+#' @param n_folds \code{Integer} indicating the number of folds to use for
 #' cross-validation.
 #'
-#' @param n_reps Integer indicating the number of times cross-validation should
+#' @param n_reps \code{Integer} indicating the number of times cross-validation should
 #' be repeated (with different randomized fold assignments).
 #'
-#' @param seed An integer used to seed the random number generator when
+#' @param seed \code{Integer} used to seed the random number generator when
 #' assigning observations to folds.
+#'
+#' @param contrasts (Optional) \code{list}. See the \code{contrasts.arg} of
+#'        \code{\link[stats]{model.matrix.default}}.
+#'
+#' @param offset (Optional) \code{vector} of length \code{nobs} specifying an
+#'               \emph{a priori} known component that will be added to the
+#'               linear predictor before applying the link function. Useful for
+#'               the "\code{poisson}" family (e.g. log of exposure time), or for
+#'               refining a model by starting at a current fit. Default is
+#'               \code{NULL}.
+#'
+#' @param weights (Optional) \code{numeric vector} of prior weights placed on
+#'                the observations during model fitting. Default is \code{NULL}.
+#'
+#' @param start (Optional) starting values for the parameters in the linear
+#'              predictor.
+#'
+#' @param etastart (Optional) starting values for the linear predictor.
+#'
+#' @param mustart (Optional) starting values for the vector of means.
 #'
 #' @param epsilon \code{Numeric} value of positive convergence tolerance ε; the
 #' iterations converge when \eqn{|dev - dev_{old}|/(|dev| + 0.1) < ε}. Default
@@ -116,7 +136,8 @@
 #' @param parallel_type (Optional) character string indicating the type of
 #' parallel operation to be used, either \code{"fork"} or \code{"sock"}. If
 #' omitted and \code{n_cores > 1}, the default is \code{"sock"} for Windows and
-#' \code{"fork"} for any other OS.
+#' otherwise either \code{"fork"} or \code{"sock"} depending on which process is
+#' being run.
 #'
 #' @param cl (Optional) \code{\link[parallel]{parallel}} or
 #' \code{\link[snow]{snow}} cluster for use if \code{parallel_type = "sock"}.

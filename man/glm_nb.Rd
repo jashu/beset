@@ -9,55 +9,29 @@ glm_nb(x, y, weights = rep(1, nobs), start = NULL, etastart = NULL,
   control = list(), intercept = TRUE)
 }
 \arguments{
-\item{x}{For \code{glm}:
-    logical values indicating whether the response vector and model
-    matrix used in the fitting process should be returned as components
-    of the returned value.
+\item{x}{A design matrix of dimension \code{n * p}}
 
-    For \code{glm.fit}: \code{x} is a design matrix of dimension
-    \code{n * p}, and \code{y} is a vector of observations of length
-    \code{n}.
-  }
+\item{y}{A vector of observations of length \code{n}.}
 
-\item{y}{For \code{glm}:
-    logical values indicating whether the response vector and model
-    matrix used in the fitting process should be returned as components
-    of the returned value.
+\item{weights}{(Optional) \code{numeric vector} of prior weights placed on
+the observations during model fitting. Default is \code{NULL}.}
 
-    For \code{glm.fit}: \code{x} is a design matrix of dimension
-    \code{n * p}, and \code{y} is a vector of observations of length
-    \code{n}.
-  }
+\item{start}{(Optional) starting values for the parameters in the linear
+predictor.}
 
-\item{weights}{an optional vector of \sQuote{prior weights} to be used
-    in the fitting process.  Should be \code{NULL} or a numeric vector.}
+\item{etastart}{(Optional) starting values for the linear predictor.}
 
-\item{start}{starting values for the parameters in the linear predictor.}
+\item{mustart}{(Optional) starting values for the vector of means.}
 
-\item{etastart}{starting values for the linear predictor.}
+\item{offset}{A vector of length \code{nobs} specifying an \emph{a priori}
+known component that will be added to the linear predictor
+before applying the link function. Default is NULL.}
 
-\item{mustart}{starting values for the vector of means.}
+\item{family}{The result of a call to either \code{\link[stats]{poisson}} or
+\code{\link[MASS]{negative.binomial}}.}
 
-\item{offset}{this can be used to specify an \emph{a priori} known
-    component to be included in the linear predictor during fitting.
-    This should be \code{NULL} or a numeric vector of length equal to
-    the number of cases.  One or more \code{\link{offset}} terms can be
-    included in the formula instead or as well, and if more than one is
-    specified their sum is used.  See \code{\link{model.offset}}.}
-
-\item{family}{a description of the error distribution and link
-    function to be used in the model.  For \code{glm} this can be a
-    character string naming a family function, a family function or the
-    result of a call to a family function.  For \code{glm.fit} only the
-    third option is supported.  (See \code{\link{family}} for details of
-    family functions.)}
-
-\item{control}{a list of parameters for controlling the fitting
-    process.  For \code{glm.fit} this is passed to
-    \code{\link{glm.control}}.}
-
-\item{intercept}{logical. Should an intercept be included in the
-    \emph{null} model?}
+\item{control}{A list of parameters for controlling the fitting process to be
+passed to \code{\link[stats]{glm.control}}}
 }
 \description{
 A modification of \code{\link[MASS]{glm.nb}} to provide a more efficient

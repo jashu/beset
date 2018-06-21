@@ -39,33 +39,34 @@ listed under 'List of available families and link functions'.}
 predictor variables that should be included in every model. (Note that if
 there is an intercept, it is forced into every model by default.)}
 
-\item{n_folds}{Integer indicating the number of folds to use for
+\item{n_folds}{\code{Integer} indicating the number of folds to use for
 cross-validation.}
 
-\item{n_reps}{Integer indicating the number of times cross-validation should
+\item{n_reps}{\code{Integer} indicating the number of times cross-validation should
 be repeated (with different randomized fold assignments).}
 
-\item{seed}{An integer used to seed the random number generator when
+\item{seed}{\code{Integer} used to seed the random number generator when
 assigning observations to folds.}
 
-\item{contrasts}{an optional list. See the \code{contrasts.arg}
-    of \code{model.matrix.default}.}
+\item{contrasts}{(Optional) \code{list}. See the \code{contrasts.arg} of
+\code{\link[stats]{model.matrix.default}}.}
 
-\item{offset}{this can be used to specify an \emph{a priori} known
-    component to be included in the linear predictor during fitting.
-    This should be \code{NULL} or a numeric vector of length equal to
-    the number of cases.  One or more \code{\link{offset}} terms can be
-    included in the formula instead or as well, and if more than one is
-    specified their sum is used.  See \code{\link{model.offset}}.}
+\item{offset}{(Optional) \code{vector} of length \code{nobs} specifying an
+\emph{a priori} known component that will be added to the
+linear predictor before applying the link function. Useful for
+the "\code{poisson}" family (e.g. log of exposure time), or for
+refining a model by starting at a current fit. Default is
+\code{NULL}.}
 
-\item{weights}{an optional vector of \sQuote{prior weights} to be used
-    in the fitting process.  Should be \code{NULL} or a numeric vector.}
+\item{weights}{(Optional) \code{numeric vector} of prior weights placed on
+the observations during model fitting. Default is \code{NULL}.}
 
-\item{start}{starting values for the parameters in the linear predictor.}
+\item{start}{(Optional) starting values for the parameters in the linear
+predictor.}
 
-\item{etastart}{starting values for the linear predictor.}
+\item{etastart}{(Optional) starting values for the linear predictor.}
 
-\item{mustart}{starting values for the vector of means.}
+\item{mustart}{(Optional) starting values for the vector of means.}
 
 \item{epsilon}{\code{Numeric} value of positive convergence tolerance ε; the
 iterations converge when \eqn{|dev - dev_{old}|/(|dev| + 0.1) < ε}. Default
@@ -90,7 +91,8 @@ disable parallel processing.}
 \item{parallel_type}{(Optional) character string indicating the type of
 parallel operation to be used, either \code{"fork"} or \code{"sock"}. If
 omitted and \code{n_cores > 1}, the default is \code{"sock"} for Windows and
-\code{"fork"} for any other OS.}
+otherwise either \code{"fork"} or \code{"sock"} depending on which process is
+being run.}
 
 \item{cl}{(Optional) \code{\link[parallel]{parallel}} or
 \code{\link[snow]{snow}} cluster for use if \code{parallel_type = "sock"}.
