@@ -84,7 +84,7 @@ beset_rf <- function(form, data, n_trees = 500, sample_rate = 0.6320000291,
     n_cores <- length(cl)
   } else if(is.null(n_cores) || n_cores > 1){
     if(is.null(parallel_type)) parallel_type <- "sock"
-    parallel_control <- setup_parallel(
+    parallel_control <- beset:::setup_parallel(
       parallel_type = parallel_type, n_cores = n_cores, cl = cl)
     n_cores <- parallel_control$n_cores
     cl <- parallel_control$cl
@@ -130,18 +130,18 @@ beset_rf <- function(form, data, n_trees = 500, sample_rate = 0.6320000291,
   #----------------------------------------------------------------------
   cv_fits <- if(n_cores > 1L){
     if(is.null(cl)){
-      parallel::mclapply(train_data, function(x){
+      parallel::mclapply(train_data, function(x, seed){
         set.seed(seed); a <- do.call(randomForest::randomForest, x)
-      }, mc.cores = n_cores)
+      }, seed = seed, mc.cores = n_cores)
     } else {
-      parallel::parLapply(cl, train_data, function(x){
+      parallel::parLapply(cl, train_data, function(x, seed){
         set.seed(seed); do.call(randomForest::randomForest, x)
-      })
+      }, seed = seed)
     }
   } else {
-    lapply(train_data, function(x){
+    lapply(train_data, function(x, seed){
       set.seed(seed); do.call(randomForest::randomForest, x)
-    })
+    }, seed = seed)
   }
   if(!is.null(cl)) parallel::stopCluster(cl)
   type <- if(is.factor(y)) "prob" else "response"
@@ -149,13 +149,19 @@ beset_rf <- function(form, data, n_trees = 500, sample_rate = 0.6320000291,
                 ~ as.matrix(predict(.x, .y$xtest, type = type)))
   if(is.factor(y)){
     y_hat <- map(y_hat, ~ .x[, 2, drop = FALSE])
+    for(i in seq_along(y_hat)){
+      temp <- y_hat[[i]]
+      temp[temp[,1] == 0, 1] <- .001
+      temp[temp[,1] == 1, 1] <- .999
+      y_hat[[i]] <- temp
+    }
     family <- "binomial"
   } else {
     family <- "gaussian"
   }
   cv_stats <- beset:::get_cv_stats(y = y, y_hat = y_hat, family = family,
                            n_folds = n_folds, n_reps = n_reps)
-  fold_assignments <- get_fold_ids(fold_ids, n_reps)
+  fold_assignments <- beset:::get_fold_ids(fold_ids, n_reps)
   cv_stats <- structure(
     c(cv_stats, list(
       fold_assignments = fold_assignments,
