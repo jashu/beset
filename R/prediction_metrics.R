@@ -174,5 +174,5 @@ predict_metrics_ <- function(y, y_hat, family, phi = NULL, theta = NULL){
     if(!is.null(auc)) list(auc = auc) else list(mae = mean(abs(y_hat - y))),
     list(mce = -ll_predicted / N, mse = sigma^2,
          rsq = if(length(y) > 2) 1 - dev_pred/dev_null else NA_real_)),
-    class = "prediction_metrics")
+    class = "prediction_metrics", family = family, theta = theta, phi = phi)
 }

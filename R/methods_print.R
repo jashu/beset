@@ -43,7 +43,27 @@ print.cross_valid <- function(x, ...){
 }
 
 #' @export
-print.predictive_gain <- function(x, digits = 3){
+print.prediction_metrics <- function(x, digits = 3, ...){
+  results_frame <- data.frame(
+    Metric =  map_dbl(x, ~ .) %>% signif(digits) %>% as.character
+  )
+  metrics <- names(x)
+  names(results_frame) <- NULL
+  if(attr(x, "family") != "gaussian") metrics[4] <- "r2d"
+  row.names(results_frame) <- map(
+    metrics, ~ switch(.x,
+                      rsq = "Variance Explained",
+                      r2d = "Deviance Explained",
+                      auc = "Area Under Curve",
+                      mae = "Mean Absolute Error",
+                      mce = "Mean Cross Entropy",
+                      mse = "Mean Squared Error")
+  )
+  print(results_frame, digits = digits)
+}
+
+#' @export
+print.predictive_gain <- function(x, digits = 3, ...){
   results_frame <- as_data_frame(x[c("Model1", "Model2", "Delta")])
   results_frame$CI <- map_chr(
     x[[4]], ~ paste0("[", signif(.x[1],2), ", ", signif(.x[2],2), "]", sep = "")
