@@ -268,3 +268,43 @@ summary.nested_beset <- function(object, metric = "auto", oneSE = TRUE, ...){
       ), class = "summary_nested_beset"
   )
 }
+
+#' @export
+summary.beset_rf <- function(object, ...){
+  type <- object$forests[[1]]$type
+  ntree <- object$forests[[1]]$ntree
+  mtry <- object$forests[[1]]$mtry
+  n_folds <- object$stats$parameters$n_folds
+  n_reps <- object$stats$parameters$n_reps
+  repeats <- paste("Rep", 1:n_reps, "$", sep = "")
+  rep_idx <- purrr::map(repeats, ~ grepl(.x, names(object$forests)))
+  stats_oob <- if (type == "classification") {
+    map_dbl(object$forests, ~.x$err.rate[ntree, "OOB"])
+  } else {
+    map_dbl(object$forests, ~ .x$rsq[ntree])
+  }
+  stats_test <- if (type == "classification") {
+    map_dbl(object$forests, ~.x$test$err.rate[ntree, "Test"])
+  } else {
+    map_dbl(object$forests, ~ .x$test$rsq[ntree])
+  }
+  oob_stats <- list(
+    mean = mean(stats_oob),
+    btwn_fold_se = sd(stats_oob) / sqrt(n_folds),
+    btwn_rep_range = map(rep_idx, ~ mean(stats_oob[.x])) %>% range)
+  cv_stats <- list(
+    mean = mean(stats_test),
+    btwn_fold_se = sd(stats_test) / sqrt(n_folds),
+    btwn_rep_range = map(rep_idx, ~ mean(stats_test[.x])) %>% range)
+  validation_metrics <- validate(object, metric = metric, oneSE = oneSE)
+  test_stats <- validation_metrics$stats
+  varimp <- importance(object)
+  structure(
+    list(
+      stats = list(oob = oob_stats, cv = cv_stats, test = test_stats),
+      parameters = c(
+        list(type = type, ntree = ntree, mtry = mtry),
+        validation_metrics$parameters),
+      vars = importance(object)
+    ), class = "summary_beset_rf")
+}

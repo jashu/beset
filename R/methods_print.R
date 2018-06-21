@@ -401,3 +401,73 @@ print.summary_nested_elnet <- function(x, standardize = TRUE,
 print.variable_importance <- function(x, ...){
   print(plot(x))
 }
+
+#' @export
+print.summary_beset_rf <- function(x, ...){
+  n_folds <- x$parameters$n_folds
+  n_reps <- x$parameters$n_reps
+  family <- x$parameters$family
+  type <- x$parameters$type
+  ntree <- x$parameters$ntree
+  mtry <- x$parameters$mtry
+
+
+  cat("Type of random forest: ", type, "\n", sep = "")
+  cat("Number of trees: ", ntree, "\n", sep = "")
+  cat("No. of variables tried at each split: ", mtry, sep = "")
+  cat("\n=======================================================\n")
+  if (type == "classification") {
+      cat("OOB estimate of error rate: ",
+          round(x$stats$oob$mean * 100, digits = 2), "%\n", sep = "")
+      cat("CV estimate of error rate: ",
+          round(x$stats$cv$mean * 100, digits = 2), "%\n\n", sep = "")
+  } else {
+      cat("OOB estimate of % Var explained: ",
+          round(100 * x$stats$oob$mean, digits = 2), "\n", sep = "")
+      cat("CV estimate of % Var explained: ",
+          round(100 * x$stats$cv$mean, digits = 2), "\n\n", sep = "")
+  }
+  var_imp <- x$vars %>% arrange(desc(importance))
+  coef_frame <- data_frame(
+    Importance =  var_imp$importance,
+    Min = var_imp$min_import,
+    Max = var_imp$max_import)
+  coef_frame <- mutate_all(coef_frame, ~ round(., 3))
+  coef_frame <- as.data.frame(coef_frame)
+  row.names(coef_frame) = var_imp$variable
+  print(coef_frame)
+  cat("\n\nPrediction Metrics\n")
+  cat("(Results of ", n_folds, "-fold cross-validation ", sep = "")
+  if(n_reps > 1){
+    cat("repeated ", n_reps, " times", sep = "")
+  }
+  cat(")\n")
+  results_frame <- results_frame <- data_frame(
+    Mean =  map_dbl(x$stats$test, "mean"),
+    S.E. = map_dbl(x$stats$test, "btwn_fold_se")
+  )
+  if(n_reps > 1){
+    results_frame$Min <- map_dbl(x$stats$test, ~ .x$btwn_rep_range[1])
+    results_frame$Max <- map_dbl(x$stats$test, ~ .x$btwn_rep_range[2])
+  }
+  results_frame <- dplyr::mutate_all(results_frame, ~ signif(., 3))
+  results_frame <- as.data.frame(results_frame)
+  metrics <- names(x$stats$test)
+  if(family != "gaussian") metrics[4] <- "r2d"
+  row.names(results_frame) <- map(
+    metrics, ~ switch(.x,
+                      rsq = "Variance Explained",
+                      r2d = "Deviance Explained",
+                      auc = "Area Under Curve",
+                      mae = "Mean Absolute Error",
+                      mce = "Mean Cross Entropy",
+                      mse = "Mean Squared Error")
+  )
+  print(results_frame)
+  cat("=======================================================")
+}
+
+#' @export
+print.beset_rf <- function(x, ...){
+  print(summary(x, ...))
+}
