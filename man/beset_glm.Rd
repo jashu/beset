@@ -39,6 +39,19 @@ listed under 'List of available families and link functions'.}
 predictor variables that should be included in every model. (Note that if
 there is an intercept, it is forced into every model by default.)}
 
+\item{nest_cv}{\code{Logical} value indicating whether to perform nested
+cross-validation. If \code{nest_cv = TRUE}, the cross-validation used to
+select the best model is nested within a cross-validation used to estimate
+prediction error on a new sample, thus providing as estimate of test error
+that is free from potential selection bias. Because this multiplicatively
+increases compute times by a factor equal to the number of folds, the
+default is \code{FALSE}. Note that setting this parameter to \code{TRUE} will
+provide more informative summary output regarding the uncertatinty in the
+selection procedure itself, i.e., how often a given model is chosen as
+"best" according to the given criteria, and is necessary in order for the
+returned objects to work with certain \code{beset} methods, such as
+\code{\link{compare}} and \code{\link{importance}}.}
+
 \item{n_folds}{\code{Integer} indicating the number of folds to use for
 cross-validation.}
 
@@ -166,13 +179,13 @@ folds predicts the left-out fold).
 }
 \section{Cross-validation details}{
 
-\code{beset_glm} uses \code{\link{create_folds}} to randomly partition the
-data set into \code{n_folds} * \code{n_repeats} folds within strata (factor
-levels for factor outcomes, percentile-based groups for numeric outcomes).
-This insures that the folds will be matched in terms of the outcome's
-frequency distribution. \code{beset_glm} also insures the reproducibility of
-your analysis by requiring a \code{seed} to the random number generator as
-one of its arguments.
+\code{beset_glm} randomly partitions the data set into \code{n_folds} *
+\code{n_repeats} folds within strata (factor levels for factor outcomes,
+percentile-based groups for numeric outcomes). This insures that the folds
+will be matched in terms of the outcome's frequency distribution.
+\code{beset_glm} also insures the reproducibility of your analysis by
+requiring a \code{seed} to the random number generator as one of its
+arguments.
 }
 
 \section{List of available families and link functions}{
@@ -202,7 +215,7 @@ one of its arguments.
  effects is computationally prohibitive, but I hope to offer a greedy search
  option in the future. In the meantime and in general, I would recommend the
    \href{https://cran.r-project.org/web/packages/earth/index.html}{MARS}
-   technique.
+   technique if you require this feature.
  \item \code{beset_glm} is best suited for searching over a small number of
  predictors (less than 10). For a large number of predictors (more than 20),
  \code{\link{beset_elnet}} is recommended instead. However, note that
