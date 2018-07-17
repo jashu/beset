@@ -29,8 +29,9 @@ compare.cross_valid <- function(yhat1, yhat2, n_rep = 1000, conf = 0.95,
                                 parallel_type = NULL, n_cores = NULL, cl = NULL)
 {
   y <- yhat1$parameters$y
-  if(!all.equal(y, yhat2$parameters$y)){
-    stop("Observed response for `yhat1` and `yhat2` do not match")
+
+  if(!isTRUE(all.equal(y, yhat2$parameters$y))){
+    stop("Observed responses for `yhat1` and `yhat2` do not match")
   }
   out <- list(Model1 = map_dbl(yhat1$stats, "mean"),
               Model2 = map_dbl(yhat2$stats, "mean"))
