@@ -135,5 +135,5 @@ compare.numeric <- function(yhat1, yhat2, y, ...){
 #' @export
 #' @describeIn compare two 'beset' class models
 compare.beset <- function(yhat1, yhat2, ...){
-  compare.cross_valid(validate(yhat1), validate(yhat2), ...)
+  compare.cross_valid(validate(yhat1, ...), validate(yhat2, ...))
 }
