@@ -381,6 +381,7 @@ print.summary_nested_elnet <- function(x, standardize = TRUE,
     )
   }
   results_frame <- dplyr::mutate_all(results_frame, ~ signif(., 3))
+  results_frame <- dplyr::mutate_all(results_frame, ~ zapsmall(., 3))
   results_frame <- as.data.frame(results_frame)
   row.names(results_frame) <- c("Train Sample",
                                 "CV-Tune Holdout",
