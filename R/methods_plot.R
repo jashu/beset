@@ -79,7 +79,7 @@ plot.beset <- function(x, metric = "auto", se = TRUE, ...){
   x_lab <- if(inherits(x, "elnet")){
     xlab("Regularization parameter")
   } else {
-    ylab("Number of Predictors")
+    xlab("Number of Predictors")
   }
   y_lab <- switch(metric,
                   auc = ylab("Area Under the ROC curve"),
