@@ -196,6 +196,8 @@ beset_elnet <- function(
   } else {
     stop("`data` argument must inherit class 'data.frame' or 'data_partition'")
   }
+  if(length(attr(terms, "term.labels")) <= 1L)
+    stop("Your model only has one predictor, so just use `lm` or `glm`.")
 
   #======================================================================
   # Set up parallel operations
