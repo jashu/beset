@@ -411,6 +411,7 @@ plot.part_depend <- function(x, order = "delta", p_max = 16, ...){
                            left = x$partial_dependence[[1]]$labels$y)
   )
   plot(gout)
+  return(gout)
 }
 
 #' @export
