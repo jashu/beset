@@ -90,14 +90,14 @@ check_lindep <- function(mf){
   X <- stats::model.matrix(terms(mf), mf)
   # remove intercept if present
   valid_names <- setdiff(colnames(X), "(Intercept)")
-  X <- X[, valid_names]
+  X <- X[, valid_names, drop = FALSE]
   new_X <- rm_lindep(X)
   mm_keep <- which(colnames(X) %in% colnames(new_X)) + 1
   mm_dict <- mf_to_mm(mf)
   mf_keep <- c(TRUE, purrr::map_lgl(mm_dict, ~ all(.x %in% mm_keep)))
   new_mf <- mf[mf_keep]
   attr(new_mf, "terms") <- NULL
-  if(!identical(mf, new_mf)){
+  if(ncol(new_mf) < ncol(mf)){
     lindep_vars <- setdiff(names(mf), colnames(new_mf))
     dependx <- "dependency"; predx <- "predictor"
     if(length(lindep_vars) > 1){
