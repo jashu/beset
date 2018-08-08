@@ -247,6 +247,21 @@ beset_glm <- function(form, data, family = "gaussian", link = NULL,
   } else {
     stop("`data` argument must inherit class 'data.frame' or 'data_partition'")
   }
+  tryCatch(
+    if(length(attr(terms, "term.labels")) <= 1L){
+      stop(
+        paste(
+          "Your model only has 1 predictor, so no subsets to compare.\n",
+          "To cross-validate, just use `lm` or `glm` followed by `validate`."
+          )
+      )
+    },
+    error = function(c){
+      c$call <- NULL
+      stop(c)
+    }
+  )
+
 
   #======================================================================
   # Set up parallel operations
