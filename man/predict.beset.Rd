@@ -6,7 +6,8 @@
 \usage{
 \method{predict}{beset}(object, newdata, type = "response",
   newoffset = NULL, alpha = NULL, lambda = NULL, n_pred = NULL,
-  metric = "auto", oneSE = TRUE, na.action = na.pass, ...)
+  metric = "auto", oneSE = TRUE, na.action = na.pass, tt = NULL,
+  ...)
 }
 \arguments{
 \item{object}{A \code{beset_elnet} object.}

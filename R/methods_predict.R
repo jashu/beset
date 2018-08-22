@@ -20,7 +20,7 @@
 predict.beset <- function(object, newdata, type = "response",
                           newoffset = NULL, alpha = NULL, lambda = NULL,
                           n_pred = NULL, metric = "auto", oneSE = TRUE,
-                          na.action = na.pass, ...){
+                          na.action = na.pass, tt = NULL, ...){
   metric <- tryCatch(
     match.arg(metric, c("auto", "auc", "mae", "mce", "mse", "rsq")),
     error = function(c){
@@ -42,7 +42,7 @@ predict.beset <- function(object, newdata, type = "response",
   if(metric == "auto"){
     metric <- if(object$family == "gaussian") "mse" else "mce"
   }
-  tt <- terms(object)
+  if(is.null(tt)) tt <- terms(object)
   if (missing(newdata) || is.null(newdata)) {
     X <- model.matrix(object)
     newoffset <- object$parameters$offset
@@ -52,7 +52,7 @@ predict.beset <- function(object, newdata, type = "response",
     m <- model.frame(Terms, newdata, na.action = na.action,
                      xlev = object$xlevels)
     X <- model.matrix(Terms, m, contrasts.arg = object$contrasts)
-    if("(Intercept)" %in% colnames(X)) X <- X[,-1]
+    if("(Intercept)" %in% colnames(X)) X <- X[, -1, drop = FALSE]
     if(is.null(newoffset) && all(object$parameters$fit$offset == 0))
       newoffset <- rep(0, nrow(X))
   }
@@ -75,3 +75,20 @@ model.matrix.beset <- function(object, ...){
   object$parameters$x
 }
 
+#' @export
+predict.nested <- function(object, newdata, type = "response",
+                           newoffset = NULL, alpha = NULL, lambda = NULL,
+                           n_pred = NULL, metric = "auto", oneSE = TRUE,
+                           na.action = na.pass, ...){
+  map(object$beset,
+           ~ predict(., newdata, type, newoffset, alpha, lambda, n_pred, metric,
+                     oneSE, na.action, object$terms)) %>%
+    transpose %>% simplify_all %>% map_dbl(mean)
+
+}
+
+#' @export
+predict.beset_rf <- function(object, newdata, type = "response", ...){
+  map(object$forests, ~ predict(., newdata, type, ...)) %>%
+    transpose %>% simplify_all %>% map_dbl(mean)
+}
