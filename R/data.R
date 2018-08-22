@@ -9,7 +9,7 @@
 #' data from this study can be obtained from the
 #' \href{http://dx.doi.org/10.18738/T8/XK5PXX}{Texas Data Repository}.
 #'
-#' @format A data frame with 408 rows and 11 variables:
+#' @format A data frame with 371 rows and 11 variables:
 #' \describe{
 #'   \item{dep}{total depression score from the CDI:S}
 #'   \item{v.positive}{drift rate to positive words}

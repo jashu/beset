@@ -2,7 +2,6 @@
 % Please edit documentation in R/beset_glm.R
 \name{beset_glm}
 \alias{beset_glm}
-\alias{beset_glm}
 \alias{beset_lm}
 \title{Best Subset Selection for Generalized Linear Models}
 \usage{

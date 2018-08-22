@@ -4,7 +4,7 @@
 \name{adolescents}
 \alias{adolescents}
 \title{Self-schema and depression in adolescents}
-\format{A data frame with 408 rows and 11 variables:
+\format{A data frame with 371 rows and 11 variables:
 \describe{
   \item{dep}{total depression score from the CDI:S}
   \item{v.positive}{drift rate to positive words}

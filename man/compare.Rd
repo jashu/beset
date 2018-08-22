@@ -13,9 +13,9 @@ compare(yhat1, yhat2, ...)
 \method{compare}{cross_valid}(yhat1, yhat2, n_rep = 1000, conf = 0.95,
   parallel_type = NULL, n_cores = NULL, cl = NULL)
 
-\method{compare}{data.frame}(yhat1, yhat2, y, n_rep = 1000, conf = 0.95,
-  family = "gaussian", phi = NULL, theta = NULL, parallel_type = NULL,
-  n_cores = NULL, cl = NULL, ...)
+\method{compare}{data.frame}(yhat1, yhat2, y, n_rep = 1000,
+  conf = 0.95, family = "gaussian", phi = NULL, theta = NULL,
+  parallel_type = NULL, n_cores = NULL, cl = NULL, ...)
 
 \method{compare}{numeric}(yhat1, yhat2, y, ...)
 

@@ -4,12 +4,13 @@
 \alias{beset_elnet}
 \title{Beset GLM with Elasticnet Regularization}
 \usage{
-beset_elnet(form, data, family = "gaussian", alpha = c(0.01, 0.5, 0.99),
-  n_lambda = 100, nest_cv = FALSE, n_folds = 10, n_reps = 10,
-  seed = 42, remove_collinear_columns = FALSE, skinny = FALSE,
-  standardize = TRUE, epsilon = 1e-07, maxit = 10^5,
-  lambda_min_ratio = NULL, contrasts = NULL, offset = NULL,
-  weights = NULL, parallel_type = NULL, n_cores = NULL, cl = NULL)
+beset_elnet(form, data, family = "gaussian", alpha = c(0.01, 0.5,
+  0.99), n_lambda = 100, nest_cv = FALSE, n_folds = 10,
+  n_reps = 10, seed = 42, remove_collinear_columns = FALSE,
+  skinny = FALSE, standardize = TRUE, epsilon = 1e-07,
+  maxit = 10^5, lambda_min_ratio = NULL, contrasts = NULL,
+  offset = NULL, weights = NULL, parallel_type = NULL,
+  n_cores = NULL, cl = NULL)
 }
 \arguments{
 \item{form}{A model \code{\link[stats]{formula}}.}

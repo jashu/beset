@@ -4,8 +4,8 @@
 \alias{partition}
 \title{Partition Data into Training and Test Model Frames}
 \usage{
-partition(data, y, frac = 0.5, x = NULL, offset = NULL, weights = NULL,
-  na_action = na.omit, seed = 42)
+partition(data, y, frac = 0.5, x = NULL, offset = NULL,
+  weights = NULL, na_action = na.omit, seed = 42)
 }
 \arguments{
 \item{data}{Data frame to be partitioned.}

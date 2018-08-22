@@ -10,7 +10,8 @@ beset_rf(form, data, n_trees = 500, sample_rate = 0.6320000291,
   seed = 42, class_wt = NULL, cutoff = NULL, strata = NULL,
   parallel_type = NULL, n_cores = NULL, cl = NULL)
 
-\method{plot}{beset_rf}(x, metric = c("auto", "mse", "rsq", "err.rate"), ...)
+\method{plot}{beset_rf}(x, metric = c("auto", "mse", "rsq", "err.rate"),
+  ...)
 }
 \arguments{
 \item{form}{A model \code{\link[stats]{formula}}.}

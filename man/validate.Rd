@@ -15,12 +15,12 @@ validate(object, ...)
 \method{validate}{lm}(object, data = NULL, n_folds = 10, n_reps = 10,
   seed = 42, ...)
 
-\method{validate}{glm}(object, data = NULL, n_folds = 10, n_reps = 10,
-  seed = 42, ...)
+\method{validate}{glm}(object, data = NULL, n_folds = 10,
+  n_reps = 10, seed = 42, ...)
 
 \method{validate}{glmnet}(object, x = NULL, y = NULL, lambda = NULL,
-  offset = NULL, weights = NULL, n_folds = 10, n_reps = 10, seed = 42,
-  envir = .GlobalEnv, ...)
+  offset = NULL, weights = NULL, n_folds = 10, n_reps = 10,
+  seed = 42, envir = .GlobalEnv, ...)
 
 \method{validate}{nested}(object, metric = "auto", oneSE = TRUE, ...)
 

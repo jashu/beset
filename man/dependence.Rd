@@ -10,17 +10,18 @@
 \usage{
 dependence(object, ...)
 
-\method{dependence}{nested}(object, x = NULL, cond = NULL, alpha = NULL,
-  lambda = NULL, n_pred = NULL, metric = "auto", oneSE = TRUE,
-  x_lab = NULL, y_lab = NULL, ..., parallel_type = NULL, n_cores = NULL,
-  cl = NULL)
+\method{dependence}{nested}(object, x = NULL, cond = NULL,
+  alpha = NULL, lambda = NULL, n_pred = NULL, metric = "auto",
+  oneSE = TRUE, x_lab = NULL, y_lab = NULL, ...,
+  parallel_type = NULL, n_cores = NULL, cl = NULL)
 
-\method{dependence}{beset}(object, x = NULL, cond = NULL, alpha = NULL,
-  lambda = NULL, n_pred = NULL, metric = "auto", oneSE = TRUE,
-  x_lab = NULL, y_lab = NULL, ...)
+\method{dependence}{beset}(object, x = NULL, cond = NULL,
+  alpha = NULL, lambda = NULL, n_pred = NULL, metric = "auto",
+  oneSE = TRUE, x_lab = NULL, y_lab = NULL, ...)
 
-\method{dependence}{beset_rf}(object, x = NULL, cond = NULL, x_lab = NULL,
-  y_lab = NULL, ..., parallel_type = NULL, n_cores = NULL, cl = NULL)
+\method{dependence}{beset_rf}(object, x = NULL, cond = NULL,
+  x_lab = NULL, y_lab = NULL, ..., parallel_type = NULL,
+  n_cores = NULL, cl = NULL)
 
 \method{plot}{part_depend}(x, order = "delta", p_max = 16, ...)
 }
