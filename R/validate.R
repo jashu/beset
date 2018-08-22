@@ -63,6 +63,7 @@
 #' @import purrr
 #' @import parallel
 #' @import dplyr
+#' @import utils
 #' @importFrom randomForest randomForest
 
 #' @export
