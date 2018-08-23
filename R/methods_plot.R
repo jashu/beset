@@ -42,7 +42,7 @@ plot.beset <- function(x, metric = "auto", se = TRUE, ...){
     metric <- if(x$family == "gaussian") "mse" else "mce"
   }
   if(inherits(x, "nested")){
-    data <- beset:::aggregate.nested(x, metric)
+    data <- aggregate.nested(x, metric)
   } else {
     parameters <- intersect(
       c("lambda", "alpha", "n_pred", "form", metric), names(x$stats$fit)
