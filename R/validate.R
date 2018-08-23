@@ -216,10 +216,10 @@ validate.glmnet <- function(object, x = NULL, y = NULL, lambda = NULL,
     stop("Only one value of lambda may be specified.")
   }
   offset <- if(is.null(offset) && object$offset){
-    offset <- eval(arg_list$offset, envir = envir)
+    eval(arg_list$offset, envir = envir)
   }
   if(is.null(weights)){
-    weights <- if(hasName(arg_list, "weights"))
+    weights <- if(!is.null(arg_list$weights))
       eval(arg_list$weights, envir = envir) else rep(1, nrow(x))
   }
 
@@ -245,7 +245,7 @@ validate.glmnet <- function(object, x = NULL, y = NULL, lambda = NULL,
                 ~ predict(object = .x, newx = .y$x, s = lambda,
                           type = "response", newoffset = .y$offset)
                 )
-  family <- if(hasName(arg_list, "family"))
+  family <- if(!is.null(arg_list$family))
     eval(arg_list$family) else "gaussian"
   y_hat <- map(y_hat, function(x){
     pad <- length(lambda) - ncol(x)
