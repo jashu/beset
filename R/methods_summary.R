@@ -26,6 +26,9 @@
 #' @export
 summary.beset <- function(object, n_pred = NULL, alpha = NULL, lambda = NULL,
                           metric = "auto", oneSE = TRUE, ...){
+  if(inherits(object, "rf")){
+    return(summary.beset_rf(object, ...))
+  }
   metric <- tryCatch(
     match.arg(metric, c("auto", "aic", "auc", "mae", "mce", "mse", "rsq")),
     error = function(c){

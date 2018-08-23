@@ -68,8 +68,14 @@ dependence.nested <- function(object, x = NULL, cond = NULL,
 #' @export
 dependence.beset <- function(
   object, x = NULL, cond = NULL, alpha = NULL, lambda = NULL, n_pred = NULL,
-  metric = "auto", oneSE = TRUE, x_lab = NULL, y_lab = NULL, ...
+  metric = "auto", oneSE = TRUE, x_lab = NULL, y_lab = NULL, ...,
+  parallel_type = NULL, n_cores = NULL, cl = NULL
 ){
+  if(inherits(x, "rf")){
+    return(dependence.beset_rf(object, x, cond, x_lab, y_lab, ...,
+      parallel_type = parallel_type, n_cores = n_cores, cl = cl
+    ))
+  }
   model_data <- list(...)
   if(is.null(object$data)){
     object$data <- model_data$data

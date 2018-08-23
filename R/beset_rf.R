@@ -178,7 +178,7 @@ beset_rf <- function(form, data, n_trees = 500, sample_rate = 0.6320000291,
       forests = cv_fits,
       stats = cv_stats,
       data = data
-    ), class = c("beset_rf", "beset")
+    ), class = c("beset", "rf")
   )
 }
 

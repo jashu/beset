@@ -31,14 +31,18 @@ importance <- function(object, ...){
 
 #' @export
 importance.beset <- function(object, ...){
-  tryCatch(
-    error = function(c){
-      c$message <- paste("To obtain variable importance scores,",
-                         "set `nest_cv` to `TRUE` when running `beset_`.")
-      c$call <- NULL
-      stop(c)
-    }
-  )
+  if(!inherits(object, "rf")){
+    tryCatch(
+      error = function(c){
+        c$message <- paste("To obtain variable importance scores,",
+                           "set `nest_cv` to `TRUE` when running `beset_`.")
+        c$call <- NULL
+        stop(c)
+      }
+    )
+  } else {
+    importance.beset_rf(object, ...)
+  }
 }
 
 #' @describeIn importance Determine variable importance for "nested"

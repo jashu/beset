@@ -21,6 +21,9 @@ predict.beset <- function(object, newdata, type = "response",
                           newoffset = NULL, alpha = NULL, lambda = NULL,
                           n_pred = NULL, metric = "auto", oneSE = TRUE,
                           na.action = na.pass, tt = NULL, ...){
+  if(inherits(object, "rf")){
+    return(predict.beset_rf(object, newdata, type = "response", ...))
+  }
   metric <- tryCatch(
     match.arg(metric, c("auto", "auc", "mae", "mce", "mse", "rsq")),
     error = function(c){
@@ -92,3 +95,5 @@ predict.beset_rf <- function(object, newdata, type = "response", ...){
   map(object$forests, ~ predict(., newdata, type, ...)) %>%
     transpose %>% simplify_all %>% map_dbl(mean)
 }
+
+

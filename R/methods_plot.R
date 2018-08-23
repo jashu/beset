@@ -17,6 +17,9 @@
 #' @import ggplot2
 #' @export
 plot.beset <- function(x, metric = "auto", se = TRUE, ...){
+  if(inherits(x, "rf")){
+    return(plot.beset_rf(x, metric, ...))
+  }
   metric <- tryCatch(
     match.arg(metric, c("auto", "auc", "mae", "mce", "mse", "rsq")),
     error = function(c){

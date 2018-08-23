@@ -312,42 +312,19 @@ validate.glmnet <- function(object, x = NULL, y = NULL, lambda = NULL,
   class = "cross_valid")
 }
 
-validate.beset <- function(object, metric = "auto", oneSE = TRUE, ...){
-  metric <- tryCatch(
-    match.arg(metric, c("auto", "auc", "mae", "mce", "mse", "rsq")),
-    error = function(c){
-      c$message <- gsub("arg", "metric", c$message)
-      c$call <- NULL
-      stop(c)
-    }
-  )
-  tryCatch(
-    if(
-      (metric == "auc" && object$family != "binomial") ||
-      (metric == "mae" && object$family == "binomial")
-    ) error = function(c){
-      c$message <- paste(metric, "not available for", object$family, "models")
-      c$call <- NULL
-      stop(c)
-    }
-  )
-  if(metric == "auto"){
-    metric <- if(object$family == "gaussian") "mse" else "mce"
+#' @export
+#' @describeIn validate Cross-validation of beset objects
+validate.beset <- function(object, ...){
+  if(!inherits(object, "rf")){
+    model_type <- class(object)[length(class(object))]
+    stop(
+      paste("To cross-validate the model-selection procedure for this object,",
+            "rerun", paste("beset", model_type, sep = "_"), "with argument",
+            "nest_cv = TRUE")
+    )
+  } else {
+    object$stats
   }
-  family <- object$family
-  fold_ids <- object$fold_assignments
-  n_folds <- object$n_folds
-  n_reps <- object$n_reps
-  repeats <- paste("Rep", 1:n_reps, "$", sep = "")
-  rep_idx <- map(repeats, ~ grepl(.x, names(object$beset)))
-  best_models <- map(
-    object$beset, ~
-      if(inherits(.x, "elnet")){
-        beset:::get_best.beset_elnet(.x,  metric = metric, oneSE = oneSE)
-      } else {
-        beset:::get_best.beset_glm(.x,  metric = metric, oneSE = oneSE)
-      }
-  )
 }
 
 #' @describeIn validate Extract test error estimates from "beset_elnet"

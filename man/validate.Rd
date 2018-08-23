@@ -5,6 +5,7 @@
 \alias{validate.lm}
 \alias{validate.glm}
 \alias{validate.glmnet}
+\alias{validate.beset}
 \alias{validate.nested}
 \alias{validate.randomForest}
 \alias{validate.beset_rf}
@@ -21,6 +22,8 @@ validate(object, ...)
 \method{validate}{glmnet}(object, x = NULL, y = NULL, lambda = NULL,
   offset = NULL, weights = NULL, n_folds = 10, n_reps = 10,
   seed = 42, envir = .GlobalEnv, ...)
+
+\method{validate}{beset}(object, ...)
 
 \method{validate}{nested}(object, metric = "auto", oneSE = TRUE, ...)
 
@@ -114,6 +117,8 @@ normally would and then pass the model object to \code{validate}.
 \item \code{glm}: Cross-validation of GLMs
 
 \item \code{glmnet}: Cross-validation of GLM nets
+
+\item \code{beset}: Cross-validation of beset objects
 
 \item \code{nested}: Extract test error estimates from "beset_elnet"
 objects with nested cross-validation
