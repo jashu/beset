@@ -71,7 +71,7 @@ dependence.beset <- function(
   metric = "auto", oneSE = TRUE, x_lab = NULL, y_lab = NULL, ...,
   parallel_type = NULL, n_cores = NULL, cl = NULL
 ){
-  if(inherits(x, "rf")){
+  if(inherits(object, "rf")){
     return(dependence.beset_rf(object, x, cond, x_lab, y_lab, ...,
       parallel_type = parallel_type, n_cores = n_cores, cl = cl
     ))
