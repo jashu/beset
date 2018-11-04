@@ -38,7 +38,7 @@ print.cross_valid <- function(x, digits = 2, ...){
                       mse = "Mean Squared Error")
   )
   printCoefmat(as.matrix(results_frame), digits = digits,
-               cs.ind = 1L:4L, tst.ind = NULL,
+               cs.ind = 1L:ncol(results_frame), tst.ind = NULL,
                P.values = FALSE, has.Pvalue = FALSE)
 }
 

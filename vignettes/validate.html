@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+
+<head>
+
+<meta charset="utf-8" />
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<meta name="generator" content="pandoc" />
+
+<meta name="viewport" content="width=device-width, initial-scale=1">
+
+<meta name="author" content="Jason Shumake" />
+
+<meta name="date" content="2018-11-04" />
+
+<title>beset: Easy cross-validation of GLMs</title>
+
+
+
+<style type="text/css">code{white-space: pre;}</style>
+<style type="text/css">
+div.sourceCode { overflow-x: auto; }
+table.sourceCode, tr.sourceCode, td.lineNumbers, td.sourceCode {
+  margin: 0; padding: 0; vertical-align: baseline; border: none; }
+table.sourceCode { width: 100%; line-height: 100%; }
+td.lineNumbers { text-align: right; padding-right: 4px; padding-left: 4px; color: #aaaaaa; border-right: 1px solid #aaaaaa; }
+td.sourceCode { padding-left: 5px; }
+code > span.kw { color: #007020; font-weight: bold; } /* Keyword */
+code > span.dt { color: #902000; } /* DataType */
+code > span.dv { color: #40a070; } /* DecVal */
+code > span.bn { color: #40a070; } /* BaseN */
+code > span.fl { color: #40a070; } /* Float */
+code > span.ch { color: #4070a0; } /* Char */
+code > span.st { color: #4070a0; } /* String */
+code > span.co { color: #60a0b0; font-style: italic; } /* Comment */
+code > span.ot { color: #007020; } /* Other */
+code > span.al { color: #ff0000; font-weight: bold; } /* Alert */
+code > span.fu { color: #06287e; } /* Function */
+code > span.er { color: #ff0000; font-weight: bold; } /* Error */
+code > span.wa { color: #60a0b0; font-weight: bold; font-style: italic; } /* Warning */
+code > span.cn { color: #880000; } /* Constant */
+code > span.sc { color: #4070a0; } /* SpecialChar */
+code > span.vs { color: #4070a0; } /* VerbatimString */
+code > span.ss { color: #bb6688; } /* SpecialString */
+code > span.im { } /* Import */
+code > span.va { color: #19177c; } /* Variable */
+code > span.cf { color: #007020; font-weight: bold; } /* ControlFlow */
+code > span.op { color: #666666; } /* Operator */
+code > span.bu { } /* BuiltIn */
+code > span.ex { } /* Extension */
+code > span.pp { color: #bc7a00; } /* Preprocessor */
+code > span.at { color: #7d9029; } /* Attribute */
+code > span.do { color: #ba2121; font-style: italic; } /* Documentation */
+code > span.an { color: #60a0b0; font-weight: bold; font-style: italic; } /* Annotation */
+code > span.cv { color: #60a0b0; font-weight: bold; font-style: italic; } /* CommentVar */
+code > span.in { color: #60a0b0; font-weight: bold; font-style: italic; } /* Information */
+</style>
+
+
+
+<link href="data:text/css;charset=utf-8,body%20%7B%0Abackground%2Dcolor%3A%20%23fff%3B%0Amargin%3A%201em%20auto%3B%0Amax%2Dwidth%3A%20700px%3B%0Aoverflow%3A%20visible%3B%0Apadding%2Dleft%3A%202em%3B%0Apadding%2Dright%3A%202em%3B%0Afont%2Dfamily%3A%20%22Open%20Sans%22%2C%20%22Helvetica%20Neue%22%2C%20Helvetica%2C%20Arial%2C%20sans%2Dserif%3B%0Afont%2Dsize%3A%2014px%3B%0Aline%2Dheight%3A%201%2E35%3B%0A%7D%0A%23header%20%7B%0Atext%2Dalign%3A%20center%3B%0A%7D%0A%23TOC%20%7B%0Aclear%3A%20both%3B%0Amargin%3A%200%200%2010px%2010px%3B%0Apadding%3A%204px%3B%0Awidth%3A%20400px%3B%0Aborder%3A%201px%20solid%20%23CCCCCC%3B%0Aborder%2Dradius%3A%205px%3B%0Abackground%2Dcolor%3A%20%23f6f6f6%3B%0Afont%2Dsize%3A%2013px%3B%0Aline%2Dheight%3A%201%2E3%3B%0A%7D%0A%23TOC%20%2Etoctitle%20%7B%0Afont%2Dweight%3A%20bold%3B%0Afont%2Dsize%3A%2015px%3B%0Amargin%2Dleft%3A%205px%3B%0A%7D%0A%23TOC%20ul%20%7B%0Apadding%2Dleft%3A%2040px%3B%0Amargin%2Dleft%3A%20%2D1%2E5em%3B%0Amargin%2Dtop%3A%205px%3B%0Amargin%2Dbottom%3A%205px%3B%0A%7D%0A%23TOC%20ul%20ul%20%7B%0Amargin%2Dleft%3A%20%2D2em%3B%0A%7D%0A%23TOC%20li%20%7B%0Aline%2Dheight%3A%2016px%3B%0A%7D%0Atable%20%7B%0Amargin%3A%201em%20auto%3B%0Aborder%2Dwidth%3A%201px%3B%0Aborder%2Dcolor%3A%20%23DDDDDD%3B%0Aborder%2Dstyle%3A%20outset%3B%0Aborder%2Dcollapse%3A%20collapse%3B%0A%7D%0Atable%20th%20%7B%0Aborder%2Dwidth%3A%202px%3B%0Apadding%3A%205px%3B%0Aborder%2Dstyle%3A%20inset%3B%0A%7D%0Atable%20td%20%7B%0Aborder%2Dwidth%3A%201px%3B%0Aborder%2Dstyle%3A%20inset%3B%0Aline%2Dheight%3A%2018px%3B%0Apadding%3A%205px%205px%3B%0A%7D%0Atable%2C%20table%20th%2C%20table%20td%20%7B%0Aborder%2Dleft%2Dstyle%3A%20none%3B%0Aborder%2Dright%2Dstyle%3A%20none%3B%0A%7D%0Atable%20thead%2C%20table%20tr%2Eeven%20%7B%0Abackground%2Dcolor%3A%20%23f7f7f7%3B%0A%7D%0Ap%20%7B%0Amargin%3A%200%2E5em%200%3B%0A%7D%0Ablockquote%20%7B%0Abackground%2Dcolor%3A%20%23f6f6f6%3B%0Apadding%3A%200%2E25em%200%2E75em%3B%0A%7D%0Ahr%20%7B%0Aborder%2Dstyle%3A%20solid%3B%0Aborder%3A%20none%3B%0Aborder%2Dtop%3A%201px%20solid%20%23777%3B%0Amargin%3A%2028px%200%3B%0A%7D%0Adl%20%7B%0Amargin%2Dleft%3A%200%3B%0A%7D%0Adl%20dd%20%7B%0Amargin%2Dbottom%3A%2013px%3B%0Amargin%2Dleft%3A%2013px%3B%0A%7D%0Adl%20dt%20%7B%0Afont%2Dweight%3A%20bold%3B%0A%7D%0Aul%20%7B%0Amargin%2Dtop%3A%200%3B%0A%7D%0Aul%20li%20%7B%0Alist%2Dstyle%3A%20circle%20outside%3B%0A%7D%0Aul%20ul%20%7B%0Amargin%2Dbottom%3A%200%3B%0A%7D%0Apre%2C%20code%20%7B%0Abackground%2Dcolor%3A%20%23f7f7f7%3B%0Aborder%2Dradius%3A%203px%3B%0Acolor%3A%20%23333%3B%0Awhite%2Dspace%3A%20pre%2Dwrap%3B%20%0A%7D%0Apre%20%7B%0Aborder%2Dradius%3A%203px%3B%0Amargin%3A%205px%200px%2010px%200px%3B%0Apadding%3A%2010px%3B%0A%7D%0Apre%3Anot%28%5Bclass%5D%29%20%7B%0Abackground%2Dcolor%3A%20%23f7f7f7%3B%0A%7D%0Acode%20%7B%0Afont%2Dfamily%3A%20Consolas%2C%20Monaco%2C%20%27Courier%20New%27%2C%20monospace%3B%0Afont%2Dsize%3A%2085%25%3B%0A%7D%0Ap%20%3E%20code%2C%20li%20%3E%20code%20%7B%0Apadding%3A%202px%200px%3B%0A%7D%0Adiv%2Efigure%20%7B%0Atext%2Dalign%3A%20center%3B%0A%7D%0Aimg%20%7B%0Abackground%2Dcolor%3A%20%23FFFFFF%3B%0Apadding%3A%202px%3B%0Aborder%3A%201px%20solid%20%23DDDDDD%3B%0Aborder%2Dradius%3A%203px%3B%0Aborder%3A%201px%20solid%20%23CCCCCC%3B%0Amargin%3A%200%205px%3B%0A%7D%0Ah1%20%7B%0Amargin%2Dtop%3A%200%3B%0Afont%2Dsize%3A%2035px%3B%0Aline%2Dheight%3A%2040px%3B%0A%7D%0Ah2%20%7B%0Aborder%2Dbottom%3A%204px%20solid%20%23f7f7f7%3B%0Apadding%2Dtop%3A%2010px%3B%0Apadding%2Dbottom%3A%202px%3B%0Afont%2Dsize%3A%20145%25%3B%0A%7D%0Ah3%20%7B%0Aborder%2Dbottom%3A%202px%20solid%20%23f7f7f7%3B%0Apadding%2Dtop%3A%2010px%3B%0Afont%2Dsize%3A%20120%25%3B%0A%7D%0Ah4%20%7B%0Aborder%2Dbottom%3A%201px%20solid%20%23f7f7f7%3B%0Amargin%2Dleft%3A%208px%3B%0Afont%2Dsize%3A%20105%25%3B%0A%7D%0Ah5%2C%20h6%20%7B%0Aborder%2Dbottom%3A%201px%20solid%20%23ccc%3B%0Afont%2Dsize%3A%20105%25%3B%0A%7D%0Aa%20%7B%0Acolor%3A%20%230033dd%3B%0Atext%2Ddecoration%3A%20none%3B%0A%7D%0Aa%3Ahover%20%7B%0Acolor%3A%20%236666ff%3B%20%7D%0Aa%3Avisited%20%7B%0Acolor%3A%20%23800080%3B%20%7D%0Aa%3Avisited%3Ahover%20%7B%0Acolor%3A%20%23BB00BB%3B%20%7D%0Aa%5Bhref%5E%3D%22http%3A%22%5D%20%7B%0Atext%2Ddecoration%3A%20underline%3B%20%7D%0Aa%5Bhref%5E%3D%22https%3A%22%5D%20%7B%0Atext%2Ddecoration%3A%20underline%3B%20%7D%0A%0Acode%20%3E%20span%2Ekw%20%7B%20color%3A%20%23555%3B%20font%2Dweight%3A%20bold%3B%20%7D%20%0Acode%20%3E%20span%2Edt%20%7B%20color%3A%20%23902000%3B%20%7D%20%0Acode%20%3E%20span%2Edv%20%7B%20color%3A%20%2340a070%3B%20%7D%20%0Acode%20%3E%20span%2Ebn%20%7B%20color%3A%20%23d14%3B%20%7D%20%0Acode%20%3E%20span%2Efl%20%7B%20color%3A%20%23d14%3B%20%7D%20%0Acode%20%3E%20span%2Ech%20%7B%20color%3A%20%23d14%3B%20%7D%20%0Acode%20%3E%20span%2Est%20%7B%20color%3A%20%23d14%3B%20%7D%20%0Acode%20%3E%20span%2Eco%20%7B%20color%3A%20%23888888%3B%20font%2Dstyle%3A%20italic%3B%20%7D%20%0Acode%20%3E%20span%2Eot%20%7B%20color%3A%20%23007020%3B%20%7D%20%0Acode%20%3E%20span%2Eal%20%7B%20color%3A%20%23ff0000%3B%20font%2Dweight%3A%20bold%3B%20%7D%20%0Acode%20%3E%20span%2Efu%20%7B%20color%3A%20%23900%3B%20font%2Dweight%3A%20bold%3B%20%7D%20%20code%20%3E%20span%2Eer%20%7B%20color%3A%20%23a61717%3B%20background%2Dcolor%3A%20%23e3d2d2%3B%20%7D%20%0A" rel="stylesheet" type="text/css" />
+<link href="data:text/css;charset=utf-8,%0A%2Ermd%2Dcaution%20%7B%0Apadding%3A%201em%201em%201em%204em%3B%0Amargin%2Dbottom%3A%2010px%3B%0Abackground%3A%20%20url%28data%3Aimage%2Fpng%3Bbase64%2CiVBORw0KGgoAAAANSUhEUgAAAIAAAACACAYAAADDPmHLAAAABHNCSVQICAgIfAhkiAAAAAlwSFlzAAALEwAACxMBAJqcGAAACc1JREFUeJztnW2MnUUVx3%2Fbu3Tp0i4v7RaMErYQqQGKkILWQlYSIRQVaxFZCGgTjMbyARGCiSExJn4xak1wNaaNhYSUDSBV24iaaBSoXV6CjWWDUontVkWzi9VS3N128e71w9ldSr13O%2F95Xua5z51fMp%2F27DPnmTnP3JkzZ85AJBKJRCKRSCQSiUQikUgkEik%2FbaEVyJEu4ExgMXAa0AHMn%2F7bJHAUOAQcBEaAwwF0zJ0yGkA38H7gvcAKYDmwDDhVfM4hYD%2BwFxgC9gDPAf9MTdNIKnQBNwCbsc6qZVxeBjYB64BFObxfpA5dwHrgZ9jwnXWnNyqTwBPAp4jGkAsfAB4ExgjX6Y3Kf4At2M9PJEUqwE3Y72%2FoTnYtg8AngHkZtEfL0Ab0AX8kfIf6lpeAGynnZDtTeoHdhO%2FAtMoLwBWptlBJOQt4lPAdllUZAJam1lol43bg34TvpKzLQWwFE5mmG9hO%2BI7Ju2wDzkih%2FRIRenLSiw35Z2VYx5uYg2gfMAyMYt68cWwdD%2BYS7gSWYEN0D3Au5kU8KUPdXsVWOIMZ1lFY7sI6J%2B0vawTYCnwecwcn6cD5wCXABuBhzHjS1ncSuCOBjk1HO%2BZKTbMR9wNfBy4j21FtHvA%2B4BvAgZTfoR%2FzeZSaTsx9m0aD%2FRd4DPgQYX7K2oBrgMendUnjnXYAC%2FJ8iTzpAnaSvJEmgPuBc%2FJVf06WAd8FjpD8%2FX4NLMxX%2FezpIrkrt4rt%2BL0zZ90Vzsb2A6oke9dBSmQEnST%2F8gexyVizsBJ4nuQjwcl5K5427cDP8W%2BEMeBOmnNTpQLcjf1k%2Bb7%2Fdprz3WfZjP%2FL7wbek7%2FKqXMh8CL%2B7dCfv8rp8AX8X3oLJRj%2BjmEB8BD%2B7bEhf5WT0Yufk6eKGU5ZuReYQm%2BXo8CqAPp6sQT4B%2FpLHsFi%2B8pOH35hbH8FTg%2Bgr4zPxs44cG0IZQPxYfwmhz8MoazC7fgNb63U%2BTN8BL%2BR4NYQyrrwDvT9%2FCqtMew3og99TvAa9jNbOHwieco84XPlS%2Bjt9lBalae1idILPCX%2BzwPAZ1Kq34UrsS1oFzYCz2Soy%2FFsRRvaa1iI%2FHPZqKPRhh7AuZv81%2Fk3C%2FrdmLNundjxM6UNn81Zx4b0oSk%2BRhgPX5ENAOwco7oyWBtAz7dRQY%2FbvzOIpsU3ADBHkdKWewgc1vfJOkrNVQYJt7nRDAZQwc4QKG16fRBNp1H2%2BKtYjF4omsEAwM4WKkvDp8OoabNQxVI3h1FzlmYxANA3jlb6VpRkOP6cIHsE%2BGqCulqNr2Cbaa4offE2fA2gC4tnd2Uz8HfPulqRYewYvCu3AKf4VORrAOuwtasLVeDbnvW0Mt%2FC5gIuLMJzMuhrAH2C7I%2BwGPqIxivATwV5pU9m8TGALuBqQX6TRx0RQ5k4r8F9VJ7FxwCuxv241TAW3Rrx4xe4z51OBq5SK%2FAxgDWC7MwOYcSPKnbyyJXr1Ap8DOCDgqyifKQ%2BShSQ0jeAbgDdwPmOsiPA78TnR%2F6fZ7BAGxcuxLKgOqMagJIC7VfE4T8NqrjPo2ZOLzujGoDiy%2F%2Bt%2BOxIY5S2vFh5sGoAKwTZPCNqyo6SQSRTA1juKPcm8Afx2ZHGDOHuFXSdowG6AfQ4yu1F28yIzM0E8GdH2WXKgxUD6MJ9hrlPUSLihGubLkXIMqIYwJmC7LAgG3FjWJB1TkapGMBiQXZUkI24obSpc18pBqA4GOKtGunzmiDr3FeKAXQIsuOCbMSNMUHWua8UA5h%2FYpFZJk8sEhE5KshmYgCREqIYgPJVK6NFxA3lJ9h5tFAMQBmC5MiUyAlRgj4zMYBDgmwhz683Od2CrHNfKQZwUJCNt2Kkj9Kmzn3VLjx0RJDtEWTzYhd2ltGFwhy9PoYeQTYzR5xrCpihrBRoYV7Bre2VD1XGNRHEJNnetNFqdOKegFqKw1D9AHsd5U4CLhCfHWnMRbj31Z%2BUB6sGoAztq8VnRxqj3Dko%2FfyqBrBHkL1SfHakMUpbKn0kswT3M%2BujhL%2BVrAy0Y%2Bt61yQcp2at0MuOytQQQ5QjdenFvb3lr99nM0jJBxg600YZcPVdgJ6r0Yt1uFvkAeLPQBIqaJnX5bOBPixCS3J8TR5KlZTrcW%2FncXK8cu4JQbGiHBBtpiRRM%2BzAXedtPhX4BoQ8Ish%2BnGLuDRSd5cBHBflHfSrxNYCf4B6jVgHu8aynlbkX9%2FnTYbR0MrP4GsAbaBb3WexSxYgb5wHrBfkBPANxk8QEKvlrOoh5AhW%2BhrZVHywJ5yDuk5QqCTJapkCzTAKvmEOveuXJJJUljQreKNb1%2FRTqLDPtwPfE%2F%2FlmFoq4Mg94Cc1i7w6iaXOMAF8WdKxh8RnBHW1qyvgJLJdN3hTdAC7FonmVtlSWiZnRhp7j%2FkVy9FpNU2QDWIh%2B8cauNCpWZpqNqGGXMe0U%2FmcFlkH00ynU78pfcF%2B6%2Fi1LReqwBe0anRoFvHFtAM2Ca5izo9W5D73dHgyi6QlYisWjKy8yhWeS45JwG3rnj6LlasiV9egvNIndpdtqrMXvhvWbQyirsA39pSawu3RbhY9ht6io7TQQQlmVM7BJlM9IoNxC0qzcht%2BXP0wO8X5psRq%2Fm7GnKPfE8D70y6Jr2GhxWQB9E3EH%2BovOlK2U64j5Qvwu154ped6xnCr9%2BL%2F0EFpq2qJyCbqT59ii7LcUjgpaWNPxZQL7SajkrXgKtGO%2BfdW9e2x5nAL4%2BpOyAPgN%2Fo1Qw1zNSqr60KwGfk%2Byd%2F4lWlqYQrMQLXagXpnCbtTsyVd1ifPw84geX3ZSrjkQYEaQdCSoYauLTcC781V%2FTpYDP8BveVfvyy9d58%2BwANhO8kaqYRFG2zEHUoggkwoWt78Dv6VdvbKNEg37jZhHstVBvfIqcD92ijbLCWM7dlavH%2B3EjkvZSItFS20g2Qy5UfkXNnu%2BCzucmiTuoHP6GV%2FEvk7XU7pKOULAdX7oJcYq7Fq0d2VYxxR22cI%2BzJ06iiVeHuOtfHodWB6%2BbmxXsweb0J1Ltl%2FlASz45IUM6yg8p2NGkPaXVfQyQBP59vPgVuzLDN0xWZdRmmBLNxTd2Fo%2FrVl1kcoUFslT2GCOIrEKS9YYutPSKruAy1NtoRZhLZb2JHQH%2BpbdFCR0u5lpwxwuTxO%2BQ13Lk5iDKvQqq3SsxNzAhwnfyceX17Gjb5dm9vaRWU7BZtI%2FxraMQ3X6OOYguokS%2B%2B%2BLTicWVdyPnThyzanrU6rYnOQ7WEKmvE83pU4Zf6NOw9y3F0%2BX87HrVNU7DEaA%2FVju3SGs45%2FHhvrSUEYDaEQn5mdYjBlJB2%2FtvB2dLoewwy2j2E9LJBKJRCKRSCQSiUQikUgkEomUgP8BugnBP%2F0xnjEAAAAASUVORK5CYII%3D%29%20left%20center%2F3em%20no%2Drepeat%20%21important%3B%0Aborder%2Dstyle%3Asolid%3B%0Aborder%2Dcolor%3A%23FFFF00%3B%0A%7D%0A%2Ermd%2Dcaution%3Abefore%20%7B%0Afont%2Dstyle%3A%20italic%3B%0Acontent%3A%20%22%22%3B%0A%7D%0A%2Ermd%2Ddetails%20%7B%0Apadding%3A%201em%201em%201em%204em%3B%0Amargin%2Dbottom%3A%2010px%3B%0Abackground%3A%20%20url%28data%3Aimage%2Fpng%3Bbase64%2CiVBORw0KGgoAAAANSUhEUgAAAIAAAACACAYAAADDPmHLAAAABHNCSVQICAgIfAhkiAAAAAlwSFlzAAALEwAACxMBAJqcGAAABZJJREFUeJzt3U9oHVUUx%2FHvSzXENNXGSDXxvyiKKA3iwn8tVUFRFFy0%2FlkobsSlFqSKuHIldOVKsf5ZCWpX%2FsUuXFQLaq1Nq8TGv7TWaGP6tEisSds0Li6REJL43sydc%2BbO%2FD5w1mfmnvNm3pt37x0QERERERERERGR6mt4H4CxLuB84BzgDGA50AFMAxPAn8CvwChwwukYTVW5AZYDNwA3AtcCVxOK38o5Hwd%2BBPYCO4HtwBBwspAjlWj6gEeBbcAUMBMxxoHXgDuAZVYnJK25GdgKHCNu0ReLUeBZoN%2Fi5GRhDWA9sBuboi8UU8CLhFuLGFqHb%2BHnxz%2FAc0BPgecswCrgDfwLvlj8DNxV2NnX3AagiX%2BRW4mXCb9CJIIuYAv%2BRW03hoHLCxiPWukHvsC%2FmFnjCHBr9FGpiSsJ91TvIuaNY8D9kcem8q4BDuNfvFgxDTwUdYQqbJB0vuy1EycIzy1kCZcAh%2FAvVlExCayJNloVsxIYwb9IRcc4cGGkMauMBvA%2B%2FsWxil1AZ5SRq4gn8S%2BKdWyOMnIVMIjdv3hlimnCfIVaW0aYaOFdDK8YBk7JPYoJexz%2FInjHY7lHMVG9wB%2F4F8A7msDpOccysw6vxMAmQhPU3ZnARq%2FkXpNCe4EDwAqn%2FGXTBC4Ajlon9roCPIKKP1cfNfqvoAHsx%2F%2FeW7bYnWNMk3IL%2FoNd1rgqx7hm4nEL0H%2Fji7vP%2BwCK1gGM4f9JK2vsyT602VhfAQYJM3tlYasxXmxi3QDrjPOlaK1lMusGuM44X4qut0zmcQuQpa22TGb5JLCT8KRLK2uX9jtwtlUyyyvAeaj4rViF4aoiywYYMMyVunOtElk2wErDXKk7yyqRZQNosWTrzOYHWDZArac%2BtanLKpFlA%2BgLYAlZNsCkYa7UmY2VZQP8ZZgrdRNWiSwboGmYK3VjVoksG%2BCgYa7UHbJKZPkouEF4FGz2DTdRY4StbE1YXgFmgH2G%2BVL1rWUy638D9xrnS5Hp5FDrBvjMOF%2BKdloms26Aj43zpWi7ZTLrBtiHfg0s5WvC%2BwrMeEwLf9chZyresU7o0QBvOeRMxZveB2ChAfyE%2Fxz8ssVQnkHNyuMKMAO84pC37F7wSOq1PLyP8GXwNKf8ZdMkbB33t3Vir%2BXhTXQVmOt5HIrvrZ%2Fw34D3vdc7xgmvsHPhOUtnAuhGW6duAj7xPggv3VRjS%2Fis8SWaKsfd%2BBfCI46jpXL%2FeRX%2FgljHU1FGriJ6gG%2FwL4pVfEi1X9ubyRWEiaPexSk6RtAqqUXdRrg3ehepqPgNuDTaaFXUg4SdtL2LFTsO47ALWKoeplpNMEp4C5q0YQNhhYx38fLGV8BFcYemPm4i7ZdIbUUvlM5tANiBfzHbiaOE%2FZAlklOBl%2FAvbCtxBOOdvupkM%2F4FXiomCbctKdDr%2BBd6sdBl30A3YfmUd7Hnh%2FmM3jpbi3%2FB58YU4bW3Yuht%2FAs%2FG1sKPldZwBr8Cz8besTr5Hv8i5%2F0imfP18bF8J73AQAfeB9AHqk3wA7vAwA%2B9T6APFJvgGHvAyDMZEpW6tOSVuC%2F%2FVwPCS%2FqSH371gn8V9Sav%2B1TRERERCSX1H8GQngc6ynpMUz9QZDkpAaoOTVAzakBaq4KDXDSMfe0Y%2B4oqtAAZu%2FXKVnuKKrQAL845k5%2B4%2BsqNMAex9wu27vGVIUG8JwWVoYpabXXSVh%2Fbz0Z9CBhzaKUwHrsG%2BAekzOTlj2DXfG1xVtJPUDYi6eowo8D95qdjWTSCzwNfEe8wo8QPvXa3i0xlwG7yF74z9G2bsm7k%2BwNcLvD8UoBPqL94m9zOVIpxADtbUt%2FAMMXOIuNiwl79v1f8YcI7%2B%2BRCuoEniB8wucXfj%2BwkZo93Ut6QmMODcLu5LPf8H9Ar7YXERERERERERGRyvoXreut79LU14sAAAAASUVORK5CYII%3D%29%20left%20center%2F3em%20no%2Drepeat%20%21important%3B%0Aborder%2Dstyle%3Asolid%3B%0Aborder%2Dcolor%3A%2300FF00%3B%0A%7D%0A%2Ermd%2Ddetails%3Abefore%20%7B%0Afont%2Dstyle%3A%20italic%3B%0Acontent%3A%20%22%22%3B%0A%7D%0A%0A%2Elevel1%20%7B%0Amargin%2Dtop%3A%2060px%3B%0A%7D%0A%0A%0A%2Esection%3A%3Abefore%20%7B%0A%0Acontent%3A%22%22%3B%0Adisplay%3Ablock%3B%0Aheight%3A60px%3B%0Amargin%3A%2D60px%200%200%3B%0A%7D%0A%0A%40media%20print%20%7B%0A%23TOC%2C%20TOC%20%7B%0Adisplay%3A%20none%3B%0A%7D%0A%7D%0A%0Ablockquote%20%7B%0Abackground%3A%20%23f5f5f0%3B%0Afont%2Dsize%3A%20medium%3B%0Afont%2Dstyle%3A%20italic%3B%0A%7D%0A" rel="stylesheet" type="text/css" />
+
+</head>
+
+<body>
+
+
+
+
+<h1 class="title toc-ignore"><code>beset</code>: Easy cross-validation of GLMs</h1>
+<h4 class="author"><em>Jason Shumake</em></h4>
+<h4 class="date"><em>2018-11-04</em></h4>
+
+
+
+<p>The <code>beset</code> package includes an S3 object system that enables you to easily obtain cross-validated prediction metrics from common model objects. Currently supported classes are “<code>lm</code>”, “<code>negbin</code>”, and “<code>glm</code>”/ “<code>glmnet</code>” (for <code>gaussian</code>, <code>binomial</code>, and <code>poisson</code> families only). To access this feature, first fit a model as you normally would.</p>
+<p>For example, consider this example model that uses the <a href="https://stat.ethz.ch/R-manual/R-devel/library/datasets/html/swiss.html">Swiss Fertility and Socioeconomic Indicators (1888) Data</a>. Simply fit a linear model as you normally would:</p>
+<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r">lin_mod &lt;-<span class="st"> </span><span class="kw">lm</span>(Fertility <span class="op">~</span><span class="st"> </span>., <span class="dt">data =</span> swiss)
+<span class="kw">summary</span>(lin_mod)</code></pre></div>
+<pre><code>## 
+## Call:
+## lm(formula = Fertility ~ ., data = swiss)
+## 
+## Residuals:
+##      Min       1Q   Median       3Q      Max 
+## -15.2743  -5.2617   0.5032   4.1198  15.3213 
+## 
+## Coefficients:
+##                  Estimate Std. Error t value Pr(&gt;|t|)    
+## (Intercept)      66.91518   10.70604   6.250 1.91e-07 ***
+## Agriculture      -0.17211    0.07030  -2.448  0.01873 *  
+## Examination      -0.25801    0.25388  -1.016  0.31546    
+## Education        -0.87094    0.18303  -4.758 2.43e-05 ***
+## Catholic          0.10412    0.03526   2.953  0.00519 ** 
+## Infant.Mortality  1.07705    0.38172   2.822  0.00734 ** 
+## ---
+## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+## 
+## Residual standard error: 7.165 on 41 degrees of freedom
+## Multiple R-squared:  0.7067, Adjusted R-squared:  0.671 
+## F-statistic: 19.76 on 5 and 41 DF,  p-value: 5.594e-10</code></pre>
+<p>To obtain cross-validation metrics using default settings, simply pass the model object to the S3 generic function <code>validate</code>. If you have not specified the number of folds or repetitions to use, a 10 X 10 cross-validation will be performed by default (10-fold c.v. repeated 10 times).</p>
+<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r">cv_results &lt;-<span class="st"> </span><span class="kw">validate</span>(lin_mod)
+cv_results</code></pre></div>
+<pre><code>## Mean predictive performance under 10-fold cross-validation
+## (with min-max range over 10 repetitions)
+##                       Mean   S.E.    Min    Max
+## Mean Absolute Error  6.128  0.589  5.893  6.513
+## Mean Cross Entropy   3.462  0.096  3.431  3.501
+## Mean Squared Error  59.552 10.469 55.886 64.318
+## Variance Explained   0.610  0.205  0.579  0.634</code></pre>
+<div id="prediction-metrics" class="section level2">
+<h2>Prediction Metrics</h2>
+<p>The print method for objects returned by <code>validate</code> will report 4 summary statistics of prediction error on the hold-out data and, provided more than one repetition was performed, the range of each statistic observed across the different repetitions.</p>
+<ol style="list-style-type: decimal">
+<li><p><strong>Mean absolute error.</strong> This corresponds to the mean of the absolute value of the prediction residuals. On average, our model predictions tend to miss the true fertility percentage by 6 points.</p></li>
+<li><p><strong>Mean cross entropy.</strong> This is an information-theory metric that corresponds to the mean negative log-likelihood of the observations. Smaller is better, but the magnitude of this value is not particularly informative by itself. It is mainly useful for evaluating models that optimize a loss function other than the residual sum of squares, especially binary classification models that minimize logistic loss. (Cross entropy in this case is identical to “log loss”.) To obtain a benchmark, you can always compare this metric to the expected negative log-likelihood of a null (intercept-only) model:</p></li>
+</ol>
+<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r">null_model &lt;-<span class="st"> </span><span class="kw">lm</span>(Fertility <span class="op">~</span><span class="st"> </span><span class="dv">1</span>, <span class="dt">data =</span> swiss)
+mce &lt;-<span class="st"> </span><span class="kw">as.numeric</span>(<span class="op">-</span><span class="kw">logLik</span>(null_model) <span class="op">/</span><span class="st"> </span><span class="kw">nobs</span>(null_model))</code></pre></div>
+<p>In this case, we can see that our model reduces the mean cross entropy from 3.93 to 3.46.</p>
+<ol start="3" style="list-style-type: decimal">
+<li><p><strong>Mean squared error.</strong> The traditional performance metric for regression models of a continuous response.</p></li>
+<li><p><strong>Variance Explained.</strong> It is well known that, unless the sample size <span class="math inline">\(n\)</span> greatly exceeds the number of predictors <span class="math inline">\(p\)</span>, a model’s <span class="math inline">\(R^2\)</span> will be inflated. The adjusted <span class="math inline">\(R^2\)</span> that appears in the <code>summary</code> output of an <code>lm</code> is an attempt to correct for this bias by penalizing the <span class="math inline">\(R^2\)</span> in proportion to larger <span class="math inline">\(p\)</span> and smaller <span class="math inline">\(n\)</span>. The cross-validated <span class="math inline">\(R^2\)</span> can also be thought of as an adjusted <span class="math inline">\(R^2\)</span>, except it is empirically, rather than formulaically, derived. It is the fraction of variance that the model is expected to <em>predict</em> in a <em>new</em> sample. Note for these data that the cross-validated <span class="math inline">\(R^2\)</span> is somewhat more pessimistic than the adjusted <span class="math inline">\(R^2\)</span> statistic.</p></li>
+</ol>
+
+<div class="rmd-details">
+<strong>How <code>S.E.</code>, <code>Min</code>, and <code>Max</code> are calculated</strong>. These columns report different ways of quantifying the variability of the cross-validation estimates. For example, 10-fold cross-validation results in 10 different train-test splits: 10 models and 10 different estimates of each prediction metric. The <code>S.E.</code> column reports the standard error of these different estimates, calculated as the standard deviation of the within-fold estimates divided by the square root of the number of folds. Provided that repetitions are performed (<code>n_reps &gt; 1</code>), an additional metric to evaluate is how sensitive the cross-validation estimates are to the randomized fold assignments. The <code>Min</code> and <code>Max</code> columns report the range of estimates that were obtained between repetitions (after aggregating all folds within each repetition).
+</div>
+
+<p>If you <code>validate</code> a binomial GLM, “Mean Absolute Error” will be replaced by “Area Under Curve”, i.e., the area under the receiver operating characteristic (ROC) curve, and “Variance Explained” will be replaced by “Deviance Explained”. An example of logistic regression will be shown here using baseline exam results on prostate cancer patients from Dr. Donn Young at The Ohio State University Comprehensive Cancer Center. See <code>?prostate</code> for details.</p>
+<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r">log_mod &lt;-<span class="st"> </span><span class="kw">glm</span>(tumor <span class="op">~</span><span class="st"> </span>., <span class="dt">data =</span> prostate, <span class="dt">family =</span> <span class="st">&quot;binomial&quot;</span>)
+<span class="kw">summary</span>(log_mod)</code></pre></div>
+<pre><code>## 
+## Call:
+## glm(formula = tumor ~ ., family = &quot;binomial&quot;, data = prostate)
+## 
+## Deviance Residuals: 
+##     Min       1Q   Median       3Q      Max  
+## -2.4094  -0.7759  -0.4357   0.9001   2.3795  
+## 
+## Coefficients:
+##              Estimate Std. Error z value Pr(&gt;|z|)    
+## (Intercept) -7.146190   1.617595  -4.418 9.97e-06 ***
+## age         -0.015941   0.019524  -0.817  0.41421    
+## raceblack   -0.695729   0.476357  -1.461  0.14415    
+## dpros        0.553207   0.136509   4.053 5.07e-05 ***
+## dcapsyes     0.479844   0.463905   1.034  0.30097    
+## psa          0.027194   0.009925   2.740  0.00615 ** 
+## vol         -0.010780   0.007753  -1.390  0.16441    
+## gleason      0.975085   0.167162   5.833 5.44e-09 ***
+## ---
+## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+## 
+## (Dispersion parameter for binomial family taken to be 1)
+## 
+##     Null deviance: 507.61  on 376  degrees of freedom
+## Residual deviance: 377.44  on 369  degrees of freedom
+##   (3 observations deleted due to missingness)
+## AIC: 393.44
+## 
+## Number of Fisher Scoring iterations: 5</code></pre>
+<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r"><span class="kw">validate</span>(log_mod)</code></pre></div>
+<pre><code>## Mean predictive performance under 10-fold cross-validation
+## (with min-max range over 10 repetitions)
+##                     Mean  S.E.   Min   Max
+## Area Under Curve   0.809 0.021 0.802 0.812
+## Mean Cross Entropy 0.522 0.026 0.518 0.531
+## Mean Squared Error 0.175 0.010 0.173 0.178
+## Deviance Explained 0.224 0.039 0.211 0.231</code></pre>
+
+<div class="rmd-details">
+<strong>Use of deviance-based <span class="math inline">\(R_D^2\)</span></strong>. Ordinary <span class="math inline">\(R^2\)</span> can show undesirable properties when applied to GLMs with non-normal error distributions, such as the training <span class="math inline">\(R^2\)</span> not uniformly increasing as more predictors are added. However, <code>beset</code> calculates the deviance-based <span class="math inline">\(R_D^2\)</span>, which can be reliably used with all of the model families it supports to indicate the fraction of uncertainty in the outcome that the model is explaining.
+</div>
+
+</div>
+<div id="optional-arguments" class="section level1">
+<h1>Optional Arguments</h1>
+<div id="n_folds-and-n_reps" class="section level2">
+<h2><code>n_folds</code> and <code>n_reps</code></h2>
+<p>Use the <code>n_folds</code> arg to specify the number of cross-validation folds, and the <code>n_reps</code> arg to specify the number of times that cross-validation should be repeated (with different random draws to assign cases to folds).</p>
+<p>For example, the following will result in 5 repetitions of 5-fold cross-validation:</p>
+<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r"><span class="kw">validate</span>(log_mod, <span class="dt">n_folds =</span> <span class="dv">5</span>, <span class="dt">n_reps =</span> <span class="dv">5</span>)</code></pre></div>
+<pre><code>## Mean predictive performance under 5-fold cross-validation
+## (with min-max range over 5 repetitions)
+##                      Mean   S.E.    Min    Max
+## Area Under Curve   0.8089 0.0204 0.8050 0.8135
+## Mean Cross Entropy 0.5230 0.0264 0.5175 0.5267
+## Mean Squared Error 0.1745 0.0098 0.1726 0.1765
+## Deviance Explained 0.2231 0.0391 0.2177 0.2314</code></pre>
+
+<div class="rmd-details">
+<strong>How fold assignments are made</strong>. The <code>validate</code> methods use stratified random sampling to make fold assignments. For factor responses, random fold assignment is made within each factor level, insuring that the ratio of class examples remains the same between any given train-test split. For numeric responses, the random assignment is made within quartiles of the response, insuring that the distribution of response values is similar for all train-test splits. Special consideration is given if <code>validate</code> detects a count distribution with a floor of 0; in this case, the 0 values are treated as a separate stratum to insure that the magnitude of zero-inflation is matched for all folds.
+</div>
+
+<p>To perform leave-one-out cross-validation (LOOCV), set <code>n_folds</code> to a value equal to the number of observations in your data set. (Technically, any value greater than half the number of observations will also result in LOOCV because <code>validate</code> will autocorrect any such value to equal the number of observations.) Note that under LOOCV, repetitions are pointless and will not be performed, and so ranges will not be reported in the output. Note also that for the AUC statistics and variance/deviance explained, error metrics cannot be calculated under LOOCV because these statistics are undefined for individual predictions; they can only be calculated on the aggregate predictions.</p>
+<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r"><span class="kw">validate</span>(log_mod, <span class="dt">n_folds =</span> <span class="kw">nobs</span>(log_mod), <span class="dt">n_reps =</span> <span class="dv">1</span>)</code></pre></div>
+<pre><code>## Performing leave-one-out cross-validation</code></pre>
+<pre><code>## Mean predictive performance under leave-one-out cross-validation:
+##                     Mean  S.E.
+## Area Under Curve   0.808    NA
+## Mean Cross Entropy 0.524 0.027
+## Mean Squared Error 0.175 0.011
+## Deviance Explained 0.222    NA</code></pre>
+
+<div class="rmd-details">
+<p><strong>Advice on choosing <code>n_folds</code> and <code>n_reps</code></strong>. To understand the impact of the choice of how many folds to use in cross-validation, it is helpful to consider two extremes.</p>
+<p>The smallest number of folds that one can choose is 2, which is equivalent to training your model on half your data and testing it on the other half (and then doing the reverse). Unless your sample is so large that all meaningful variation in the population is captured after splitting it in half, you will incur greater prediction error because of the reduced sample size; on the other hand, the magnitude of the error is likely to be highly consistent between the two halves, and you can be reasonably confident that the model trained to the entire sample will perform at least as well on new data as the model trained on half (and it will likely perform better).</p>
+<p>The largest number of folds that one can use is one for every observation in the data set, which is also known as leave-one-out cross-validation (LOOCV). Here, you are training models on data sets that are almost the same size as the full data set (n-1). So the cross-validation estimator is the least biased for the true prediction error, but it is also the most variable; that is, if you were to repeat the LOOCV procedure on multiple independent samples, you would find that the average LOOCV error would approximate the true error, but the individual LOOCV errors would vary greatly. So you can no longer be reasonably confident that the model will perform as well on new data as the LOOCV estimate would suggest; it is equally likely to perform much better or much worse.</p>
+<p>So the smaller the number of folds, the more pessimistic your estimates of prediction error will be. (Note above how the predicted deviance explained is a bit lower when 5 folds is used as opposed to 10.) But the more confident you can be that your model will meet or exceed this estimate. Overall, 10-fold cross-validation is recognized as an optimal compromise for this bias-variance tradeoff (Kohavi, 1995), which is why it is used by default. However, LOOCV may be preferrable when the data distributions are characterized by wide dispersion or extreme values (Japkowics &amp; Shah, 2011).</p>
+As for the number of repetitions, it is a good idea to evaluate how sensitive your cross-validation estimates are to different random splits of the data. You want to perform enough repetitions so that your mean estimate is stable. (You get roughly the same result no matter what value you choose for <code>seed</code>.) 10 repetitions has been recommended for 10-fold cross-validation (Bouckaert, 2003) and is used as the default value.
+</div>
+
+</div>
+<div id="obtaining-hold-out-predictions-and-fold-assignments" class="section level2">
+<h2>Obtaining hold-out predictions and fold assignments</h2>
+<p>The hold-out predictions of the cross-validation procedure and the corresponding fold-assignments can be obtained by assigning a variable name to the object returned by <code>validate</code>:</p>
+<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r">cv_results &lt;-<span class="st"> </span><span class="kw">validate</span>(lin_mod)</code></pre></div>
+<p>The predictions are stored as a data frame named “predictions”. The rows correspond to the equivalent rows of the data frame used to fit the model, and there is a column for each repetition of the cross-validation procedure. Going across columns within a row you can see the variability of the prediction for that individual as a function of fitting the model to different subsamples of the data (none of which included that individual):</p>
+<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r">cv_results<span class="op">$</span>predictions</code></pre></div>
+<pre><code>## # A tibble: 47 x 10
+##     Rep1  Rep2  Rep3  Rep4  Rep5  Rep6  Rep7  Rep8  Rep9 Rep10
+##    &lt;dbl&gt; &lt;dbl&gt; &lt;dbl&gt; &lt;dbl&gt; &lt;dbl&gt; &lt;dbl&gt; &lt;dbl&gt; &lt;dbl&gt; &lt;dbl&gt; &lt;dbl&gt;
+##  1  72.9  73.6  73.2  72.7  73.7  73.5  73.6  73.6  72.5  73.0
+##  2  83.1  82.7  83.7  81.3  81.9  83.5  83.4  82.4  82.2  83.0
+##  3  84.3  85.1  84.6  84.6  85.9  84.6  85.9  85.7  84.9  84.5
+##  4  76.4  76.2  76.2  76.4  76.9  75.1  76.0  76.0  76.4  76.1
+##  5  63.8  63.6  63.2  63.1  63.5  63.4  64.6  64.6  63.5  64.3
+##  6  96.2  93.6  94.3  94.2  94.4  93.5  93.8  94.5  94.3  94.4
+##  7  77.0  79.9  79.2  78.0  78.9  78.7  79.1  79.0  79.3  80.1
+##  8  81.1  80.0  80.5  80.1  80.7  79.5  79.5  80.0  78.1  79.9
+##  9  80.3  81.1  81.7  81.5  81.4  81.3  80.8  80.8  81.2  81.7
+## 10  79.6  77.7  79.4  79.4  80.1  79.8  79.4  80.3  79.5  79.2
+## # ... with 37 more rows</code></pre>
+<p>The fold assignments are stored as a data frame named “fold_assignments”. The values indicate the number of the fold that the case was assigned to; within a repetition, cases with the same fold number make up one of the hold-out data sets (and all cases not having that number were used to train a model to predict that hold-out set):</p>
+<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r">cv_results<span class="op">$</span>fold_assignments</code></pre></div>
+<pre><code>## # A tibble: 47 x 10
+##     Rep1  Rep2  Rep3  Rep4  Rep5  Rep6  Rep7  Rep8  Rep9 Rep10
+##    &lt;int&gt; &lt;int&gt; &lt;int&gt; &lt;int&gt; &lt;int&gt; &lt;int&gt; &lt;int&gt; &lt;int&gt; &lt;int&gt; &lt;int&gt;
+##  1    10     7    10     1     2     9     2     8     3     9
+##  2     9     9     7     5     3     1     9     9     1     5
+##  3     3     5     3     7    10     7     3     1     9     1
+##  4     6     3     4     6     6     4    10     2     6     4
+##  5     4    10     5     9     1     3     8     3     4     3
+##  6     8     2     9    10     7    10     1     4    10     7
+##  7     5     4     8     4     5     6     7     7     2     6
+##  8     1     1     1     8     4     5     5     5     8     2
+##  9     2     8     6     3     8     8     4    10     7    10
+## 10     7     6     2     2     9     2     6     6     5     8
+## # ... with 37 more rows</code></pre>
+
+<div class="rmd-caution">
+<p><strong>The wrong and right way to do cross-validation</strong>. A common blunder is to first perform variable selection on the basis of <em>all of the samples</em>, such as computing the pairwise correlation betweeen each predictor and the response and retaining only those that meet a “significance” threshold. If <code>validate</code> is used on a model whose variables have been selected in this way, it will underestimate the true prediction error, in proportion to the number of predictors that were pre-screened; the more predictors that were eliminated from the original data set, the more erroneous the cross-validation error will be.</p>
+<p>Why is this the case? Suppose we have two independent samples, A and B, and we want to train a model on Sample A and test it on Sample B. Now suppose we use information from Sample B to make decisions about how Sample A is trained. The samples will no longer be independent, and the more degrees of freedom we have to choose the model parameters for Sample A, the more opportunities we have to stumble upon and exploit spurious similarities between these two particular samples that will not generalize to other samples. Similarly, cross-validation estimates based on hold-out folds will be corrupted if the entire data set is used beforehand because the procedure no longer mimics the prediction of a brand new sample.</p>
+In summary, the intended use case for the <code>validate</code> function is to estimate the true prediction error of a model based on theory or prior work that has not been influenced by “peeking” at the relationships between the predictors and the response in the sample data. (It is perfectly okay to look at just the predictors by themselves and eliminate variables for reasons unrelated to the response, such as low variance.) Accurate cross-validation estimates of prediction error can still be obtained for models based on data-driven variable selection, but the variable selection must take place <em>during</em> the cross-validation procedure, not before.
+</div>
+
+</div>
+</div>
+
+
+
+<!-- dynamically load mathjax for compatibility with self-contained -->
+<script>
+  (function () {
+    var script = document.createElement("script");
+    script.type = "text/javascript";
+    script.src  = "https://mathjax.rstudio.com/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML";
+    document.getElementsByTagName("head")[0].appendChild(script);
+  })();
+</script>
+
+</body>
+</html>
