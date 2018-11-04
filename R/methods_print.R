@@ -6,7 +6,7 @@
 print.beset <- function(x, ...) print(summary(x, ...))
 
 #' @export
-print.cross_valid <- function(x, ...){
+print.cross_valid <- function(x, digits = 2, ...){
   cat("Mean predictive performance under ")
   if(x$parameters$n_obs == x$parameters$n_folds){
     cat("leave-one-out cross-validation:")
@@ -18,7 +18,7 @@ print.cross_valid <- function(x, ...){
             sep = ""))
   }
   cat("\n")
-  results_frame <- results_frame <- data_frame(
+  results_frame <- data.frame(
     Mean =  map_dbl(x$stats, "mean"),
     S.E. = map_dbl(x$stats, "btwn_fold_se")
   )
@@ -26,8 +26,6 @@ print.cross_valid <- function(x, ...){
     results_frame$Min <- map_dbl(x$stats, ~ .x$btwn_rep_range[1])
     results_frame$Max <- map_dbl(x$stats, ~ .x$btwn_rep_range[2])
   }
-  results_frame <- dplyr::mutate_all(results_frame, ~ signif(., 3))
-  results_frame <- as.data.frame(results_frame)
   metrics <- names(x$stats)
   if(x$parameters$family != "gaussian") metrics[4] <- "r2d"
   row.names(results_frame) <- map(
@@ -39,7 +37,9 @@ print.cross_valid <- function(x, ...){
                       mce = "Mean Cross Entropy",
                       mse = "Mean Squared Error")
   )
-  print(results_frame)
+  printCoefmat(as.matrix(results_frame), digits = digits,
+               cs.ind = 1L:4L, tst.ind = NULL,
+               P.values = FALSE, has.Pvalue = FALSE)
 }
 
 #' @export
