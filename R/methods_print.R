@@ -472,3 +472,15 @@ print.summary_beset_rf <- function(x, ...){
 print.beset_rf <- function(x, ...){
   print(summary(x, ...))
 }
+
+#' @export
+print.R2 <- function(x, digits = 2){
+  cat("Fit R-squared: ", formatC(x$R2fit, digits = digits))
+  if(!is.null(x$R2new)){
+    cat(",\tPrediction R-squared: ", formatC(x$R2new, digits = digits))
+  }
+  if(!is.null(x$R2cv)){
+    cat(",\tCross-valid R-squared: ", formatC(x$R2cv, digits = digits))
+  }
+  cat("\n")
+}

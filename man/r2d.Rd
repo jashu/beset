@@ -15,7 +15,7 @@ which to calculate a predictive R-squared}
 \item{cv}{A switch indicating if a predictive R-squared should be estimated
 by cross-validation via a call to \code{\link{validate}}.}
 
-\item{...}{Additional arguments to be passed to \code{\link{cv_r2}}.}
+\item{...}{Additional arguments to be passed to \code{\link{validate}}.}
 }
 \value{
 Object of class "R2" with the following items:

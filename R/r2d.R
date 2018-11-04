@@ -45,7 +45,7 @@
 #' @param cv A switch indicating if a predictive R-squared should be estimated
 #' by cross-validation via a call to \code{\link{validate}}.
 #'
-#' @param ... Additional arguments to be passed to \code{\link{cv_r2}}.
+#' @param ... Additional arguments to be passed to \code{\link{validate}}.
 #'
 #' @return Object of class "R2" with the following items:
 #' \enumerate{
@@ -82,11 +82,11 @@ r2d <- function (object, newdata = NULL, cv = FALSE, ...) {
                   glmnet = object$dev.ratio)
   R2new <- NULL
   if(!is.null(newdata)){
-    R2new <- predict_metrics(object, newdata)$R_squared
+    R2new <- predict_metrics(object, newdata)$rsq
   }
   R2cv <- NULL
   if(cv){
-    R2cv <- validate(object, ...)$rsq
+    R2cv <- validate(object, ...)$stats$rsq$mean
   }
   structure(list(R2fit = R2fit, R2new = R2new, R2cv = R2cv), class = "R2")
 }
