@@ -184,10 +184,12 @@ beset_elnet <- function(
     xlevels = .getXlevels(terms, mf)
     if(remove_collinear_columns){
       data <- check_lindep(mf)
-      if(ncol(data) < ncol(mf)) mf <- model.frame(form, data = data)
+      if(ncol(data) < ncol(mf)){
+        mf <- model.frame(form, data = data)
+        terms <- terms(mf)
+        xlevels = .getXlevels(terms, mf)
+      }
     }
-    terms <- terms(mf)
-    xlevels = .getXlevels(terms, mf)
     data <- mf
     attr(data, "terms") <- NULL
   } else if(inherits(data, "data_partition")){
