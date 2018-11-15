@@ -45,26 +45,48 @@
 #' @examples
 #' data("prostate", package = "beset")
 #' rf <- beset_rf(tumor ~ ., data = prostate)
+#'
+#' @import dplyr
+#' @import purrr
 #' @export
 beset_rf <- function(form, data, n_trees = 500, sample_rate = 0.6320000291,
                      mtry = NULL, min_obs_in_node = NULL,
                      n_folds = 10, n_reps = 10, seed = 42,
                      class_wt = NULL, cutoff = NULL, strata = NULL,
                      parallel_type = NULL, n_cores = NULL, cl = NULL){
+  if(inherits(data, "data.frame")){
+    data <- mutate_if(data, is.logical, factor)
+    mf <- model.frame(form, data = data)
+    n_omit <- nrow(data) - nrow(mf)
+    if(n_omit > 0){
+      warning(paste("Dropping", n_omit, "rows with missing data."),
+              immediate. = TRUE)
+      attr(data, "na.action") <- NULL
+    }
+    terms <- terms(mf)
+    xlevels = .getXlevels(terms, mf)
+    data <- mf
+    attr(data, "terms") <- NULL
+    x <- data[-1]
+    y <- data[[1]]
+    names(y) <- row.names(data)
+  } else if(inherits(data, "data_partition")){
+    terms <- terms(data$train)
+    xlevels <- .getXlevels(terms, data$train)
+    data$train$`(offset)` <- data$train$`(weights)` <-
+      data$test$`(offset)` <- NULL
+    data$train <- mutate_if(data$train, is.logical, factor)
+    data$test <- mutate_if(data$test, is.logical, factor)
+    x <- data$train[-1]
+    y <- data$train[[1]]
+    names(y) <- row.names(data$train)
+  } else {
+    stop("`data` argument must inherit class 'data.frame' or 'data_partition'")
+  }
+
   #======================================================================
   # Set up x and y arguments for randomForest.default
   #----------------------------------------------------------------------
-  data <- mutate_if(data, is.logical, factor)
-  data <- model.frame(form, data = data)
-  n_omit <- length(attr(data, "na.action"))
-  if(n_omit > 0){
-    warning(paste("Dropping", n_omit, "rows with missing data."),
-            immediate. = TRUE)
-    attr(data, "na.action") <- NULL
-  }
-  x <- data[-1]
-  y <- data[[1]]
-  names(y) <- row.names(data)
   if(is.factor(y)){
     if(n_distinct(y) > 2){
       stop(
@@ -75,28 +97,13 @@ beset_rf <- function(form, data, n_trees = 500, sample_rate = 0.6320000291,
     }
   } else {
     if(n_distinct(y) == 2) y <- factor(y)
+    if(inherits(data, "data_partition")){
+      data$train[[1]] <- factor(data$train[[1]])
+      data$test[[1]] <- factor(data$test[[1]])
+    }
   }
-  #======================================================================
-  # Set up parallel operations
-  #----------------------------------------------------------------------
-  if(!is.null(cl)){
-    if(!inherits(cl, "cluster")) stop("Not a valid parallel socket cluster")
-    n_cores <- length(cl)
-  } else if(is.null(n_cores) || n_cores > 1){
-    if(is.null(parallel_type)) parallel_type <- "sock"
-    parallel_control <- beset:::setup_parallel(
-      parallel_type = parallel_type, n_cores = n_cores, cl = cl)
-    n_cores <- parallel_control$n_cores
-    cl <- parallel_control$cl
-  }
-  #======================================================================
-  # Set up cross-validation
-  #----------------------------------------------------------------------
-  n_obs <- length(y)
-  cv_par <- beset:::set_cv_par(n_obs, n_folds, n_reps)
-  n_folds <- cv_par$n_folds; n_reps <- cv_par$n_reps
-  fold_ids <- beset:::create_folds(y = y, n_folds = n_folds, n_reps = n_reps,
-                                   seed = seed)
+  type <- if(is.factor(y)) "prob" else "response"
+
   #======================================================================
   # Set up arguments for randomForest
   #----------------------------------------------------------------------
