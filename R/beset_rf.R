@@ -125,6 +125,74 @@ beset_rf <- function(form, data, n_trees = 500, sample_rate = 0.6320000291,
     } else min_obs_in_node,
     importance = TRUE, localImp = TRUE, keep.forest = TRUE
   )
+
+  if(inherits(data, "data_partition")){
+    train_data <- c(
+      list(x = x, y = y, xtest = data$test[-1], ytest = data$test[[1]]), rf_par
+    )
+    set.seed(seed)
+    fit <- do.call(randomForest::randomForest, train_data)
+    y_hat <- predict(fit, data$test, type = type)
+    n_obs <- length(y_hat)
+    if(is.factor(y)){
+      y_hat <- y_hat[, 2]
+      y_hat[y_hat == 0] <- 1/n_obs
+      y_hat[y_hat == 1] <- 1 - 1/n_obs
+      family <- "binomial"
+    } else {
+      family <- "gaussian"
+    }
+    y <- data$test[[1]]
+    stats <- predict_metrics_(y, y_hat, family = family)
+    boot_stats <- vector()
+    fold_assignments <- data_frame(
+      Rep1 = rep(1, length(y_hat))
+    )
+    stats <- structure(
+      c(cv_stats, list(
+        fold_assignments = fold_assignments,
+        parameters = list(family = family,
+                          n_obs = n_obs,
+                          n_folds = 1,
+                          n_reps = 1,
+                          seed = seed,
+                          y = y))),
+      class = "cross_valid"
+    )
+    return(
+      structure(
+        list(
+          forests = list(fit),
+          stats = stats,
+          data = data$train
+        ), class = c("beset", "rf")
+      )
+    )
+  }
+
+
+  #======================================================================
+  # Set up parallel operations
+  #----------------------------------------------------------------------
+  if(!is.null(cl)){
+    if(!inherits(cl, "cluster")) stop("Not a valid parallel socket cluster")
+    n_cores <- length(cl)
+  } else if(is.null(n_cores) || n_cores > 1){
+    if(is.null(parallel_type)) parallel_type <- "sock"
+    parallel_control <- beset:::setup_parallel(
+      parallel_type = parallel_type, n_cores = n_cores, cl = cl)
+    n_cores <- parallel_control$n_cores
+    cl <- parallel_control$cl
+  }
+  #======================================================================
+  # Set up cross-validation
+  #----------------------------------------------------------------------
+  n_obs <- length(y)
+  cv_par <- beset:::set_cv_par(n_obs, n_folds, n_reps)
+  n_folds <- cv_par$n_folds; n_reps <- cv_par$n_reps
+  fold_ids <- beset:::create_folds(y = y, n_folds = n_folds, n_reps = n_reps,
+                                   seed = seed)
+
   train_data <- lapply(fold_ids, function(i)
     c(list(x = x[-i, , drop = FALSE],
            y = y[-i],
