@@ -219,15 +219,18 @@ beset_rf <- function(form, data, n_trees = 500, sample_rate = 0.6320000291,
     }, seed = seed)
   }
   if(!is.null(cl)) parallel::stopCluster(cl)
-  type <- if(is.factor(y)) "prob" else "response"
+
   y_hat <- map2(cv_fits, train_data,
                 ~ as.matrix(predict(.x, .y$xtest, type = type)))
   if(is.factor(y)){
+    y_names <- names(y)
+    y <- as.integer(y) - 1L
+    names(y) <- y_names
     y_hat <- map(y_hat, ~ .x[, 2, drop = FALSE])
     for(i in seq_along(y_hat)){
       temp <- y_hat[[i]]
-      temp[temp[,1] == 0, 1] <- .001
-      temp[temp[,1] == 1, 1] <- .999
+      temp[temp[,1] == 0, 1] <- 1/nrow(temp)
+      temp[temp[,1] == 1, 1] <- 1 - 1/nrow(temp)
       y_hat[[i]] <- temp
     }
     family <- "binomial"
