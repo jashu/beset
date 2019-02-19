@@ -91,14 +91,12 @@ data_partition <- function(train, test, y, x = NULL, offset = NULL,
     stop(paste("The following variables were not found in `test`:\n\t",
                paste0(not_in_test, collapse = "\n\t"), sep = ""))
   }
-  train <- dplyr::mutate_if(train, is.factor, forcats::fct_drop)
-  test <- dplyr::mutate_if(test, is.factor, forcats::fct_drop)
   factors_in_train <- map(train[map_lgl(train, is.factor)], levels)
   factors_in_test <- map(test[map_lgl(test, is.factor)], levels)
   in_train_not_test <- map2(factors_in_train, factors_in_test,
                             ~ setdiff(.x, .y))
   if(any(map_int(in_train_not_test, length))){
-    warn_data <- data_frame(
+    warn_data <- tibble(
       factor = names(in_train_not_test),
       `levels unobserved in test` = map_chr(in_train_not_test,
                                             ~ paste0(.x, collapse = ", "))
@@ -114,7 +112,7 @@ data_partition <- function(train, test, y, x = NULL, offset = NULL,
   in_test_not_train <- map2(factors_in_train, factors_in_test,
                             ~ setdiff(.y, .x))
   if(any(map_int(in_test_not_train, length))){
-    warn_data <- data_frame(
+    warn_data <- tibble(
       factor = names(in_test_not_train),
       `levels dropped from test` = map_chr(in_test_not_train,
                                             ~ paste0(.x, collapse = ", "))
@@ -135,7 +133,7 @@ data_partition <- function(train, test, y, x = NULL, offset = NULL,
   train_weights <- if(is.null(weights))
     rep(1, nrow(train)) else train[[weights]]
   train_mf <- model.frame(formula = form, data = train, na.action = na_action,
-                          drop.unused.levels = TRUE, offset = train_offset,
+                          drop.unused.levels = FALSE, offset = train_offset,
                           weights = train_weights)
   # Warn user if any rows were dropped
   n_drop <- nrow(train) - nrow(train_mf)
