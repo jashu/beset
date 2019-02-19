@@ -132,10 +132,10 @@ summary.nested_elnet <- function(object, metric, oneSE, ...){
   betas <- map2(best_models, lambdas, ~ as.vector(coef(.x, s = .y)))
   stnd <- map(best_models, ~.x$x_sd / .x$y_sd)
   stnd_betas <- map2(betas, stnd, ~ .x[-1] * .y) %>% transpose %>%
-    simplify_all %>% as_data_frame
+    simplify_all %>% as_tibble
   betas <- betas %>% transpose %>% simplify_all
   names(betas) <- best_models[[1]] %>% coef %>% row.names
-  betas <- as_data_frame(betas)
+  betas <- as_tibble(betas)
   betas <- list(
     mean = map(betas, mean),
     btwn_fold_se = map(betas, ~ sd(.x) / sqrt(n_folds)),

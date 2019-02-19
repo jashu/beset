@@ -102,4 +102,5 @@ function of number of trees in forest
 \examples{
 data("prostate", package = "beset")
 rf <- beset_rf(tumor ~ ., data = prostate)
+
 }
