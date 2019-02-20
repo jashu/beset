@@ -71,15 +71,24 @@
 #' and Simulation, 86:18, 3777-3790, DOI: 10.1080/00949655.2016.1186166
 #'
 #' @export
-r2d <- function (object, newdata = NULL, cv = FALSE, ...) {
+r2d <- function (object, newdata = NULL, cv = FALSE, lambda = NULL, ...) {
+  R2fit <- if(inherits(object, "glmnet")){
+    if(is.null(lambda)){
+      if(!is.null(object$best_lambda))
+        lambda <- object$best_lambda else
+          stop("Must supply lambda value for glmnet object")
+    }
+    lambda_diff <- abs(lambda - object$lambda)
+    object$dev.ratio[which.min(lambda_diff)]
+  } else {
   model_type <- class(object)[1]
-  R2fit <- switch(model_type,
-                  lm = 1 - stats::var(stats::residuals(object)) /
-                    stats::var(object$model[[1]]),
-                  glm = 1 - object$deviance / object$null.deviance,
-                  negbin = 1 - object$deviance / object$null.deviance,
-                  zeroinfl = predict_metrics(object, object$model)$rsq,
-                  glmnet = object$dev.ratio)
+  switch(model_type,
+         lm = 1 - stats::var(stats::residuals(object)) /
+           stats::var(object$model[[1]]),
+         glm = 1 - object$deviance / object$null.deviance,
+         negbin = 1 - object$deviance / object$null.deviance,
+         zeroinfl = predict_metrics(object, object$model)$rsq)
+  }
   R2new <- NULL
   if(!is.null(newdata)){
     R2new <- predict_metrics(object, newdata)$rsq
