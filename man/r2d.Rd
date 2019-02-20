@@ -4,7 +4,7 @@
 \alias{r2d}
 \title{R-squared as Deviance Explained}
 \usage{
-r2d(object, newdata = NULL, cv = FALSE, ...)
+r2d(object, newdata = NULL, cv = FALSE, lambda = NULL, ...)
 }
 \arguments{
 \item{object}{Fitted model}
