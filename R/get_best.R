@@ -121,11 +121,18 @@ get_best.beset_elnet <- function(object, alpha = NULL, lambda = NULL,
   best_model <- do.call(glmnet::glmnet, model_data)
   best_model$alpha <- best_alpha
   best_model$best_lambda <- best_lambda
-  x <- object$parameters$x
-  y <- object$parameters$y
+  x <- model_data$x
+  y <- model_data$y
   if(is.factor(y)) y <- as.integer(y) - 1
   best_model$x_sd <- apply(x, 2, sd)
-  best_model$y_sd <- sd(y)
+  best_model$y_sd <- if(object$family != "gaussian"){
+    var_logit_yhat <- var(
+      predict(best_model, newx = x, s = best_lambda, type = "link",
+              newoffset = model_data$offset) %>% as.vector
+    )
+    rsq <- r2d(best_model)$R2fit
+    var_logit_yhat / rsq
+  } else sd(y)
   best_model$terms <- object$parameters$terms
   class(best_model) <- c("best", class(best_model))
   best_model
