@@ -10,8 +10,7 @@ beset_rf(form, data, n_trees = 500, sample_rate = 0.6320000291,
   seed = 42, class_wt = NULL, cutoff = NULL, strata = NULL,
   parallel_type = NULL, n_cores = NULL, cl = NULL)
 
-\method{plot}{beset_rf}(x, metric = c("auto", "mse", "rsq", "err.rate"),
-  ...)
+plot.beset_rf(x, metric = c("auto", "mse", "rsq", "err.rate"), ...)
 }
 \arguments{
 \item{form}{A model \code{\link[stats]{formula}}.}
@@ -93,9 +92,9 @@ provided to \code{\link[randomForest]{randomForest}} and that enough
 information is retained for compatibility with \code{beset} methods such as
 variable \code{\link{importance}} and partial \code{\link{dependence}}.
 }
-\section{Methods (by generic)}{
+\section{Functions}{
 \itemize{
-\item \code{plot}: Plot OOB and holdout MSE, R-squared, or error rate as a
+\item \code{plot.beset_rf}: Plot OOB and holdout MSE, R-squared, or error rate as a
 function of number of trees in forest
 }}
 

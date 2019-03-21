@@ -23,6 +23,8 @@
 #' rf <- beset_rf(Fertility ~ ., data = swiss)
 #' importance(rf)
 #'
+#' @import ggplot2
+#' @import purrr
 #' @export
 
 importance <- function(object, ...){
@@ -104,7 +106,7 @@ structure(varimp, class = c("variable_importance", class(varimp)))
 }
 
 #' @export
-#' @describeIn importance Plot method for "variable_importance" objects
+#' @rdname importance
 plot.variable_importance <- function(x, p_max = 20, labels = NULL){
   if(!is.null(labels)){
     matching_labels <- map(labels[[1]], ~ grep(., x$variable))
