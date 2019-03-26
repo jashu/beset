@@ -327,22 +327,21 @@ print.summary_nested_elnet <- function(x, standardize = TRUE,
     cat("\nTuning parameters with best cross-validation", selection_metric,
         ":\n")
   }
-  tune_frame <- data_frame(
-    `Mean` =  map_dbl(x$parameters[c("alpha", "lambda")], "mean"),
-    `S.E.` = map_dbl(x$parameters[c("alpha", "lambda")], "btwn_fold_se")
+  tune_frame <- tibble(
+    Mean =  map_dbl(x$parameters[c("alpha", "lambda")], "mean"),
+    S.E. = map_dbl(x$parameters[c("alpha", "lambda")], "btwn_fold_se")
   )
   tune_param <- c("alpha", "lambda")
   if(n_reps > 1){
-    tune_frame$Range <- map_chr(
-      x$parameters[tune_param],
-      ~ paste(signif(.x$btwn_rep_range[1], 3),
-              signif(.x$btwn_rep_range[2], 3), sep = " - "))
+    tune_frame$Min <- map_dbl(x$parameters[tune_param], ~.x$btwn_rep_range[1])
+    tune_frame$Max <- map_dbl(x$parameters[tune_param], ~.x$btwn_rep_range[2])
   }
-  tune_frame <- dplyr::mutate_if(tune_frame, is.numeric, ~ signif(., 3))
+  tune_frame <- dplyr::mutate_all(tune_frame, ~ round(., 3))
+  tune_frame <- dplyr::mutate_all(tune_frame, ~ zapsmall(., 3))
   tune_frame <- as.data.frame(tune_frame)
   row.names(tune_frame) <- tune_param
-  print(tune_frame)
-  coef_frame <- data_frame(
+  printCoefmat(tune_frame, P.values = FALSE, has.Pvalue = FALSE)
+  coef_frame <- tibble(
     Coef. =  map_dbl(x$coefs[[stnd]], "mean"),
     S.E. = map_dbl(x$coefs[[stnd]], "btwn_fold_se")
   )
@@ -363,7 +362,7 @@ print.summary_nested_elnet <- function(x, standardize = TRUE,
     cat("\n\nNon-zero coefficients")
     if(standardize) cat(" ranked in order of importance")
     cat(":\n")
-    print(coef_frame, quote = FALSE)
+    printCoefmat(coef_frame, quote = FALSE, has.Pvalue = FALSE)
   } else {
     cat("\n\nNo reliable predictors.")
   }
@@ -380,7 +379,7 @@ print.summary_nested_elnet <- function(x, standardize = TRUE,
       x$stats, ~ map_dbl(.x[metric], ~ .x$btwn_rep_range[2])
     )
   }
-  results_frame <- dplyr::mutate_all(results_frame, ~ signif(., 3))
+  results_frame <- dplyr::mutate_all(results_frame, ~ round(., 3))
   results_frame <- dplyr::mutate_all(results_frame, ~ zapsmall(., 3))
   results_frame <- as.data.frame(results_frame)
   row.names(results_frame) <- c("Train Sample",
@@ -394,7 +393,7 @@ print.summary_nested_elnet <- function(x, standardize = TRUE,
                                     mae = "Mean Absolute Error",
                                     mce = "Mean Cross Entropy",
                                     mse = "Mean Squared Error")
-  print(results_frame)
+  printCoefmat(results_frame, P.values = FALSE, has.Pvalue = FALSE)
   cat("=======================================================")
 }
 

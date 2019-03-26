@@ -130,12 +130,12 @@ summary.nested_elnet <- function(object, metric, oneSE, ...){
   alphas <- map_dbl(best_models, "alpha")
   lambdas <- map_dbl(best_models, "best_lambda")
   betas <- map2(best_models, lambdas, ~ as.vector(coef(.x, s = .y)))
-  stnd <- map(best_models, ~.x$x_sd / .x$y_sd)
-  stnd_betas <- map2(betas, stnd, ~ .x[-1] * .y) %>% transpose %>%
-    simplify_all %>% as_tibble
+  stnd <- map(best_models, ~ .x$x_sd / .x$y_sd)
+  stnd_betas <- map2(betas, stnd, ~ ifelse(.x[-1] == 0, 0, .x[-1] * .y))
   betas <- betas %>% transpose %>% simplify_all
+  stnd_betas <- stnd_betas %>% transpose %>% simplify_all
   names(betas) <- best_models[[1]] %>% coef %>% row.names
-  betas <- as_tibble(betas)
+  names(stnd_betas) <- names(betas)[-1]
   betas <- list(
     mean = map(betas, mean),
     btwn_fold_se = map(betas, ~ sd(.x) / sqrt(n_folds)),
@@ -215,9 +215,9 @@ summary.nested_beset <- function(object, metric = "auto", oneSE = TRUE, ...){
   }
   betas <- as_data_frame(betas)
   stnd <- purrr::map2(
-    object$beset, y_stnd, ~.x$parameters$x %>% apply(2, sd) / .y
+    object$beset, y_stnd, ~ apply(.x$parameters$x, 2, sd) / .y
   ) %>% transpose %>% simplify_all
-  stnd_betas <- map2(betas, stnd, ~ .x * .y) %>% as_data_frame
+  stnd_betas <- map2(betas, stnd, ~ .x * .y) %>% as_tibble
   betas <- list(
     mean = map(betas, mean),
     btwn_fold_se = map(betas, ~ sd(.x) / sqrt(n_folds)),
