@@ -100,6 +100,7 @@ predict_metrics <- function(object, test_data){
   } else {
     purrr::as_vector(test_data[[all.vars(object$terms)[1]]])
   }
+  if(is.null(y)) stop("Response variable not found in `test_data`")
   y_hat <- stats::predict(object, test_data, type="response")
   phi <- theta <- NULL
   if(family %in% c("zip", "zinb")){

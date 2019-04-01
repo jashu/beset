@@ -81,14 +81,21 @@ r2d <- function (object, newdata = NULL, cv = FALSE, lambda = NULL, ...) {
     lambda_diff <- abs(lambda - object$lambda)
     object$dev.ratio[which.min(lambda_diff)]
   } else {
-  model_type <- class(object)[1]
-  switch(model_type,
-         lm = 1 - stats::var(stats::residuals(object)) /
-           stats::var(object$model[[1]]),
-         glm = 1 - object$deviance / object$null.deviance,
-         negbin = 1 - object$deviance / object$null.deviance,
-         zeroinfl = predict_metrics(object, object$model)$rsq)
-  }
+    model_type <- class(object)[1]
+    switch(model_type,
+           lm = 1 - stats::var(stats::residuals(object)) /
+             stats::var(object$model[[1]]),
+           glm = 1 - object$deviance / object$null.deviance,
+           negbin = 1 - object$deviance / object$null.deviance,
+           zeroinfl = predict_metrics_(
+             y = if(is.null(object$y)){
+               stop("Missing response. Rerun `zeroinfl` with `y = TRUE`")
+             } else object$y,
+             y_hat = stats::predict(object, type = "count"),
+             family = if(object$dist == "poisson") "zip" else "zinb",
+             phi = stats::predict(object, type = "zero"),
+             theta = object$theta)$rsq
+  )}
   R2new <- NULL
   if(!is.null(newdata)){
     R2new <- predict_metrics(object, newdata)$rsq
