@@ -103,6 +103,7 @@ beset_rf <- function(form, data, n_trees = 500, sample_rate = 0.6320000291,
     }
   }
   type <- if(is.factor(y)) "prob" else "response"
+  y_orig <- y
 
   #======================================================================
   # Set up arguments for randomForest
@@ -239,9 +240,9 @@ beset_rf <- function(form, data, n_trees = 500, sample_rate = 0.6320000291,
   } else {
     family <- "gaussian"
   }
-  cv_stats <- beset:::get_cv_stats(y = y, y_hat = y_hat, family = family,
+  cv_stats <- get_cv_stats(y = y, y_hat = y_hat, family = family,
                            n_folds = n_folds, n_reps = n_reps)
-  fold_assignments <- beset:::get_fold_ids(fold_ids, n_reps)
+  fold_assignments <- get_fold_ids(fold_ids, n_reps)
   cv_stats <- structure(
     c(cv_stats, list(
       fold_assignments = fold_assignments,
@@ -250,7 +251,7 @@ beset_rf <- function(form, data, n_trees = 500, sample_rate = 0.6320000291,
                         n_folds = n_folds,
                         n_reps = n_reps,
                         seed = seed,
-                        y = y))),
+                        y = y_orig))),
     class = "cross_valid"
   )
   structure(
