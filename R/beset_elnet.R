@@ -174,6 +174,15 @@ beset_elnet <- function(
   #------------------------------------------------------------------
   if(inherits(data, "data.frame")){
     mf <- model.frame(form, data = data)
+    if(family != "binomial" && dplyr::n_distinct(mf[[1]]) == 2){
+      warning(paste("Response only has 2 distinct values.",
+                    "Changing family argument to 'binomial'."),
+              immediate. = TRUE)
+      family <- "binomial"
+    }
+    if(!is.factor(mf[[1]]) && family == "binomial"){
+      mf[[1]] <- factor(mf[[1]])
+    }
     n_omit <- nrow(data) - nrow(mf)
     if(n_omit > 0){
       warning(paste("Dropping", n_omit, "rows with missing data."),
