@@ -109,11 +109,13 @@ beset_rf <- function(form, data, n_trees = 500, sample_rate = 0.6320000291,
   #----------------------------------------------------------------------
   rf_par <- list(
     ntree = n_trees,
-    mtry = if(!is.null(y) && !is.factor(y)){
-      max(floor(ncol(x)/3), 1)
-    } else {
-      floor(sqrt(ncol(x)))
-    },
+    mtry = if(is.null(mtry)){
+      if(is.factor(y)){
+        floor(sqrt(ncol(x)))
+      } else {
+        max(floor(ncol(x)/3), 1)
+      }
+    } else mtry,
     replace = FALSE, classwt = class_wt,
     cutoff = if(is.null(cutoff) && is.factor(y)){
       n_class <- length(levels(y))
