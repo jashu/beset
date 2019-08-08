@@ -25,6 +25,7 @@
 #'
 #' @import ggplot2
 #' @import purrr
+#' @import dplyr
 #' @export
 
 importance <- function(object, ...){
@@ -56,12 +57,23 @@ importance.nested <- function(object, ...){
   min_import <- map_dbl(import - map_dbl(imp, "btwn_fold_se"), ~ max(.x, 0))
   max_import <- map_dbl(import + map_dbl(imp, "btwn_fold_se"), ~ max(.x, 0))
   scale_by <- sum(import)
-  varimp <- data_frame(
+  varimp <- tibble(
     variable = names(imp),
     importance = import / scale_by,
     min_import = min_import / scale_by,
     max_import = max_import / scale_by
   ) %>% filter(variable != "(Intercept)")
+  if(!is.null(object$xlevels)){
+    for(i in seq_along(object$xlevels)){
+      root_name <- names(object$xlevels)[i]
+      for(x in object$xlevels[[i]]){
+        varimp$variable <- gsub(
+          paste(root_name, x, sep = ""), root_name, varimp$variable, fixed = T
+        )
+      }
+    }
+  }
+  varimp <- varimp %>% group_by(variable) %>% summarize_all(max) %>% ungroup
   structure(varimp, class = c("variable_importance", class(varimp)))
 }
 
