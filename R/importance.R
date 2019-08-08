@@ -121,14 +121,24 @@ structure(varimp, class = c("variable_importance", class(varimp)))
 #' @rdname importance
 plot.variable_importance <- function(x, p_max = 20, labels = NULL){
   if(!is.null(labels)){
-    matching_labels <- map(labels[[1]], ~ grep(., x$variable))
-    not_empty <- which(map(matching_labels, length) > 0)
+    if(n_distinct(labels[[2]]) < nrow(labels)){
+      duplicate_labels <- table(labels[[2]])
+      duplicate_labels <- duplicate_labels[duplicate_labels > 1]
+      stop(
+        paste0("\nYou have provided the same label for more than one variable.\n",
+            "Please fix these duplicate labels:\n\t",
+            paste0(names(duplicate_labels), collapse = "\n\t"),
+            sep = ""),
+        call. = FALSE
+      )
+    }
+    matching_labels <- map(labels[[1]], ~ match(., x$variable))
+    not_empty <- which(!map_lgl(matching_labels, is.na))
     labels <- labels[not_empty,]
     matching_labels <- matching_labels[not_empty]
-    walk2(labels[[2]], matching_labels, function(x, i) x$variable[i] <<- x)
+    walk2(labels[[2]], matching_labels, function(a, i) x$variable[i] <<- a)
   }
-  x <- x %>% group_by(variable) %>% summarize_all(max) %>%
-    arrange(desc(importance), desc(min_import), desc(max_import))
+  x <- x %>% arrange(desc(importance), desc(min_import), desc(max_import))
   impvar <- x$variable
   x$variable <- factor(x$variable, levels = rev(impvar))
   theme_set(theme_classic())
