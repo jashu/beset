@@ -248,7 +248,7 @@ print.summary_nested_beset <- function(x, standardize = TRUE, metric = "rsq",
     coef_frame$Min <- map_dbl(x$coefs[[stnd]], ~ .x$btwn_rep_range[1])
     coef_frame$Max <- map_dbl(x$coefs[[stnd]], ~ .x$btwn_rep_range[2])
   }
-  coef_frame <- mutate_all(coef_frame, ~ round(., 3))
+  # coef_frame <- mutate_all(coef_frame, ~ round(., 3))
   coef_frame <- as.data.frame(coef_frame)
   row.names(coef_frame) = names(x$coefs[[stnd]])
   coef_frame <- coef_frame[coef_frame$Coef. != 0,]
