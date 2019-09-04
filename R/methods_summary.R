@@ -21,7 +21,7 @@
 #' with the optimal cross-validation performance is returned.
 #'
 #' @param robust \code{Logical} indicating whether or not to produce summary
-#' output for robust predictors, defined here as having non-zero beta
+#' output for only robust predictors, defined here as having non-zero beta
 #' coefficients for every repetition of the cross-validation procedure
 #'
 #' @param ... Additional arguments passed to model summary methods.

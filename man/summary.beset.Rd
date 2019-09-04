@@ -29,7 +29,7 @@ with the optimal cross-validation performance is returned.}
 \item{...}{Additional arguments passed to model summary methods.}
 
 \item{robust}{\code{Logical} indicating whether or not to produce summary
-output for robust predictors, defined here as having non-zero beta
+output for only robust predictors, defined here as having non-zero beta
 coefficients for every repetition of the cross-validation procedure}
 }
 \description{
