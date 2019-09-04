@@ -27,6 +27,10 @@ standard error of the optimal model is returned. If \code{FALSE} the model
 with the optimal cross-validation performance is returned.}
 
 \item{...}{Additional arguments passed to model summary methods.}
+
+\item{robust}{\code{Logical} indicating whether or not to produce summary
+output for robust predictors, defined here as having non-zero beta
+coefficients for every repetition of the cross-validation procedure}
 }
 \description{
 These functions are all methods for class \code{beset} objects.
