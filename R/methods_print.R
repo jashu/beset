@@ -64,7 +64,7 @@ print.prediction_metrics <- function(x, digits = 3, ...){
 
 #' @export
 print.predictive_gain <- function(x, digits = 3, ...){
-  results_frame <- as_data_frame(x[c("Model1", "Model2", "Delta")])
+  results_frame <- as_tibble(x[c("Model1", "Model2", "Delta")])
   results_frame$CI <- map_chr(
     x[[4]], ~ paste0("[", signif(.x[1],2), ", ", signif(.x[2],2), "]", sep = "")
   )
@@ -101,7 +101,7 @@ print.summary_beset_elnet <- function(x, ...){
     coef =  as.vector(coef(x$best, s = x$best$best_lambda))
   )
   if(!is.null(x$coef_ci)){
-    coef_frame$conf.int <- as_data_frame(x$coef_ci) %>% transpose %>%
+    coef_frame$conf.int <- as_tibble(x$coef_ci) %>% transpose %>%
       simplify_all %>%
       map_chr(~paste0("[", signif(.x[1],3), ", ", signif(.x[2],3), "]",
                       collapse = ""))
@@ -301,8 +301,9 @@ print.summary_nested_beset <- function(x, standardize = TRUE, metric = "rsq",
 }
 
 #' @export
-print.summary_nested_elnet <- function(x, standardize = TRUE,
-                                       metric = "rsq", ...){
+print.summary_nested_elnet <- function(
+  x, standardize = TRUE, metric = "rsq", ...
+){
   stnd <- if(standardize) "standardized" else "unstandardized"
   n_folds <- x$parameters$n_folds
   n_reps <- x$parameters$n_reps
@@ -362,8 +363,8 @@ print.summary_nested_elnet <- function(x, standardize = TRUE,
     cat("\n\nNon-zero coefficients")
     if(standardize) cat(" ranked in order of importance")
     cat(":\n")
-    printCoefmat(coef_frame, quote = FALSE, has.Pvalue = FALSE,
-                 zap.ind = 1:4)
+    printCoefmat(coef_frame, digits = 3, quote = FALSE, has.Pvalue = FALSE,
+                 cs.ind = 1:4, zap.ind = 1:4, tst.ind = NULL)
   } else {
     cat("\n\nNo reliable predictors.")
   }

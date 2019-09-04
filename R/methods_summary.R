@@ -117,7 +117,7 @@ summary.nested <- function(object, metric = "auto", oneSE = TRUE, ...){
     summary.nested_beset(object, metric = metric, oneSE = oneSE, ...)
 }
 
-summary.nested_elnet <- function(object, metric, oneSE, ...){
+summary.nested_elnet <- function(object, metric, oneSE, robust = FALSE,...){
   family <- object$family
   n_folds <- object$n_folds
   n_reps <- object$n_reps
@@ -142,12 +142,20 @@ summary.nested_elnet <- function(object, metric, oneSE, ...){
     btwn_rep_range = map(betas, function(x)
       map(rep_idx, ~ mean(x[.x])) %>% range)
   ) %>% transpose
+  if(robust && n_reps > 1){
+    not_robust <- map_lgl(betas, ~ 0 %in% .x$btwn_rep_range)
+    betas <- betas[!not_robust]
+  }
   stnd_betas <- list(
     mean = map(stnd_betas, mean),
     btwn_fold_se = map(stnd_betas, ~ sd(.x) / sqrt(n_folds)),
     btwn_rep_range = map(stnd_betas, function(x)
       map(rep_idx, ~ mean(x[.x])) %>% range)
   ) %>% transpose
+  if(robust && n_reps > 1){
+    not_robust <- map_lgl(stnd_betas, ~ 0 %in% .x$btwn_rep_range)
+    stnd_betas <- stnd_betas[!not_robust]
+  }
   best_idx <- pmap_int(
     list(s = map(object$beset, ~.x$stats$test), a = alphas, l = lambdas),
     function(s, a, l) with(s, which(alpha == a & lambda == l)))
@@ -213,7 +221,7 @@ summary.nested_beset <- function(object, metric = "auto", oneSE = TRUE, ...){
     j <- coef(best_models[[i]])
     betas[i, names(j)] <- j
   }
-  betas <- as_data_frame(betas)
+  betas <- as_tibble(betas)
   stnd <- purrr::map2(
     object$beset, y_stnd, ~ apply(.x$parameters$x, 2, sd) / .y
   ) %>% transpose %>% simplify_all
