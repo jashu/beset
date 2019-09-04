@@ -362,7 +362,8 @@ print.summary_nested_elnet <- function(x, standardize = TRUE,
     cat("\n\nNon-zero coefficients")
     if(standardize) cat(" ranked in order of importance")
     cat(":\n")
-    printCoefmat(coef_frame, quote = FALSE, has.Pvalue = FALSE)
+    printCoefmat(coef_frame, quote = FALSE, has.Pvalue = FALSE,
+                 zap.ind = 1:4)
   } else {
     cat("\n\nNo reliable predictors.")
   }
