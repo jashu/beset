@@ -320,9 +320,10 @@ dependence.randomForest <- function(
 
 #' @export
 #' @rdname dependence
-dependence.beset_rf <- function(object, x = NULL, cond = NULL,
-                               x_lab = NULL, y_lab = NULL, ...,
-                               parallel_type = NULL, n_cores = NULL, cl = NULL){
+dependence.beset_rf <- function(
+  object, x = NULL, cond = NULL, x_lab = NULL, y_lab = NULL, ...,
+  parallel_type = NULL, n_cores = NULL, cl = NULL
+){
   if(is.null(n_cores) || n_cores > 1){
     parallel_control <- beset:::setup_parallel(
       parallel_type = parallel_type, n_cores = n_cores, cl = cl)
@@ -330,8 +331,8 @@ dependence.beset_rf <- function(object, x = NULL, cond = NULL,
     n_cores <- parallel_control$n_cores
     cl <- parallel_control$cl
   }
-  if(is.null(x)) x <- labels(terms(object$data))
-  y <- setdiff(names(object$data), x)
+  if(is.null(x)) x <- names(object$forests[[1]]$call$x)
+  y <- setdiff(names(object$data), names(object$forests[[1]]$call$x))
   if(is.null(x_lab)) x_lab <- x; if(is.null(y_lab)) y_lab <- y
   variable_importance <- importance(object) %>%
     filter(variable == x) %>% mutate(variable = x_lab)
@@ -354,26 +355,32 @@ dependence.beset_rf <- function(object, x = NULL, cond = NULL,
            make_plot = FALSE)
   }
   if(!is.null(cl)) parallel::stopCluster(cl)
+  pd <- transpose(pd)
+  impact <- pd$variable_importance %>% map("delta") %>% transpose %>%
+    simplify_all
+  names(impact) <- x_lab
+  plot_data <- pd$partial_dependence
   if(length(x) > 1){
-    pd <- transpose(pd)
-    impact <- pd$variable_importance %>% map("delta") %>% transpose %>%
-      simplify_all
-    names(impact) <- x_lab
-    plot_data <- transpose(pd$partial_dependence)
+    plot_data <- transpose(plot_data)
     names(plot_data) <- x_lab
     plot_data <- map(plot_data, ~ imap_dfr(.x, function(x, i){
       df <- x; df$model <- i; df}))
-    partial_dependence <- imap(
-      plot_data, ~ ggplot(data = .x, aes(x = x, y = y)) +
-        geom_line(aes(group = model), alpha = .1) +
-        (if(is.factor(.x$x)) {
+  } else {
+    plot_data <- list(imap_dfr(plot_data, function(x, i){
+      df <- x; df$model <- i; df}))
+    names(plot_data) <- x_lab
+  }
+  partial_dependence <- imap(
+    plot_data, ~ ggplot(data = .x, aes(x = x, y = y)) +
+      geom_line(aes(group = model), alpha = .1) + (
+        if(is.factor(.x$x)) {
           stat_summary(aes(group=1), fun.y=mean, geom="line",
                        colour="tomato2", size = 1.5)
         } else {
           geom_smooth(method = "loess", size = 1.5, color = "tomato2")
-        }) + xlab(.y) + ylab(y_lab) + theme_bw()
+        }
+      ) + xlab(.y) + ylab(y_lab) + theme_bw()
     )
-  }
   variable_importance <- variable_importance %>%
     mutate(delta = map_dbl(impact, median),
            delta_low = map_dbl(impact, ~ quantile(.x, .025)),
@@ -383,7 +390,6 @@ dependence.beset_rf <- function(object, x = NULL, cond = NULL,
          variable_importance = variable_importance),
     class = "part_depend"
   )
-
 }
 
 #' @export
@@ -391,7 +397,7 @@ dependence.beset_rf <- function(object, x = NULL, cond = NULL,
 plot.part_depend <- function(x, order = "delta", p_max = 16, ...){
   plot_data <- x$partial_dependence
   n_vars <- length(plot_data)
-  if(n_vars == 1) return(plot_data)
+  if(n_vars == 1) return(plot(plot_data[[1]]))
   varimp <- x$variable_importance
   varimp <- if(order == "import"){
     arrange(varimp, desc(importance))
@@ -417,7 +423,6 @@ plot.part_depend <- function(x, order = "delta", p_max = 16, ...){
                            left = x$partial_dependence[[1]]$labels$y)
   )
   plot(gout)
-  return(gout)
 }
 
 #' @export
