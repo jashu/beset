@@ -334,8 +334,12 @@ dependence.beset_rf <- function(
   if(is.null(x)) x <- names(object$forests[[1]]$call$x)
   y <- setdiff(names(object$data), names(object$forests[[1]]$call$x))
   if(is.null(x_lab)) x_lab <- x; if(is.null(y_lab)) y_lab <- y
-  variable_importance <- importance(object) %>%
-    filter(variable == x) %>% mutate(variable = x_lab)
+  variable_importance <- importance(object)
+  keep <- map(x, ~ grep(.x, variable_importance$variable)) %>% as_vector
+  variable_importance <- variable_importance[keep,]
+  matching_labels <- map(x, ~ grep(.x, variable_importance$variable))
+  walk2(x_lab, matching_labels,
+        function(x, i) variable_importance$variable[i] <<- x)
   data <- object$data
   attr(data, "terms") <- NULL
   pd <- if(n_cores > 1L){
