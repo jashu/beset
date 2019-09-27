@@ -137,3 +137,9 @@ compare.numeric <- function(yhat1, yhat2, y, ...){
 compare.beset <- function(yhat1, yhat2, ...){
   compare.cross_valid(validate(yhat1, ...), validate(yhat2, ...))
 }
+
+#' @export
+#' @describeIn compare two 'glm' or 'lm' class models
+compare.lm <- function(yhat1, yhat2, ...){
+  compare.cross_valid(validate(yhat1, ...), validate(yhat2, ...))
+}

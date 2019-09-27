@@ -3,6 +3,7 @@
 S3method(compare,beset)
 S3method(compare,cross_valid)
 S3method(compare,data.frame)
+S3method(compare,lm)
 S3method(compare,numeric)
 S3method(dependence,beset)
 S3method(dependence,beset_rf)

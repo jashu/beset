@@ -6,6 +6,7 @@
 \alias{compare.data.frame}
 \alias{compare.numeric}
 \alias{compare.beset}
+\alias{compare.lm}
 \title{Compare Predictive Performance of Two Models}
 \usage{
 compare(yhat1, yhat2, ...)
@@ -20,6 +21,8 @@ compare(yhat1, yhat2, ...)
 \method{compare}{numeric}(yhat1, yhat2, y, ...)
 
 \method{compare}{beset}(yhat1, yhat2, ...)
+
+\method{compare}{lm}(yhat1, yhat2, ...)
 }
 \arguments{
 \item{yhat1}{A data frame consisting of cross-validated predictions from a
@@ -69,5 +72,7 @@ Compare Predictive Performance of Two Models
 \item \code{numeric}: S3 method for class 'numeric'
 
 \item \code{beset}: two 'beset' class models
+
+\item \code{lm}: two 'glm' or 'lm' class models
 }}
 
