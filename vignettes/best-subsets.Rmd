@@ -359,7 +359,6 @@ mod_negbin <- beset_glm(dep ~ ., data = adolescents, family = "negbin")
 plot(mod_negbin) 
 ```
 
-
 ```{r}
 negbin_summary <- summary(mod_negbin, oneSE = FALSE)
 negbin_summary

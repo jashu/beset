@@ -56,20 +56,22 @@ summary.beset <- function(object, n_pred = NULL, alpha = NULL, lambda = NULL,
     metric <- if(object$family == "gaussian") "mse" else "mce"
   }
   if(inherits(object, "elnet")){
-    best_model <- get_best.beset_elnet(
-      object, alpha = alpha, lambda = lambda, metric = metric[1],
-      oneSE = oneSE)
-    best_idx <- with(object$stats$fit,
-                     which(alpha == best_model$alpha &
-                             lambda == best_model$best_lambda))
+    best_model <- get_best(
+      object, alpha = alpha, lambda = lambda, metric = metric[1], oneSE = oneSE
+    )
+    best_idx <- with(
+      object$stats$fit,
+      which(alpha == best_model$alpha & lambda == best_model$best_lambda)
+    )
     r2 <- object$stats$fit$rsq[best_idx]
     r2_test <- object$stats$test$rsq[best_idx]
     r2_cv <- purrr::flatten(object$stats$cv$rsq[best_idx])
     structure(list(best = best_model, r2 = r2, r2_cv = r2_cv, r2_test = r2_test),
               class = "summary_beset_elnet")
   } else {
-    best_model <- beset:::get_best.beset_glm(
-      object, n_pred = n_pred, metric = metric, oneSE = oneSE)
+    best_model <- get_best(
+      object, n_pred = n_pred, metric = metric, oneSE = oneSE
+    )
     loglik <- stats::logLik(best_model)
     best <- summary(best_model, ...)
     best$loglik <- loglik
@@ -129,7 +131,7 @@ summary.nested_elnet <- function(object, metric, oneSE, robust = FALSE,...){
   rep_idx <- map(repeats, ~ grepl(.x, names(object$beset)))
   best_models <- map(
     object$beset,
-    ~ beset:::get_best.beset_elnet(.x,  metric = metric, oneSE = oneSE)
+    ~ get_best(.x,  metric = metric, oneSE = oneSE)
   )
   alphas <- map_dbl(best_models, "alpha")
   lambdas <- map_dbl(best_models, "best_lambda")
@@ -207,8 +209,7 @@ summary.nested_beset <- function(object, metric = "auto", oneSE = TRUE, ...){
   repeats <- paste("Rep", 1:n_reps, "$", sep = "")
   rep_idx <- purrr::map(repeats, ~ grepl(.x, names(object$fold_assignments)))
   best_models <- purrr::map(
-    object$beset, ~ beset:::get_best.beset_glm(.x,  metric = metric,
-                                               oneSE = oneSE)
+    object$beset, ~ get_best(.x,  metric = metric, oneSE = oneSE)
   )
   if(family != "gaussian"){
     # Menard's standardization of y for logistic models
@@ -285,7 +286,7 @@ summary.nested_beset <- function(object, metric = "auto", oneSE = TRUE, ...){
 }
 
 #' @export
-summary.beset_rf <- function(object, ...){
+summary.beset_rf <- function(object, robust = FALSE, ...){
   type <- object$forests[[1]]$type
   ntree <- object$forests[[1]]$ntree
   mtry <- object$forests[[1]]$mtry
@@ -314,12 +315,15 @@ summary.beset_rf <- function(object, ...){
   validation_metrics <- validate(object, metric = metric, oneSE = oneSE)
   test_stats <- validation_metrics$stats
   varimp <- importance(object)
+  if(robust && n_reps > 1){
+    varimp <- filter(varimp, min_import > 0)
+  }
   structure(
     list(
       stats = list(oob = oob_stats, cv = cv_stats, test = test_stats),
       parameters = c(
         list(type = type, ntree = ntree, mtry = mtry),
         validation_metrics$parameters),
-      vars = importance(object)
+      vars = varimp
     ), class = "summary_beset_rf")
 }

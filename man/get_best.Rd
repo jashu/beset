@@ -7,7 +7,7 @@
 get_best(object, ...)
 }
 \arguments{
-\item{object}{A \code{\link{beset_glm}} or \code{\link{beset_elnet}} object.}
+\item{object}{A \code{\link{beset}} object.}
 
 \item{n_pred}{(Optional) \code{integer} number of predictors that the best
 model should contain. If specified, all other arguments are ignored.}

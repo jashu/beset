@@ -361,12 +361,7 @@ validate.nested <- function(object,
   repeats <- paste("Rep", 1:n_reps, "$", sep = "")
   rep_idx <- map(repeats, ~ grepl(.x, names(object$beset)))
   best_models <- map(
-    object$beset, ~
-      if(inherits(.x, "elnet")){
-        beset:::get_best.beset_elnet(.x,  metric = metric, oneSE = oneSE)
-      } else {
-        beset:::get_best.beset_glm(.x,  metric = metric, oneSE = oneSE)
-      }
+    object$beset, ~ get_best(.x,  metric = metric, oneSE = oneSE)
   )
   alpha <- NULL
   lambda <- NULL

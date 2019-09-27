@@ -4,7 +4,7 @@
 #' predictive model from \code{\link{beset}} objects based on information
 #' or cross-validation metrics.
 #'
-#' @param object A \code{\link{beset_glm}} or \code{\link{beset_elnet}} object.
+#' @param object A \code{\link{beset}} object.
 #'
 #' @param n_pred (Optional) \code{integer} number of predictors that the best
 #' model should contain. If specified, all other arguments are ignored.
@@ -31,12 +31,14 @@
 #' the best value of \code{lambda} will be chosen using the cross-validation
 #' \code{metric} and \code{oneSE} rule.
 
+#' @export
 get_best <- function(object, ...){
   UseMethod("get_best")
 }
 
-get_best.beset_glm <- function(object, n_pred = NULL,
-                               metric, oneSE = TRUE){
+
+#' @export
+get_best.glm <- function(object, n_pred = NULL, metric, oneSE = TRUE){
   minimize <- TRUE; if(metric == "auc") minimize <- FALSE
   cv_stats <- object$stats$cv
   if(is.null(n_pred)){
@@ -72,25 +74,9 @@ get_best.beset_glm <- function(object, n_pred = NULL,
   best_model
 }
 
-get_best.beset_elnet <- function(object, alpha = NULL, lambda = NULL,
-                                 metric, oneSE = TRUE){
-  # if alpha value given, check to make sure this value was cross-validated
-  if(!is.null(alpha)){
-    if(!alpha %in% object$stats$fit$alpha)
-      stop(paste(alpha, "was not among the cross-validated alpha values:\n",
-                 paste0(unique(object$stats$fit$alpha), collapse = ", ")))
-  }
-  best_alpha <- alpha
-  # if lambda value given, check to make sure this value was cross-validated
-  if(!is.null(lambda)){
-    valid_lambdas <- object$stats$fit %>% filter(alpha == best_alpha)
-    lambda_range <- range(valid_lambdas$lambda)
-    if(!between(lambda, lambda_range[1], lambda_range[2]))
-      stop(paste(lambda, "outside the range of cross-validated lambda values:\n",
-                 paste0(lambda_range, collapse = " - ")))
-
-    }
-  best_lambda <- lambda
+#' @export
+get_best.elnet <- function(object, metric, alpha = NULL, lambda = NULL,
+                           oneSE = TRUE){
   if(is.null(alpha) || is.null(lambda)){
     minimize <- TRUE; if(metric == "auc") minimize <- FALSE
     cv_stats <- object$stats$cv
@@ -100,21 +86,36 @@ get_best.beset_elnet <- function(object, alpha = NULL, lambda = NULL,
                      mce = cv_stats$mce,
                      mse = cv_stats$mse)
     boundary <- find_boundary(metric, oneSE, minimize)
-    if(is.null(alpha)){
-      best_alpha <- get_best_par(par_name = "alpha",
-                                 cv_stats = cv_stats,
-                                 metric = metric,
-                                 boundary = boundary,
-                                 minimize = minimize)
-    }
-    if(is.null(lambda)){
-      idx <- which(cv_stats$alpha == best_alpha)
-      best_lambda <- get_best_par(par_name = "lambda",
-                                  cv_stats = cv_stats[idx,],
-                                  metric = metric[idx],
-                                  boundary = boundary,
-                                  minimize = minimize)
-    }
+  }
+  # if alpha value given, check to make sure this value was cross-validated
+  best_alpha <- if(is.null(alpha)){
+    get_best_par(
+      par_name = "alpha", cv_stats = cv_stats, metric = metric,
+      boundary = boundary, minimize = minimize
+    )
+  } else {
+    if(!alpha %in% object$stats$fit$alpha)
+      stop(paste(alpha, "was not among the cross-validated alpha values:\n",
+                 paste0(unique(object$stats$fit$alpha), collapse = ", ")))
+    alpha
+  }
+  best_lambda <- if(is.null(lambda)){
+    idx <- which(cv_stats$alpha == best_alpha)
+    get_best_par(
+      par_name = "lambda", cv_stats = cv_stats[idx,], metric = metric[idx],
+      boundary = boundary, minimize = minimize)
+  } else {
+  # if lambda value given, check to make sure this value was cross-validated
+    valid_lambdas <- object$stats$fit %>% filter(alpha == best_alpha)
+    lambda_range <- range(valid_lambdas$lambda)
+    if(!between(lambda, lambda_range[1], lambda_range[2]))
+      stop(
+        paste(
+          lambda, "outside the range of cross-validated lambda values:\n",
+          paste0(lambda_range, collapse = " - ")
+        )
+      )
+    valid_lambdas$lambda[which.min(abs(valid_lambdas$lambda - lambda))]
   }
   model_data <- object$parameters
   model_data$alpha <- best_alpha
