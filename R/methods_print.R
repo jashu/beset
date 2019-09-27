@@ -96,7 +96,7 @@ print.summary_beset_elnet <- function(x, ...){
   }
   cat("(alpha = ", x$best$alpha, " with lambda = ",
       x$best$best_lambda, ")", sep = "")
-  coef_frame <- data_frame(
+  coef_frame <- tibble(
     variable = rownames(coef(x$best)),
     coef =  as.vector(coef(x$best, s = x$best$best_lambda))
   )
@@ -106,15 +106,18 @@ print.summary_beset_elnet <- function(x, ...){
       map_chr(~paste0("[", signif(.x[1],3), ", ", signif(.x[2],3), "]",
                       collapse = ""))
   }
-  coef_frame$stnd_coef <- NA
-  coef_frame$stnd_coef[-1] <- coef_frame$coef[-1] * x$best$x_sd / x$best$y_sd
+  coef_frame$`stnd coef` <- NA
+  coef_frame$`stnd coef`[-1] <- coef_frame$coef[-1] * x$best$x_sd / x$best$y_sd
   coef_frame <- dplyr::filter(coef_frame, coef != 0)
-  coef_frame <- dplyr::arrange(coef_frame, dplyr::desc(abs(stnd_coef)))
+  coef_frame <- dplyr::arrange(coef_frame, dplyr::desc(abs(`stnd coef`)))
   coef_frame <- dplyr::mutate_if(coef_frame, is.numeric, ~ round(., 3))
   coef_frame <- as.data.frame(coef_frame)
+  row.names(coef_frame) = coef_frame$variable
+  coef_frame <- coef_frame[-1]
   if(nrow(coef_frame) >= 1){
     cat("\n\nNon-zero coefficients ranked in order of importance:\n")
-    print(coef_frame, quote = FALSE)
+    printCoefmat(coef_frame, digits = 3, quote = FALSE, has.Pvalue = FALSE,
+                 cs.ind = 1:2, zap.ind = 1:2, tst.ind = NULL)
     cat("\n")
     cat(paste("Train-sample R-squared =", round(x$r2,2)))
     if(!is.null(x$r2_test)){
@@ -238,8 +241,8 @@ print.summary_nested_beset <- function(x, standardize = TRUE, metric = "rsq",
   form_frame <- as.data.frame(x$param$form)
   form_frame$Freq <- form_frame$Freq / sum(form_frame$Freq) * 100
   form_frame$Freq <- paste("(", round(form_frame$Freq), "%)", sep = "")
-  names(form_frame)[1:2] <- ""
-  print(form_frame, row.names = FALSE, width = 30)
+  out <- map2_chr(form_frame$best_form, form_frame$Freq, paste)
+  cat(format(out, justify = "right"), sep = "\n")
   coef_frame <- data_frame(
     Coef. =  map_dbl(x$coefs[[stnd]], "mean"),
     S.E. = map_dbl(x$coefs[[stnd]], "btwn_fold_se"),
@@ -261,7 +264,8 @@ print.summary_nested_beset <- function(x, standardize = TRUE, metric = "rsq",
     cat("\n\nNon-zero coefficients")
     if(standardize) cat(" ranked in order of importance")
     cat(":\n")
-    print(coef_frame, quote = FALSE)
+    printCoefmat(coef_frame, digits = 3, quote = FALSE, has.Pvalue = FALSE,
+                 cs.ind = 1:4, zap.ind = 1:4, tst.ind = NULL)
   } else {
     cat("\n\nNo reliable predictors.")
   }
@@ -296,7 +300,8 @@ print.summary_nested_beset <- function(x, standardize = TRUE, metric = "rsq",
                                     mae = "Mean Absolute Error",
                                     mce = "Mean Cross Entropy",
                                     mse = "Mean Squared Error")
-  print(results_frame)
+  printCoefmat(results_frame, digits = 3, quote = FALSE, has.Pvalue = FALSE,
+               cs.ind = 1:4, zap.ind = 1:4, tst.ind = NULL)
   cat("=======================================================")
 }
 
@@ -436,8 +441,9 @@ print.summary_beset_rf <- function(x, ...){
     Max = var_imp$max_import)
   coef_frame <- mutate_all(coef_frame, ~ round(., 3))
   coef_frame <- as.data.frame(coef_frame)
-  row.names(coef_frame) = var_imp$variable
-  print(coef_frame)
+  row.names(coef_frame) <- var_imp$variable
+  printCoefmat(coef_frame, digits = 3, quote = FALSE, has.Pvalue = FALSE,
+               cs.ind = 1:3, zap.ind = 1:3, tst.ind = NULL)
   cat("\n\nPrediction Metrics\n")
   cat("(Results of ", n_folds, "-fold cross-validation ", sep = "")
   if(n_reps > 1){

@@ -15,7 +15,7 @@ vignette: >
 
 # Introduction
 
-```{r, echo = FALSE}
+```{r, echo = FALSE, message = FALSE}
 library(beset)
 suppressPackageStartupMessages(library(tidyverse))
 ```
