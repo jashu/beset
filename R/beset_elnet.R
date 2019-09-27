@@ -364,12 +364,12 @@ beset_elnet <- function(
   y_hats <- map2(fits, m,
                  ~ predict(.x, .y$train$x, type = "response",
                            newoffset = .y$train$offset) %>%
-                   as_data_frame) %>% reduce(c)
+                   as_tibble) %>% reduce(c)
   y_obs <- if(is.factor(m[[1]]$train$y))
     as.integer(m[[1]]$train$y) - 1 else m[[1]]$train$y
   fit_stats <- bind_cols(
     fit_stats, map(y_hats, ~ predict_metrics_(y_obs, ., family)) %>%
-      transpose %>% simplify_all %>% as_data_frame)
+      transpose %>% simplify_all %>% as_tibble)
 
   #==================================================================
   # Obtain independent test stats
@@ -381,12 +381,12 @@ beset_elnet <- function(
     y_hats <- map2(fits, m,
                    ~ predict(.x, .y$test$x, type = "response",
                              newoffset = .y$test$offset) %>%
-                     as_data_frame) %>% reduce(c)
+                     as_tibble) %>% reduce(c)
     y_obs <- if(is.factor(m[[1]]$test$y))
       as.integer(m[[1]]$test$y) - 1 else m[[1]]$test$y
     test_stats <- bind_cols(
       test_stats, map(y_hats, ~ predict_metrics_(y_obs, ., family)) %>%
-        transpose %>% simplify_all %>% as_data_frame)
+        transpose %>% simplify_all %>% as_tibble)
   }
 
   #==================================================================
@@ -394,7 +394,7 @@ beset_elnet <- function(
   #------------------------------------------------------------------
   cv_results <- map(
     fits, ~ validate(.x, n_folds = n_folds, n_reps = n_reps, seed = seed)) %>%
-    map("stats") %>% transpose %>% map(reduce, c) %>% as_data_frame
+    map("stats") %>% transpose %>% map(reduce, c) %>% as_tibble
   cv_stats <- fit_stats %>% select(alpha, lambda) %>% bind_cols(cv_results)
 
   #======================================================================

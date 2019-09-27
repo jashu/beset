@@ -424,7 +424,7 @@ validate.nested <- function(object,
     rep_stats <- map(rep_idx,
                      ~ map_dbl(test_stats[.x, stat_names],
                                ~ mean(.x, na.rm = TRUE))
-                     ) %>% transpose %>% simplify_all %>% as_data_frame
+                     ) %>% transpose %>% simplify_all %>% as_tibble
     test_stats <- list(
       mean = map_dbl(rep_stats, mean),
       btwn_fold_se = map(test_stats[stat_names],
@@ -439,7 +439,7 @@ validate.nested <- function(object,
   } else {
     rep_stats <- map2(y, y_hat,
         ~ predict_metrics_(y = .x, y_hat = .y, family = family)
-    ) %>% transpose %>% simplify_all %>% as_data_frame
+    ) %>% transpose %>% simplify_all %>% as_tibble
     test_stats <- list(
       mean = map(rep_stats, ~ mean(.x, na.rm = TRUE)),
       btwn_fold_se = map(test_stats[stat_names],

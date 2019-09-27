@@ -92,7 +92,7 @@ importance.beset_rf <- function(object, ...){
   scale_by <- sum(import)
   import <- import / scale_by
   import_sd <- import_sd / scale_by
-  varimp <- data_frame(
+  varimp <- tibble(
     variable = names(import),
     importance = import,
     min_import = import - import_sd,
@@ -108,7 +108,7 @@ import <- object$variable_importance$delta
 min_import <- object$variable_importance$delta_low
 max_import <- object$variable_importance$delta_high
 scale_by <- sum(import)
-varimp <- data_frame(
+varimp <- tibble(
   variable = object$variable_importance$variable,
   importance = import / scale_by,
   min_import = min_import / scale_by,

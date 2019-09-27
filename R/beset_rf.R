@@ -148,7 +148,7 @@ beset_rf <- function(form, data, n_trees = 500, sample_rate = 0.6320000291,
     y <- data$test[[1]]
     stats <- predict_metrics_(y, y_hat, family = family)
     boot_stats <- vector()
-    fold_assignments <- data_frame(
+    fold_assignments <- tibble(
       Rep1 = rep(1, length(y_hat))
     )
     stats <- structure(
@@ -287,13 +287,13 @@ plot.beset_rf <- function(x, metric = c("auto", "mse", "rsq", "err.rate"), ...){
   oob <- map(x$forests, ~ .x[[metric]])
   if(inherits(oob[[1]], "matrix")) oob <- map(oob, ~ .x[,1])
   oob <- oob %>% transpose %>% simplify_all %>% map_dbl(mean)
-  oob <- data_frame(
+  oob <- tibble(
     sample = "Out-of-Bag", n_trees = seq(1:length(oob)), mean = oob
   )
   cv <- map(x$forests, ~ .x$test[[metric]])
   if(inherits(cv[[1]], "matrix")) cv <- map(cv, ~ .x[,1])
   cv <- cv %>% transpose %>% simplify_all %>% map_dbl(mean)
-  cv <- data_frame(
+  cv <- tibble(
     sample = "Test Holdout", n_trees = seq(1:length(cv)), mean = cv
   )
   data <- bind_rows(oob, cv)

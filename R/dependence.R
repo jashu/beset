@@ -132,11 +132,11 @@ dependence.beset <- function(
   y_obs <- object$parameters$y
   if(is.factor(y_obs)) y_obs <- as.integer(y_obs) - 1
   impact <- (max(y_hat) - min(y_hat)) / (max(y_obs) - min(y_obs))
-  plot_data <- data_frame(
+  plot_data <- tibble(
     x = x_plot,
     y = y_hat
   )
-  partial_effects <- data_frame(
+  partial_effects <- tibble(
     variable = x_lab,
     delta = impact
   )
@@ -234,7 +234,7 @@ dependence.nested_elnet <- function(
   }
   variable_importance <- variable_importance %>%
     inner_join(
-      data_frame(
+      tibble(
         variable = names(impact),
         delta = map_dbl(impact, median),
         delta_low = map_dbl(impact, ~ quantile(.x, .025)),
@@ -299,7 +299,7 @@ dependence.randomForest <- function(
   y_obs <- object$y
   if(is.factor(y_obs)) y_obs <- as.integer(y_obs) - 1
   impact <- (max(y_hat) - min(y_hat)) / (max(y_obs) - min(y_obs))
-  plot_data <- data_frame(
+  plot_data <- tibble(
     x = x_plot,
     y = y_hat
   )
@@ -307,7 +307,7 @@ dependence.randomForest <- function(
     ggplot(data = plot_data, aes(x = x, y = y)) +
     geom_line(aes(group = 1)) + theme_classic() + xlab(x_lab) + ylab(y_lab)
   } else plot_data
-  variable_importance <- data_frame(
+  variable_importance <- tibble(
     variable = x_lab,
     delta = impact
   )

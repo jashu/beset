@@ -17,7 +17,7 @@ boot_elnet <- function(data, lambda, n_reps = 1000, seed = 42,
     as.vector(coef(m, s = lambda))
   }
   idx_array <-  ordinary_array(n, n_reps, seed)
-  boot_ids <- as_data_frame(idx_array) %>% transpose %>% simplify_all
+  boot_ids <- as_tibble(idx_array) %>% transpose %>% simplify_all
   res <- if (n_cores > 1L) {
     if (have_mc) {
       parallel::mclapply(boot_ids, fn, mc.cores = n_cores)

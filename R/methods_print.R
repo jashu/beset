@@ -215,7 +215,7 @@ print.summary_nested_beset <- function(x, standardize = TRUE, metric = "rsq",
   }
   cat("\n=======================================================\n")
   if(family == "negbin"){
-    tune_frame <- data_frame(
+    tune_frame <- tibble(
       `Mean` = x$parameters$theta$mean,
       `S.E.` = x$parameters$theta$btwn_fold_se
       )
@@ -243,7 +243,7 @@ print.summary_nested_beset <- function(x, standardize = TRUE, metric = "rsq",
   form_frame$Freq <- paste("(", round(form_frame$Freq), "%)", sep = "")
   out <- map2_chr(form_frame$best_form, form_frame$Freq, paste)
   cat(format(out, justify = "right"), sep = "\n")
-  coef_frame <- data_frame(
+  coef_frame <- tibble(
     Coef. =  map_dbl(x$coefs[[stnd]], "mean"),
     S.E. = map_dbl(x$coefs[[stnd]], "btwn_fold_se"),
   )
@@ -270,7 +270,7 @@ print.summary_nested_beset <- function(x, standardize = TRUE, metric = "rsq",
     cat("\n\nNo reliable predictors.")
   }
   cat("\n\nPrediction Metrics:\n")
-  results_frame <- data_frame(
+  results_frame <- tibble(
     `Mean` =  map_dbl(x$stats, ~ map_dbl(.x[metric], "mean")),
     `S.E.` = try(
       map_dbl(x$stats, ~ map_dbl(.x[metric], "btwn_fold_se")),
@@ -374,7 +374,7 @@ print.summary_nested_elnet <- function(
     cat("\n\nNo reliable predictors.")
   }
   cat("\n\nPrediction Metrics:\n")
-  results_frame <- data_frame(
+  results_frame <- tibble(
     `Mean` =  map_dbl(x$stats, ~ map_dbl(.x[metric], "mean")),
     `S.E.` = map_dbl(x$stats, ~ map_dbl(.x[metric], "btwn_fold_se"))
   )
@@ -435,7 +435,7 @@ print.summary_beset_rf <- function(x, ...){
           round(100 * x$stats$cv$mean, digits = 2), "\n\n", sep = "")
   }
   var_imp <- x$vars %>% arrange(desc(importance))
-  coef_frame <- data_frame(
+  coef_frame <- tibble(
     Importance =  var_imp$importance,
     Min = var_imp$min_import,
     Max = var_imp$max_import)
@@ -450,7 +450,7 @@ print.summary_beset_rf <- function(x, ...){
     cat("repeated ", n_reps, " times", sep = "")
   }
   cat(")\n")
-  results_frame <- results_frame <- data_frame(
+  results_frame <- results_frame <- tibble(
     Mean =  map_dbl(x$stats$test, "mean"),
     S.E. = map_dbl(x$stats$test, "btwn_fold_se")
   )

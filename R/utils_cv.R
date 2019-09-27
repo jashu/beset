@@ -85,11 +85,11 @@ get_cv_stats <-  function(y, y_hat, family, n_folds, n_reps,
     repeats, ~ y_hat[grepl(.x, names(y_hat))]) %>%
     map(~ reduce(. , rbind)) %>% map(~.x[names(y),])
   names(hold_out_pred) <- paste("Rep", 1:n_reps, sep = "")
-  hold_out_pred <- as_data_frame(hold_out_pred)
+  hold_out_pred <- as_tibble(hold_out_pred)
   rep_stats <- map(hold_out_pred,
                    ~ predict_metrics_(y = y, y_hat = .x, family = family,
                                       phi = phi, theta = theta)) %>%
-    transpose %>% simplify_all %>% as_data_frame
+    transpose %>% simplify_all %>% as_tibble
   btwn_rep_range <- if(n_reps > 1){
     map(rep_stats, ~ range(.x, na.rm = TRUE))
   } else map(rep_stats, ~c(NA, NA))
@@ -108,7 +108,7 @@ get_fold_ids <- function(fold_ids, n_reps){
       map2(.x, seq_along(.x), ~rep(.y, length(.x))), c)) %>%
   map2(holdout_ids, ~ .x[order(reduce(.y, c))])
   names(holdout_fold) <- paste("Rep", 1:n_reps, sep = "")
-  as_data_frame(holdout_fold)
+  as_tibble(holdout_fold)
 }
 
 create_folds <- function(y, n_folds, n_reps, seed = 42){

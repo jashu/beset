@@ -121,7 +121,7 @@ get_subsets <- function(m, force_in, p_max){
   form_list <- form_list[n_pred <= p_max]
   pred_idx <- pred_idx[n_pred <= p_max]
   n_pred <- n_pred[n_pred <= p_max]
-  data_frame(pred_idx = pred_idx, form = form_list, n_pred = n_pred)
+  tibble(pred_idx = pred_idx, form = form_list, n_pred = n_pred)
 }
 
 get_subset_stats <- function(j, m, fitter){

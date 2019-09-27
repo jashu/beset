@@ -388,16 +388,16 @@ beset_glm <- function(form, data, family = "gaussian", link = NULL,
     }
   } else lapply(all_subsets$pred_idx, get_subset_stats, m = m, fitter = fitter)
   fit_stats <- transpose(train_test_stats)$fit_stats %>%
-    transpose %>% simplify_all %>% as_data_frame %>%
+    transpose %>% simplify_all %>% as_tibble %>%
     mutate_all(function(x) case_when(abs(x) < 1e-6 ~ 0, TRUE ~ x))
-  fit_stats <- dplyr::bind_cols(all_subsets, dplyr::as_data_frame(fit_stats))
+  fit_stats <- dplyr::bind_cols(all_subsets, dplyr::as_tibble(fit_stats))
   test_stats <- NULL
   test_preds <- NULL
   if(!is.null(train_test_stats[[1]]$test_stats)){
     test_stats <- transpose(train_test_stats)$test_stats %>%
-      transpose %>% simplify_all %>% as_data_frame %>%
+      transpose %>% simplify_all %>% as_tibble %>%
       mutate_all(function(x) case_when(abs(x) < 1e-6 ~ 0, TRUE ~ x))
-    test_stats <- bind_cols(all_subsets, as_data_frame(test_stats))
+    test_stats <- bind_cols(all_subsets, as_tibble(test_stats))
     test_preds <- transpose(train_test_stats)$test_preds
   }
   m$test$yhat <- test_preds
@@ -433,7 +433,7 @@ beset_glm <- function(form, data, family = "gaussian", link = NULL,
   } else map(best_fits, ~ validate(., n_folds = n_folds, n_reps = n_reps,
                                        seed = seed)
   )
-  cv_results <- cv_results %>% map("stats") %>% transpose %>% as_data_frame
+  cv_results <- cv_results %>% map("stats") %>% transpose %>% as_tibble
 
   cv_stats <- bind_cols(cv_stats, cv_results)
 
