@@ -261,7 +261,7 @@ beset_elnet <- function(
     }
     y <- all.vars(form)[1]
     x <- all.vars(form)[-1]
-    if(length(x) == 1 && x == ".") x <- NULL
+    if("." %in% x) x <- NULL
     n_obs <- nrow(na.omit(data))
     cv_params <- set_cv_par(n_obs, n_folds, n_reps)
     n_folds <- cv_params$n_folds; n_reps <- cv_params$n_reps

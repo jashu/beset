@@ -40,7 +40,7 @@ make_args <- function(form, data, family, link, contrasts,
     data
   }
   x <- stats::model.matrix(form, mf, contrasts)
-  todrop <- which(colnames(x) %in% c("`(offset)`", "`(weights)`"))
+  todrop <- grep("`\\(offset\\)`|`\\(weights\\)`", colnames(x))
   if(length(todrop)) x <- x[, -todrop]
   y <- model.response(mf)
   # insure y is a factor if family is binomial
