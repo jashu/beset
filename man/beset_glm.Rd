@@ -5,17 +5,47 @@
 \alias{beset_lm}
 \title{Best Subset Selection for Generalized Linear Models}
 \usage{
-beset_glm(form, data, family = "gaussian", link = NULL, p_max = 10,
-  force_in = NULL, nest_cv = FALSE, n_folds = 10, n_reps = 10,
-  seed = 42, contrasts = NULL, offset = NULL, weights = NULL,
-  start = NULL, etastart = NULL, mustart = NULL, epsilon = 1e-08,
-  maxit = 25, skinny = FALSE, n_cores = NULL, parallel_type = NULL,
-  cl = NULL)
+beset_glm(
+  form,
+  data,
+  family = "gaussian",
+  link = NULL,
+  p_max = 10,
+  force_in = NULL,
+  nest_cv = FALSE,
+  n_folds = 10,
+  n_reps = 10,
+  seed = 42,
+  contrasts = NULL,
+  offset = NULL,
+  weights = NULL,
+  start = NULL,
+  etastart = NULL,
+  mustart = NULL,
+  epsilon = 1e-08,
+  maxit = 25,
+  skinny = FALSE,
+  n_cores = NULL,
+  parallel_type = NULL,
+  cl = NULL
+)
 
-beset_lm(form, data, p_max = 10, force_in = NULL, weights = NULL,
-  contrasts = NULL, offset = NULL, nest_cv = FALSE, n_folds = 10,
-  n_reps = 10, seed = 42, n_cores = NULL, parallel_type = NULL,
-  cl = NULL)
+beset_lm(
+  form,
+  data,
+  p_max = 10,
+  force_in = NULL,
+  weights = NULL,
+  contrasts = NULL,
+  offset = NULL,
+  nest_cv = FALSE,
+  n_folds = 10,
+  n_reps = 10,
+  seed = 42,
+  n_cores = NULL,
+  parallel_type = NULL,
+  cl = NULL
+)
 }
 \arguments{
 \item{form}{A model \code{\link[stats]{formula}}.}

@@ -4,7 +4,8 @@
 \name{prostate}
 \alias{prostate}
 \title{Prostate Cancer Study}
-\format{A data frame with 380 rows and 8 variables:
+\format{
+A data frame with 380 rows and 8 variables:
 \describe{
   \item{tumor}{tumor penetration of prostatic capsule, 0 = no penetration}
   \item{age}{in years}
@@ -14,7 +15,8 @@
   \item{psa}{antigen (mg/ml)}
   \item{vol}{tumor volume obtained from ultrasound (cm3)}
   \item{gleason}{total gleason score (0 - 10)}
-}}
+}
+}
 \source{
 \url{https://raw.github.com/0xdata/h2o/master/smalldata/logreg/prostate.csv}
 }

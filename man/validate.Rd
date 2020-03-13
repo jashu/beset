@@ -13,23 +13,40 @@
 \usage{
 validate(object, ...)
 
-\method{validate}{lm}(object, data = NULL, n_folds = 10, n_reps = 10,
-  seed = 42, ...)
+\method{validate}{lm}(object, data = NULL, n_folds = 10, n_reps = 10, seed = 42, ...)
 
-\method{validate}{glm}(object, data = NULL, n_folds = 10,
-  n_reps = 10, seed = 42, ...)
+\method{validate}{glm}(object, data = NULL, n_folds = 10, n_reps = 10, seed = 42, ...)
 
-\method{validate}{glmnet}(object, x = NULL, y = NULL, lambda = NULL,
-  offset = NULL, weights = NULL, n_folds = 10, n_reps = 10,
-  seed = 42, envir = .GlobalEnv, ...)
+\method{validate}{glmnet}(
+  object,
+  x = NULL,
+  y = NULL,
+  lambda = NULL,
+  offset = NULL,
+  weights = NULL,
+  n_folds = 10,
+  n_reps = 10,
+  seed = 42,
+  envir = .GlobalEnv,
+  ...
+)
 
 \method{validate}{beset}(object, ...)
 
 \method{validate}{nested}(object, metric = "auto", oneSE = TRUE, ...)
 
-\method{validate}{randomForest}(object, data = NULL, x = NULL,
-  n_folds = 10, n_reps = 10, seed = 42, ..., parallel_type = NULL,
-  n_cores = NULL, cl = NULL)
+\method{validate}{randomForest}(
+  object,
+  data = NULL,
+  x = NULL,
+  n_folds = 10,
+  n_reps = 10,
+  seed = 42,
+  ...,
+  parallel_type = NULL,
+  n_cores = NULL,
+  cl = NULL
+)
 
 \method{validate}{beset_rf}(object, ...)
 }

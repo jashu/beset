@@ -4,8 +4,15 @@
 \alias{data_partition}
 \title{"data_partition" Constructor}
 \usage{
-data_partition(train, test, y, x = NULL, offset = NULL,
-  weights = NULL, na_action = na.omit)
+data_partition(
+  train,
+  test,
+  y,
+  x = NULL,
+  offset = NULL,
+  weights = NULL,
+  na_action = na.omit
+)
 }
 \arguments{
 \item{train}{A \code{\link[base]{data.frame}} containing the training data to

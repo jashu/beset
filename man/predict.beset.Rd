@@ -4,10 +4,20 @@
 \alias{predict.beset}
 \title{Predict Methods for \code{beset} Objects}
 \usage{
-\method{predict}{beset}(object, newdata, type = "response",
-  newoffset = NULL, alpha = NULL, lambda = NULL, n_pred = NULL,
-  metric = "auto", oneSE = TRUE, na.action = na.pass, tt = NULL,
-  ...)
+\method{predict}{beset}(
+  object,
+  newdata,
+  type = "response",
+  newoffset = NULL,
+  alpha = NULL,
+  lambda = NULL,
+  n_pred = NULL,
+  metric = "auto",
+  oneSE = TRUE,
+  na.action = na.pass,
+  tt = NULL,
+  ...
+)
 }
 \arguments{
 \item{object}{A \code{beset_elnet} object.}
@@ -25,9 +35,9 @@ level of the factor response. Type "class" applies only to "binomial" models,
 and produces the class label corresponding to the maximum probability. Type
 "nonzero" returns a list of the indices of the nonzero coefficients.}
 
-\item{newoffset}{If an offset is used in the fit, then one must be
-   supplied for making predictions (except for
-   \code{type="coefficients"}  or \code{type="nonzero"})}
+\item{newoffset}{If an offset is used in the fit, then one must be supplied
+for making predictions (except for \code{type="coefficients"} or
+\code{type="nonzero"})}
 
 \item{alpha}{(Optional) \code{numeric} value to force selection of
 elastic-net model with the given \code{alpha} parameter. If left \code{NULL},

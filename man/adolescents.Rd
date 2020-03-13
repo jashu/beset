@@ -4,7 +4,8 @@
 \name{adolescents}
 \alias{adolescents}
 \title{Self-schema and depression in adolescents}
-\format{A data frame with 371 rows and 11 variables:
+\format{
+A data frame with 371 rows and 11 variables:
 \describe{
   \item{dep}{total depression score from the CDI:S}
   \item{v.positive}{drift rate to positive words}
@@ -17,7 +18,8 @@
   \item{szr}{intertrial variability of starting point}
   \item{sv}{intertrial variability of drift}
   \item{st0}{intertrial variability of non-decisional components}
-}}
+}
+}
 \source{
 \url{https://dataverse.tdl.org/api/access/datafile/942}
 }

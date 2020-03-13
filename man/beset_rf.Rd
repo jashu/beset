@@ -5,10 +5,23 @@
 \alias{plot.beset_rf}
 \title{Beset Random Forest}
 \usage{
-beset_rf(form, data, n_trees = 500, sample_rate = 0.6320000291,
-  mtry = NULL, min_obs_in_node = NULL, n_folds = 10, n_reps = 10,
-  seed = 42, class_wt = NULL, cutoff = NULL, strata = NULL,
-  parallel_type = NULL, n_cores = NULL, cl = NULL)
+beset_rf(
+  form,
+  data,
+  n_trees = 500,
+  sample_rate = 0.6320000291,
+  mtry = NULL,
+  min_obs_in_node = NULL,
+  n_folds = 10,
+  n_reps = 10,
+  seed = 42,
+  class_wt = NULL,
+  cutoff = NULL,
+  strata = NULL,
+  parallel_type = NULL,
+  n_cores = NULL,
+  cl = NULL
+)
 
 plot.beset_rf(x, metric = c("auto", "mse", "rsq", "err.rate"), ...)
 }

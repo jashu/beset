@@ -4,9 +4,18 @@
 \alias{glm_nb}
 \title{Fit a Negative Binomial Generalized Linear Model}
 \usage{
-glm_nb(x, y, weights = rep(1, nobs), start = NULL, etastart = NULL,
-  mustart = NULL, offset = rep(0, nobs), family = poisson(),
-  control = list(), intercept = TRUE)
+glm_nb(
+  x,
+  y,
+  weights = rep(1, nobs),
+  start = NULL,
+  etastart = NULL,
+  mustart = NULL,
+  offset = rep(0, nobs),
+  family = poisson(),
+  control = list(),
+  intercept = TRUE
+)
 }
 \arguments{
 \item{x}{A design matrix of dimension \code{n * p}}

@@ -4,8 +4,15 @@
 \alias{summary.beset}
 \title{Summary Methods for \code{beset} Objects}
 \usage{
-\method{summary}{beset}(object, n_pred = NULL, alpha = NULL,
-  lambda = NULL, metric = "auto", oneSE = TRUE, ...)
+\method{summary}{beset}(
+  object,
+  n_pred = NULL,
+  alpha = NULL,
+  lambda = NULL,
+  metric = "auto",
+  oneSE = TRUE,
+  ...
+)
 }
 \arguments{
 \item{object}{An object for which a summary is desired.}

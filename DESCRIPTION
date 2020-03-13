@@ -42,7 +42,7 @@ Imports:
 Encoding: UTF-8
 License: GPL-3
 LazyData: TRUE
-RoxygenNote: 6.1.1
+RoxygenNote: 7.1.0
 Suggests:
     testthat,
     knitr,

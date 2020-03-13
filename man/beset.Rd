@@ -3,7 +3,6 @@
 \docType{package}
 \name{beset}
 \alias{beset}
-\alias{beset-package}
 \title{beset: Best Subset Predictive Modeling}
 \description{
 \code{beset} is a portmanteau of BEst subSET, which references the overall
