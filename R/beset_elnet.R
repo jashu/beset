@@ -336,8 +336,10 @@ beset_elnet <- function(
   # so should not be included in model matrix
   walk(seq_along(m), function(i){
       if(m[[i]]$train$intercept){
-        m[[i]]$train$x <<- m[[i]]$train$x[,-1]
-        if(length(m[[i]]$test)) m[[i]]$test$x <<- m[[i]]$test$x[,-1]
+        m[[i]]$train$x <<- m[[i]]$train$x[, -1, drop = FALSE]
+        if(length(m[[i]]$test)){
+          m[[i]]$test$x <<- m[[i]]$test$x[, -1, drop = FALSE]
+        }
     }
     if(!is.null(lambda_min_ratio)){
       m[[i]]$train$lambda.min.ratio <<- lambda_min_ratio

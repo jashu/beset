@@ -408,7 +408,7 @@ validate.nested <- function(object,
   y_hat <-
     if(inherits(object, "elnet")){
       map2(best_models, fold_ids,
-                ~ predict(.x, newx = X[.y,], s = .x$best_lambda,
+                ~ predict(.x, newx = X[.y, , drop = FALSE], s = .x$best_lambda,
                           type = "response", newoffset = newoffset[.y]))
     } else {
       map2(
