@@ -9,7 +9,7 @@ Description: Provides a friendly user interface, summary, and plotting methods
     for cross-validating model fits using best-subset or elastic-
     net GLMs or random forests.
 Depends:
-    R (>= 3.4.0),
+    R (>= 3.6.0),
     foreach,
     graphics,
     grDevices,
@@ -23,8 +23,8 @@ Imports:
     assertthat (>= 0.2.0),
     dplyr (>= 0.7.8),
     ggplot2 (>= 2.2.1),
-    glmnet,
-    glue (>= 1.1.1),
+    glmnet (>= 3.0),
+    glue (>= 1.3.2),
     grid,
     magrittr (>= 1.5),
     MASS,
@@ -35,9 +35,9 @@ Imports:
     R6 (>= 2.2.2),
     readr (>= 1.3.1),
     Rcpp (>= 1.0.0),
-    rlang (>= 0.3.1),
-    tibble (>= 2.0.0),
-    tidyselect (>= 0.2.5),
+    rlang (>= 0.4.5.9000),
+    tibble (>= 2.1.3),
+    tidyselect (>= 1.0.0),
     VGAM
 Encoding: UTF-8
 License: GPL-3
