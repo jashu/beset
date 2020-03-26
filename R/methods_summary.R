@@ -292,8 +292,10 @@ summary.beset_rf <- function(object, robust = FALSE, ...){
   mtry <- object$forests[[1]]$mtry
   n_folds <- object$stats$parameters$n_folds
   n_reps <- object$stats$parameters$n_reps
-  repeats <- paste("Rep", 1:n_reps, "$", sep = "")
-  rep_idx <- purrr::map(repeats, ~ grepl(.x, names(object$forests)))
+  if(!is.null(n_reps)){
+    repeats <- paste("Rep", 1:n_reps, "$", sep = "")
+    rep_idx <- purrr::map(repeats, ~ grepl(.x, names(object$forests)))
+  }
   stats_oob <- if (type == "classification") {
     map_dbl(object$forests, ~.x$err.rate[ntree, "OOB"])
   } else {
@@ -304,16 +306,23 @@ summary.beset_rf <- function(object, robust = FALSE, ...){
   } else {
     map_dbl(object$forests, ~ .x$test$rsq[ntree])
   }
-  oob_stats <- list(
-    mean = mean(stats_oob),
-    btwn_fold_se = sd(stats_oob) / sqrt(n_folds),
-    btwn_rep_range = map(rep_idx, ~ mean(stats_oob[.x])) %>% range)
-  cv_stats <- list(
-    mean = mean(stats_test),
-    btwn_fold_se = sd(stats_test) / sqrt(n_folds),
-    btwn_rep_range = map(rep_idx, ~ mean(stats_test[.x])) %>% range)
-  validation_metrics <- validate(object, metric = metric, oneSE = oneSE)
-  test_stats <- validation_metrics$stats
+  oob_stats <- stats_oob
+  cv_stats <- stats_test
+  if(!is.null(n_reps)){
+    oob_stats <- list(
+      mean = mean(stats_oob),
+      btwn_fold_se = sd(stats_oob) / sqrt(n_folds),
+      btwn_rep_range = map(rep_idx, ~ mean(stats_oob[.x])) %>% range
+    )
+    cv_stats <- list(
+      mean = mean(stats_test),
+      btwn_fold_se = sd(stats_test) / sqrt(n_folds),
+      btwn_rep_range = map(rep_idx, ~ mean(stats_test[.x])) %>% range)
+  }
+  test_stats <- object$stats
+  if(!inherits(test_stats, "prediction_metrics")){
+    test_stats <- test_stats$stats
+  }
   varimp <- importance(object)
   if(robust && n_reps > 1){
     varimp <- filter(varimp, min_import > 0)
@@ -321,9 +330,12 @@ summary.beset_rf <- function(object, robust = FALSE, ...){
   structure(
     list(
       stats = list(oob = oob_stats, cv = cv_stats, test = test_stats),
-      parameters = c(
-        list(type = type, ntree = ntree, mtry = mtry),
-        validation_metrics$parameters),
+      parameters = list(
+        type = type, ntree = ntree, mtry = mtry,
+        n_folds = n_folds, n_reps = n_reps,
+        family = if(type == "classification") "binomial" else "gaussian"
+      ),
       vars = varimp
-    ), class = "summary_beset_rf")
+    ), class = "summary_beset_rf"
+  )
 }

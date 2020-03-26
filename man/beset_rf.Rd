@@ -9,7 +9,7 @@ beset_rf(
   form,
   data,
   n_trees = 500,
-  sample_rate = 0.6320000291,
+  sample_rate = 1 - exp(-1),
   mtry = NULL,
   min_obs_in_node = NULL,
   n_folds = 10,
@@ -28,12 +28,14 @@ plot.beset_rf(x, metric = c("auto", "mse", "rsq", "err.rate"), ...)
 \arguments{
 \item{form}{A model \code{\link[stats]{formula}}.}
 
-\item{data}{Data frame containing the variables in the model.}
+\item{data}{Either a \code{\link{data_partition}} object containing data sets
+to be used for both model training and testing, or a single data frame that
+will be used for model training and cross-validation.}
 
 \item{n_trees}{Number of trees. Defaults to 500.}
 
 \item{sample_rate}{Row sample rate per tree (from \code{0 to 1}). Defaults to
-\code{0.6320000291}.}
+\code{1 - exp(1), or ~ 0.632}.}
 
 \item{mtry}{(Optional) \code{integer} number of variables randomly sampled
 as candidates at each split. If omitted, defaults to the square root of the
@@ -112,7 +114,23 @@ function of number of trees in forest
 }}
 
 \examples{
+# Using default 10 X 10 repeated k-fold cross-validation
 data("prostate", package = "beset")
 rf <- beset_rf(tumor ~ ., data = prostate)
+summary(rf)
+plot(rf)
 
+# Using a single independent test set instead of cross-validation
+inTrain <- sample.int(nrow(prostate), nrow(prostate)/2)
+data <- data_partition(
+  train = prostate[inTrain,], test = prostate[-inTrain,], y = "tumor"
+)
+rf <- beset_rf(tumor ~ ., data = data)
+summary(rf)
+plot(rf)
+
+# Example with continuous outcome
+rf <- beset_rf(gleason ~ ., data = data)
+summary(rf)
+plot(rf)
 }

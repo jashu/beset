@@ -7,12 +7,10 @@
 #' information is retained for compatibility with \code{beset} methods such as
 #' variable \code{\link{importance}} and partial \code{\link{dependence}}.
 #'
-#' @param data Data frame containing the variables in the model.
-#'
 #' @param n_trees Number of trees. Defaults to 500.
 #'
 #' @param sample_rate Row sample rate per tree (from \code{0 to 1}). Defaults to
-#' \code{0.6320000291}.
+#' \code{1 - exp(1), or ~ 0.632}.
 #'
 #' @param mtry (Optional) \code{integer} number of variables randomly sampled
 #' as candidates at each split. If omitted, defaults to the square root of the
@@ -43,13 +41,29 @@
 #'  }
 #'
 #' @examples
+#' # Using default 10 X 10 repeated k-fold cross-validation
 #' data("prostate", package = "beset")
 #' rf <- beset_rf(tumor ~ ., data = prostate)
+#' summary(rf)
+#' plot(rf)
 #'
+#' # Using a single independent test set instead of cross-validation
+#' inTrain <- sample.int(nrow(prostate), nrow(prostate)/2)
+#' data <- data_partition(
+#'   train = prostate[inTrain,], test = prostate[-inTrain,], y = "tumor"
+#' )
+#' rf <- beset_rf(tumor ~ ., data = data)
+#' summary(rf)
+#' plot(rf)
+#'
+#' # Example with continuous outcome
+#' rf <- beset_rf(gleason ~ ., data = data)
+#' summary(rf)
+#' plot(rf)
 #' @import dplyr
 #' @import purrr
 #' @export
-beset_rf <- function(form, data, n_trees = 500, sample_rate = 0.6320000291,
+beset_rf <- function(form, data, n_trees = 500, sample_rate = 1 - exp(-1),
                      mtry = NULL, min_obs_in_node = NULL,
                      n_folds = 10, n_reps = 10, seed = 42,
                      class_wt = NULL, cutoff = NULL, strata = NULL,
@@ -63,23 +77,22 @@ beset_rf <- function(form, data, n_trees = 500, sample_rate = 0.6320000291,
               immediate. = TRUE)
       attr(data, "na.action") <- NULL
     }
-    terms <- terms(mf)
-    xlevels = .getXlevels(terms, mf)
+    attr(mf, "terms") <- NULL
     data <- mf
-    attr(data, "terms") <- NULL
-    x <- data[-1]
-    y <- data[[1]]
-    names(y) <- row.names(data)
+    x <- mf[-1]
+    y <- mf[[1]]
+    names(y) <- row.names(mf)
   } else if(inherits(data, "data_partition")){
-    terms <- terms(data$train)
-    xlevels <- .getXlevels(terms, data$train)
     data$train$`(offset)` <- data$train$`(weights)` <-
       data$test$`(offset)` <- NULL
     data$train <- mutate_if(data$train, is.logical, factor)
     data$test <- mutate_if(data$test, is.logical, factor)
+    data$train <- model.frame(form, data = data$train)
+    attr(data$train, "terms") <- NULL
+    data$test<- model.frame(form, data = data$test)
+    attr(data$test, "terms") <- NULL
     x <- data$train[-1]
     y <- data$train[[1]]
-    names(y) <- row.names(data$train)
   } else {
     stop("`data` argument must inherit class 'data.frame' or 'data_partition'")
   }
@@ -87,16 +100,15 @@ beset_rf <- function(form, data, n_trees = 500, sample_rate = 0.6320000291,
   #======================================================================
   # Set up x and y arguments for randomForest.default
   #----------------------------------------------------------------------
-  if(is.factor(y)){
-    if(n_distinct(y) > 2){
+  if(is.factor(y) && n_distinct(y) > 2){
       stop(
         paste("Multinomial classification not supported by beset at this time.",
               "Please use the `randomForest` package directly for this.",
               sep = "\n")
       )
-    }
-  } else {
-    if(n_distinct(y) == 2) y <- factor(y)
+  }
+  if(!is.factor(y) && n_distinct(y) == 2){
+    y <- factor(y)
     if(inherits(data, "data_partition")){
       data$train[[1]] <- factor(data$train[[1]])
       data$test[[1]] <- factor(data$test[[1]])
@@ -147,21 +159,6 @@ beset_rf <- function(form, data, n_trees = 500, sample_rate = 0.6320000291,
     }
     y <- data$test[[1]]
     stats <- predict_metrics_(y, y_hat, family = family)
-    boot_stats <- vector()
-    fold_assignments <- tibble(
-      Rep1 = rep(1, length(y_hat))
-    )
-    stats <- structure(
-      c(cv_stats, list(
-        fold_assignments = fold_assignments,
-        parameters = list(family = family,
-                          n_obs = n_obs,
-                          n_folds = 1,
-                          n_reps = 1,
-                          seed = seed,
-                          y = y))),
-      class = "cross_valid"
-    )
     return(
       structure(
         list(
@@ -172,8 +169,6 @@ beset_rf <- function(form, data, n_trees = 500, sample_rate = 0.6320000291,
       )
     )
   }
-
-
   #======================================================================
   # Set up parallel operations
   #----------------------------------------------------------------------

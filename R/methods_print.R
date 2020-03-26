@@ -418,22 +418,22 @@ print.summary_beset_rf <- function(x, ...){
   ntree <- x$parameters$ntree
   mtry <- x$parameters$mtry
 
-
   cat("Type of random forest: ", type, "\n", sep = "")
   cat("Number of trees: ", ntree, "\n", sep = "")
   cat("No. of variables tried at each split: ", mtry, sep = "")
   cat("\n=======================================================\n")
-  if (type == "classification") {
-      cat("OOB estimate of error rate: ",
-          round(x$stats$oob$mean * 100, digits = 2), "%\n", sep = "")
-      cat("CV estimate of error rate: ",
-          round(x$stats$cv$mean * 100, digits = 2), "%\n\n", sep = "")
-  } else {
-      cat("OOB estimate of % Var explained: ",
-          round(100 * x$stats$oob$mean, digits = 2), "\n", sep = "")
-      cat("CV estimate of % Var explained: ",
-          round(100 * x$stats$cv$mean, digits = 2), "\n\n", sep = "")
-  }
+  metric <- if(type == "classification") "error rate" else "% Var explained"
+  validation <- if(is.null(n_folds)) "Test set" else "CV estimate of"
+  cat(
+    sprintf("OOB estimate of %s: ", metric),
+    if(is.null(n_folds)) round(x$stats$oob * 100, digits = 2) else
+      round(x$stats$oob$mean * 100, digits = 2), "%\n", sep = ""
+  )
+  cat(
+    sprintf("%s %s: ", validation, metric),
+    if(is.null(n_folds)) round(x$stats$cv * 100, digits = 2) else
+      round(x$stats$cv$mean * 100, digits = 2), "%\n\n", sep = ""
+  )
   var_imp <- x$vars %>% arrange(desc(importance))
   coef_frame <- tibble(
     Importance =  var_imp$importance,
@@ -445,32 +445,45 @@ print.summary_beset_rf <- function(x, ...){
   printCoefmat(coef_frame, digits = 3, quote = FALSE, has.Pvalue = FALSE,
                cs.ind = 1:3, zap.ind = 1:3, tst.ind = NULL)
   cat("\n\nPrediction Metrics\n")
-  cat("(Results of ", n_folds, "-fold cross-validation ", sep = "")
-  if(n_reps > 1){
+  cat(
+    "(Results of ",
+    if(is.null(n_folds)){
+      "independent test-set prediction"
+    } else {
+      sprintf("%s-fold cross-validation ", n_folds)
+    }, sep = ""
+  )
+  if(!is.null(n_reps) && n_reps > 1){
     cat("repeated ", n_reps, " times", sep = "")
   }
   cat(")\n")
-  results_frame <- results_frame <- tibble(
-    Mean =  map_dbl(x$stats$test, "mean"),
-    S.E. = map_dbl(x$stats$test, "btwn_fold_se")
-  )
-  if(n_reps > 1){
-    results_frame$Min <- map_dbl(x$stats$test, ~ .x$btwn_rep_range[1])
-    results_frame$Max <- map_dbl(x$stats$test, ~ .x$btwn_rep_range[2])
+  results_frame <- if(is.null(n_folds)){
+    x$stats$test
+  } else {
+    tibble(
+      Mean =  map_dbl(x$stats$test, "mean"),
+      S.E. = map_dbl(x$stats$test, "btwn_fold_se")
+    )
   }
-  results_frame <- dplyr::mutate_all(results_frame, ~ signif(., 3))
-  results_frame <- as.data.frame(results_frame)
-  metrics <- names(x$stats$test)
-  if(family != "gaussian") metrics[4] <- "r2d"
-  row.names(results_frame) <- map(
-    metrics, ~ switch(.x,
-                      rsq = "Variance Explained",
-                      r2d = "Deviance Explained",
-                      auc = "Area Under Curve",
-                      mae = "Mean Absolute Error",
-                      mce = "Mean Cross Entropy",
-                      mse = "Mean Squared Error")
-  )
+  if(!is.null(n_reps)){
+    if(n_reps > 1){
+      results_frame$Min <- map_dbl(x$stats$test, ~ .x$btwn_rep_range[1])
+      results_frame$Max <- map_dbl(x$stats$test, ~ .x$btwn_rep_range[2])
+    }
+    results_frame <- dplyr::mutate_all(results_frame, ~ signif(., 3))
+    results_frame <- as.data.frame(results_frame)
+    metrics <- names(x$stats$test)
+    if(family != "gaussian") metrics[4] <- "r2d"
+    row.names(results_frame) <- map(
+      metrics, ~ switch(.x,
+                        rsq = "Variance Explained",
+                        r2d = "Deviance Explained",
+                        auc = "Area Under Curve",
+                        mae = "Mean Absolute Error",
+                        mce = "Mean Cross Entropy",
+                        mse = "Mean Squared Error")
+    )
+  }
   print(results_frame)
   cat("=======================================================")
 }
