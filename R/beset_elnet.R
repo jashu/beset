@@ -145,6 +145,34 @@
 #'
 #' @inheritParams beset_glm
 #' @seealso \code{\link[glmnet]{glmnet}}
+#' @examples
+#'
+#' data("prostate", package = "beset")
+#'
+#' # Regularized logistic regression, with 10 X 10 unnested cross-validation
+#' elnet1 <- beset_elnet(tumor ~ ., data = prostate, family = "binomial")
+#' summary(elnet1)
+#' plot(elnet1)
+#'
+#' # Include independent test set in addition to cross-validation
+#' data <- partition(prostate, y = "tumor")
+#' elnet2 <- beset_elnet(tumor ~ ., data = data, family = "binomial")
+#' summary(elnet2)
+#' # Plot deviance explained
+#' plot(elnet2, "rsq")
+#'
+#' # Use nested cross-validation
+#' elnet3 <- beset_elnet(tumor ~ ., data = prostate, family = "binomial",
+#'                       nest_cv = TRUE)
+#' # Turn off 1SE rule and use minima of CV tuning curve to select penalty
+#' summary(elnet3, oneSE = FALSE)
+#' # Plot AUC stat
+#' plot(elnet3, "auc")
+#'
+#' # Force a variable into the model (do not penalize coefficient)
+#' elnet4 <- beset_elnet(tumor ~ ., data = data, family = "binomial",
+#'                       force_in = "race")
+#' summary(elnet4)
 #'
 #' @import purrr
 #' @export
@@ -153,7 +181,7 @@ beset_elnet <- function(
   form, data, family = "gaussian", alpha = c(.01, .5, .99), n_lambda = 100,
   nest_cv = FALSE, n_folds = 10, n_reps = 10, seed = 42,
   remove_collinear_columns = FALSE, skinny = FALSE, standardize = TRUE,
-  epsilon = 1e-7, maxit = 10^5, lambda_min_ratio = NULL,
+  epsilon = 1e-7, maxit = 1e+05, lambda_min_ratio = NULL, force_in = NULL,
   contrasts = NULL, offset = NULL, weights = NULL,
   parallel_type = NULL, n_cores = NULL, cl = NULL
   ){
@@ -277,7 +305,7 @@ beset_elnet <- function(
         parallel::mclapply(all_partitions, function(x){
           beset_elnet(form = form, data = x, family = family,
                       contrasts = contrasts, alpha = alpha,
-                      n_lambda = n_lambda,
+                      n_lambda = n_lambda, force_in = force_in,
                       lambda_min_ratio = lambda_min_ratio, skinny = TRUE,
                       standardize = standardize, epsilon = epsilon,
                       maxit = maxit, n_folds = n_folds, n_reps = 1,
@@ -287,7 +315,7 @@ beset_elnet <- function(
           parallel::parLapply(cl, all_partitions, function(x){
             beset_elnet(form = form, data = x, family = family,
                         contrasts = contrasts, alpha = alpha,
-                        n_lambda = n_lambda,
+                        n_lambda = n_lambda, force_in = force_in,
                         lambda_min_ratio = lambda_min_ratio, skinny = TRUE,
                         standardize = standardize, epsilon = epsilon,
                         maxit = maxit, n_folds = n_folds, n_reps = 1,
@@ -298,7 +326,7 @@ beset_elnet <- function(
         lapply(all_partitions, function(x){
         beset_elnet(form = form, data = x, family = family,
                     contrasts = contrasts, alpha = alpha,
-                    n_lambda = n_lambda,
+                    n_lambda = n_lambda, force_in = force_in,
                     lambda_min_ratio = lambda_min_ratio, skinny = TRUE,
                     standardize = standardize, epsilon = epsilon,
                     maxit = maxit, n_folds = n_folds, n_reps = 1,
@@ -311,7 +339,7 @@ beset_elnet <- function(
     out <- structure(
       list(
         beset = nested_cv, fold_assignments = fold_ids,
-        n_folds = n_folds, n_reps = n_reps,
+        n_folds = n_folds, n_reps = n_reps, force_in = force_in,
         family = family, terms = terms, data = data, offset = offset,
         contrasts = contrasts, xlevels = xlevels
       ),
@@ -325,27 +353,15 @@ beset_elnet <- function(
   # Create model matrices
   #------------------------------------------------------------------
   m <- map(alpha, ~ make_args(
-    form = form, data = data, family = family, link = NULL, nlambda = n_lambda,
+    form = form, data = data, family = family, link = NULL,
+    force_in = force_in, alpha = .x, nlambda = n_lambda,
     contrasts = contrasts, weights = weights, offset = offset,
-    epsilon = epsilon, maxit = maxit, alpha = .x, standardize = standardize)
+    epsilon = epsilon, maxit = maxit, lambda_min_ratio = lambda_min_ratio,
+    standardize = standardize)
   )
   n_obs <- nrow(m[[1]]$train$x)
   cv_params <- set_cv_par(n_obs, n_folds, n_reps)
   names(m) <- alpha
-  # glmnet handles intercept differently from other predictors
-  # so should not be included in model matrix
-  walk(seq_along(m), function(i){
-      if(m[[i]]$train$intercept){
-        m[[i]]$train$x <<- m[[i]]$train$x[, -1, drop = FALSE]
-        if(length(m[[i]]$test)){
-          m[[i]]$test$x <<- m[[i]]$test$x[, -1, drop = FALSE]
-        }
-    }
-    if(!is.null(lambda_min_ratio)){
-      m[[i]]$train$lambda.min.ratio <<- lambda_min_ratio
-      if(length(m[[i]]$test)) m[[i]]$test$lambda.min.ratio <<- lambda_min_ratio
-    }
-  })
 
   #======================================================================
   # Obtain fit statistics

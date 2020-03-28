@@ -80,7 +80,7 @@
 #'
 #' @param p_max Maximum number of predictors to attempt to fit. Default is 10.
 #'
-#' @param force_in (Optional) vector containing the names or indices of any
+#' @param force_in (Optional) character vector containing the names of any
 #' predictor variables that should be included in every model. (Note that if
 #' there is an intercept, it is forced into every model by default.)
 #'
@@ -207,17 +207,27 @@
 #'   \item{xlevels}{(where relevant) a record of the levels of the factors used
 #'        in fitting}
 #'     }
-NULL
-
+#' @examples
+#' subset1 <- beset_glm(Fertility ~ ., data = swiss)
+#' summary(subset1)
+#'
+#' # Force variables to be included in model
+#' subset2 <- beset_glm(Fertility ~ ., data = swiss,
+#'                      force_in = c("Agriculture", "Examination"))
+#' summary(subset2)
+#'
+#' # Use nested cross-validation to evaluate error in selection
+#' subset3 <- beset_glm(Fertility ~ ., data = swiss, nest_cv = TRUE)
+#' summary(subset3)
 #' @rdname beset_glm
 #' @export
-beset_glm <- function(form, data, family = "gaussian", link = NULL,
-                      p_max = 10, force_in = NULL,
-                      nest_cv = FALSE, n_folds = 10, n_reps = 10, seed = 42,
-                      contrasts = NULL, offset = NULL, weights = NULL,
-                      start = NULL, etastart = NULL, mustart = NULL,
-                      epsilon = 1e-8, maxit = 25, skinny = FALSE,
-                      n_cores = NULL, parallel_type = NULL, cl = NULL){
+beset_glm <- function(
+  form, data, family = "gaussian", link = NULL, p_max = 10, force_in = NULL,
+  nest_cv = FALSE, n_folds = 10, n_reps = 10, seed = 42, contrasts = NULL,
+  offset = NULL, weights = NULL, start = NULL, etastart = NULL, mustart = NULL,
+  epsilon = 1e-8, maxit = 25, skinny = FALSE, n_cores = NULL,
+  parallel_type = NULL, cl = NULL
+){
 
   #==================================================================
   # Check family argument and identify appropriate model fit function
@@ -239,7 +249,7 @@ beset_glm <- function(form, data, family = "gaussian", link = NULL,
     data <- check_lindep(data)
     mf <- model.frame(form, data = data)
     terms <- terms(mf)
-    xlevels = .getXlevels(terms, mf)
+    xlevels <- .getXlevels(terms, mf)
 
   } else if(inherits(data, "data_partition")){
     terms <- terms(data$train)
@@ -261,8 +271,6 @@ beset_glm <- function(form, data, family = "gaussian", link = NULL,
       stop(c)
     }
   )
-
-
   #======================================================================
   # Set up parallel operations
   #----------------------------------------------------------------------
@@ -276,7 +284,6 @@ beset_glm <- function(form, data, family = "gaussian", link = NULL,
       n_cores <- parallel_control$n_cores
       cl <- parallel_control$cl
   }
-
   #======================================================================
   # Recursive function for performing nested cross-validation
   #----------------------------------------------------------------------
@@ -358,10 +365,10 @@ beset_glm <- function(form, data, family = "gaussian", link = NULL,
   #==================================================================
   # Create list of arguments for model
   #------------------------------------------------------------------
-  m <- beset:::make_args(form = form, data = data, family = family, link = link,
+  m <- make_args(form = form, data = data, family = family, link = link,
                  contrasts = contrasts, weights = weights, offset = offset,
                  start = start, etastart = etastart, mustart = mustart,
-                 epsilon = epsilon, maxit = maxit)
+                 epsilon = epsilon, maxit = maxit, force_in = force_in)
 
   #==================================================================
   # Set number of cross-validation folds and reps
@@ -373,7 +380,7 @@ beset_glm <- function(form, data, family = "gaussian", link = NULL,
   #======================================================================
   # Get all subsets (see utils_subset.R)
   #----------------------------------------------------------------------
-  all_subsets <- get_subsets(m, force_in, p_max)
+  all_subsets <- get_subsets(m, p_max)
 
   #======================================================================
   # Obtain fit statistics for every model

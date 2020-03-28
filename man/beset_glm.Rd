@@ -64,7 +64,7 @@ listed under 'List of available families and link functions'.}
 
 \item{p_max}{Maximum number of predictors to attempt to fit. Default is 10.}
 
-\item{force_in}{(Optional) vector containing the names or indices of any
+\item{force_in}{(Optional) character vector containing the names of any
 predictor variables that should be included in every model. (Note that if
 there is an intercept, it is forced into every model by default.)}
 
@@ -253,6 +253,19 @@ arguments.
 }
 }
 
+\examples{
+subset1 <- beset_glm(Fertility ~ ., data = swiss)
+summary(subset1)
+
+# Force variables to be included in model
+subset2 <- beset_glm(Fertility ~ ., data = swiss,
+                     force_in = c("Agriculture", "Examination"))
+summary(subset2)
+
+# Use nested cross-validation to evaluate error in selection
+subset3 <- beset_glm(Fertility ~ ., data = swiss, nest_cv = TRUE)
+summary(subset3)
+}
 \seealso{
 \code{\link[stats]{glm}},
 \code{\link[base]{set.seed}}, \code{\link[MASS]{glm.nb}}

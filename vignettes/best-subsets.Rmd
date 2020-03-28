@@ -13,7 +13,7 @@ vignette: >
   %\VignetteEncoding{UTF-8}
 ---
 
-```{r, echo = FALSE}
+```{r, echo = FALSE, message=FALSE}
 library(beset)
 suppressPackageStartupMessages(library(tidyverse))
 ```
@@ -165,7 +165,7 @@ Running a nested cross-validation has other advantages besides unbiased estimate
 summary(mod)
 ```
 
-In this case we see that the 3-predictor model of Education, Catholic, and Infant.Mortality is selected as the best model 76% of the time. The coefficients reported are not the coefficients of a single model, but rather the average of the coefficients across all of the resampled models. (If a variable was not selected for a given model, then its coefficient is treated as 0 for that model when the coefficients are averaged.) Standardized coefficients (`Stnd.Coef`) are shown by default and ranked in order of absolute magnitude. If you would like to see the unstandardized coefficients instead, call the `print` method explicitly and set the argument `standardize` to `FALSE`:
+In this case we see that the 3-predictor model of Education, Catholic, and Infant.Mortality is selected as the best model 57% of the time. The coefficients reported are not the coefficients of a single model, but rather the average of the coefficients across all of the resampled models. (If a variable was not selected for a given model, then its coefficient is treated as 0 for that model when the coefficients are averaged.) Standardized coefficients (`Stnd.Coef`) are shown by default and ranked in order of absolute magnitude. If you would like to see the unstandardized coefficients instead, call the `print` method explicitly and set the argument `standardize` to `FALSE`:
 
 ```{r}
 summary(mod) %>% print(standardize = FALSE)
@@ -236,7 +236,7 @@ mod <- beset_lm(Fertility ~ Education + Catholic + Infant.Mortality +
 summary(mod)
 ```
 
-This shows that, among hierarchically complete models, the additive model is still the best for 77% of the subsamples, but adding the interaction of `Education` with `Catholic` resulted in the best model for the remaining subsamples. 
+This shows that, among hierarchically complete models, the additive model is still the best for 71% of the subsamples, but adding the interaction of `Education` with `Catholic` resulted in the best model for 28% of subsamples. 
 
 ## Using a different number of folds or repetitions of cross-validation
 

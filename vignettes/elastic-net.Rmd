@@ -139,7 +139,7 @@ What happens if we don't use the 1SE rule?
 summary(mod, oneSE = FALSE)
 ```
 
-On the one hand, this has a bad result in that some of the noise predictors make it into the model, two of them (`noise2` and `noise4`) reliably so. (The others are shrunk to 0 on at least some cross-validation runs, which is indicated by a `0.000` value in either the `Min` or `Max` column.) On the other hand, the drop-off in variance explained between the CV and Test holdouts is not severe, and the performance on the Test holdouts is slightly better than what was obtained under the 1SE rule. 
+On the one hand, this has a bad result in that all of the noise predictors make it into the model. On the other hand, the drop-off in variance explained between the CV and Test holdouts is not severe, and the performance on the Test holdouts is slightly better than what was obtained under the 1SE rule. 
 
 By default, variance explained (or deviance explained for non-Gaussian models) appears at the end of the `summary` output. You can instead obtain mean absolute error, mean squared error, or mean cross entropy by setting the `metric` argument to `"mae"`, `"mse"`, or `"mce"`, respectively, in the `print` method. For example, to see mean squared error in the summary, you could code the following:
 

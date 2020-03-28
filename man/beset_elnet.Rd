@@ -18,8 +18,9 @@ beset_elnet(
   skinny = FALSE,
   standardize = TRUE,
   epsilon = 1e-07,
-  maxit = 10^5,
+  maxit = 1e+05,
   lambda_min_ratio = NULL,
+  force_in = NULL,
   contrasts = NULL,
   offset = NULL,
   weights = NULL,
@@ -93,6 +94,10 @@ observations is greater than the number of variables, then
 \code{lambda_min_ratio} is set to 0.0001; if the number of observations is
 less than the number of variables, then \code{lambda_min_ratio} is set to
 0.01.}
+
+\item{force_in}{(Optional) character vector containing the names of any
+predictor variables that should be included in every model. (Note that if
+there is an intercept, it is forced into every model by default.)}
 
 \item{contrasts}{{Optional} \code{list}. See the \code{contrasts.arg} of
 \code{\link[stats]{model.matrix.default}}.}
@@ -198,6 +203,36 @@ with the following components:
  generalized linear models via penalized maximum likelihood, providing
  automated data preprocessing and selection of both the elastic-net penalty
  and regularization parameter through repeated k-fold cross-validation.
+}
+\examples{
+
+data("prostate", package = "beset")
+
+# Regularized logistic regression, with 10 X 10 unnested cross-validation
+elnet1 <- beset_elnet(tumor ~ ., data = prostate, family = "binomial")
+summary(elnet1)
+plot(elnet1)
+
+# Include independent test set in addition to cross-validation
+data <- partition(prostate, y = "tumor")
+elnet2 <- beset_elnet(tumor ~ ., data = data, family = "binomial")
+summary(elnet2)
+# Plot deviance explained
+plot(elnet2, "rsq")
+
+# Use nested cross-validation
+elnet3 <- beset_elnet(tumor ~ ., data = prostate, family = "binomial",
+                      nest_cv = TRUE)
+# Turn off 1SE rule and use minima of CV tuning curve to select penalty
+summary(elnet3, oneSE = FALSE)
+# Plot AUC stat
+plot(elnet3, "auc")
+
+# Force a variable into the model (do not penalize coefficient)
+elnet4 <- beset_elnet(tumor ~ ., data = data, family = "binomial",
+                      force_in = "race")
+summary(elnet4)
+
 }
 \seealso{
 \code{\link[glmnet]{glmnet}}
