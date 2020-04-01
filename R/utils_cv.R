@@ -126,10 +126,10 @@ create_folds <- function(y, n_folds, n_reps, seed = 42){
   fold_ids
 }
 
-assign_folds <- function(y, n_folds = 10){
-  fold_ids_1 <- rep(1:n_folds, length(y) %/% n_folds)
+assign_folds <- function(n, n_folds = 10){
+  fold_ids_1 <- rep(1:n_folds, n %/% n_folds)
   fold_ids_1 <- sample(fold_ids_1)
-  modulus <- length(y) - length(fold_ids_1)
+  modulus <- n - length(fold_ids_1)
   if(modulus > 0){
     fold_ids_2 <- sample.int(n_folds, size = modulus)
     c(fold_ids_1, fold_ids_2)
@@ -139,11 +139,12 @@ assign_folds <- function(y, n_folds = 10){
 stratify_folds <- function(y, n_folds = 10){
   folds <- vector("integer", length(y))
   if(is.numeric(y)){
-    if(min(y) == 0){
+    if(min(y) == 0 && sum(y == 0) >= n_folds){
       # make separate fold assignments for zero vs. non-zero values to insure
       # both 0 and count process is represented in every fold
-      folds[y == 0] <- assign_folds(y[y == 0], n_folds)
+      folds[y == 0] <- assign_folds(sum(y == 0), n_folds)
       folds[y != 0] <- stratify_folds(y[y != 0], n_folds)
+      return(folds)
     } else {
       cuts <- length(y) %/% n_folds
       if(cuts < 2) cuts <- 2
@@ -152,8 +153,14 @@ stratify_folds <- function(y, n_folds = 10){
       y <- as.integer(cut(y, breaks, include.lowest = TRUE))
     }
   }
-  purrr::walk(unique(y), function(x){
-    folds[y == x] <<- assign_folds(y[y == x], n_folds)
-  })
+  # Verify that each strata can appear in every fold
+  if(all(table(y) >= n_folds)){
+    purrr::walk(unique(y), function(x){
+      folds[y == x] <<- assign_folds(sum(y == x), n_folds)
+    })
+  # Otherwise abort stratefication and use simple randomization
+  } else {
+    folds <- assign_folds(length(y), n_folds)
+  }
   folds
 }
