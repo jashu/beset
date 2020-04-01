@@ -60,7 +60,7 @@ predict.beset <- function(object, newdata, type = "response",
       newoffset <- rep(0, nrow(X))
   }
   if(inherits(object, "elnet")){
-    model <- get_best.beset_elnet(object, alpha = alpha, lambda = lambda,
+    model <- get_best.elnet(object, alpha = alpha, lambda = lambda,
                                   metric = metric, oneSE = oneSE, ...)
     yhat <- glmnet::predict.glmnet(model, newx = X, s = model$best_lambda,
                                    type = type, newoffset = newoffset, ...)
