@@ -541,9 +541,3 @@ validate.randomForest <- function(object, data = NULL, x = NULL,
                         y = y))),
     class = "cross_valid")
 }
-
-#' @export
-#' @describeIn validate Retrieve cross-validation metrics from "beset_rf" object
-validate.beset_rf <- function(object, ...){
-  object$stats
-}

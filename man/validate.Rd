@@ -8,7 +8,6 @@
 \alias{validate.beset}
 \alias{validate.nested}
 \alias{validate.randomForest}
-\alias{validate.beset_rf}
 \title{Cross-Validated Prediction Metrics}
 \usage{
 validate(object, ...)
@@ -47,8 +46,6 @@ validate(object, ...)
   n_cores = NULL,
   cl = NULL
 )
-
-\method{validate}{beset_rf}(object, ...)
 }
 \arguments{
 \item{object}{A model object for which a cross-validated R-squared is
@@ -141,7 +138,5 @@ normally would and then pass the model object to \code{validate}.
 objects with nested cross-validation
 
 \item \code{randomForest}: Cross-validation of random forests
-
-\item \code{beset_rf}: Retrieve cross-validation metrics from "beset_rf" object
 }}
 
