@@ -51,7 +51,9 @@ In the above plot, `Train Sample` refers to how well the model fits the training
 plot(mod, "rsq")
 ```
 
-Note that unlike the train $R^2$, which is bounded between 0 and 1, it is possible for the cross-validation $R^2$ to be negative, as is the case when the number of predictors is 0, which corresponds to the null, or intercept-only, model, which is simply the mean of the train sample. Given that the train sample's mean cannot predict the test sample better than the test sample's own mean, the predictive $R^2$ for the null model can never be positive. More generally, the predictive $R^2$ will be negative whenever a model is bad, i.e., instead of reducing uncertainty, the model adds to it. This can also happen with non-null models if they include too few observations and too many useless predictors. Note that the error bars are much wider for $R^2$ than for MSE. This is because $R^2$ is a ratio and there are *two* sources of error: the numerator (reflecting variability in `MSE` when predicting each fold) and the denominator (reflecting variability in the variance of the sample in each fold). The within-fold estimate of $R^2$ is especially unstable for small sample sizes such as this one.
+Note that unlike the train $R^2$, which is bounded between 0 and 1, it is possible for the cross-validation $R^2$ to be negative, as is the case when the number of predictors is 0, which corresponds to the null, or intercept-only, model, which is simply the mean of the train sample. Given that the train sample's mean cannot predict the test sample better than the test sample's own mean, the predictive $R^2$ for the null model can never be positive. More generally, the predictive $R^2$ will be negative whenever a model is bad, i.e., instead of reducing uncertainty, the model adds to it. This can also happen with non-null models if they include too few observations and too many useless predictors. 
+
+Note that the error bars are much wider for $R^2$ than for MSE. This is because $R^2$ is a ratio and there are *two* sources of error: the numerator (reflecting variability in `MSE` when predicting each fold) and the denominator (reflecting variability in the variance of the sample in each fold). The within-fold estimate of $R^2$ is especially unstable for small sample sizes such as this one.
 
 # Summarizing the best model
 
@@ -138,7 +140,7 @@ mod <- beset_lm(Fertility ~ ., data = data)
 plot(mod)
 ```
 
-Note that withholding a single test set is presented for illustration purposes only and is not recommended for such a small data set. For one, we've reduced our training sample size from 47 to 35; consequently, we should expect that we will have to also reduce the complexity of the model to maintain reproducibility. Accordingly, the cross-validation MSE suggests that the optimal number of predictors is now 3 instead of 5, and, following the 1SE rule, we should choose a model with 2 predictors instead of 3. Also problematic, the test holdout sample only consists of 12 observations and would likely be quite variable depending on which 12 observations were selected.
+Note that withholding a single test set is presented for illustration purposes only and is not recommended for such a small data set. For one, we've reduced our training sample size from 47 to 35. Also problematic, the test holdout sample only consists of 12 observations and would likely be quite variable depending on which 12 observations were selected.
 
 # Performing a nested cross-validation
 
@@ -171,7 +173,7 @@ In this case we see that the 3-predictor model of Education, Catholic, and Infan
 summary(mod) %>% print(standardize = FALSE)
 ```
 
-Note that the standard-error refers to the standard deviation between folds divided by the square root of the number of folds. The min-max range refers to the repetitions of cross-validation, after averaging over the folds of each repetition. In either case, these numbers reflect uncertainty due to running the procedure on different subsamples of the data set, which may be useful when comparing the relative importance of predictors to the model and performance of different models validated using the same subsampling scheme.
+Note that the standard-error refers to the standard deviation between folds divided by the square root of the number of folds. The min-max range refers to the repetitions of cross-validation, after averaging over the folds of each repetition. In either case, these numbers reflect **uncertainty due to running the procedure on different subsamples of the data set**, which may be useful when comparing the relative importance of predictors to the model and performance of different models validated using the same subsampling scheme.
 
 What happens if we don't use the 1SE rule and instead select the model with the very best cross-validation error?
 
@@ -342,14 +344,16 @@ mod_poisson <- beset_glm(dep ~ ., data = adolescents, family = "poisson")
 plot(mod_poisson)
 ```
 
-Given the clear minimum at 4 predictors and how little divergence we observe between the cross-validation and training error at the minimum (which is a function of the large sample size), I would opt here for not using the 1SE rule:
+Given the clear inflection point at 4 predictors and how little divergence we observe between the cross-validation and training error at this point (which is a function of the large sample size), I would opt here for requesting the best 4 predictor model.
 
 ```{r}
-poisson_summary <- summary(mod_poisson, oneSE = FALSE)
+poisson_summary <- summary(mod_poisson, n_pred = 4)
 poisson_summary
 ```
 
-Of course, the Poisson distribution, which has a variance equal to its mean, does not describe these data very well either because there is too much *overdispersion*, i.e., the variance of this distribution is greater than the mean. A potentially better way to fit the data is with a **negative binomial regression**, which `beset_glm` will perform if `family` is set to `"negbin"`. Note that this is not a family supported by the `glm` function in R; rather, `beset_glm` calls an internal modified version of the `glm.nb` function from the `MASS` package to fit an extra parameter called *theta* to model overdispersion.
+Of course, the Poisson distribution, which has a variance equal to its mean, does not describe these data very well either because there is too much *overdispersion*, i.e., the variance of this distribution is greater than the mean. A potentially better way to fit the data is with a **negative binomial regression**, which `beset_glm` will perform if `family` is set to `"negbin"`. 
+
+Note that this is not a family supported by the `glm` function in R; rather, `beset_glm` calls an internal modified version of the `glm.nb` function from the `MASS` package to fit an extra parameter called *theta* to model overdispersion.
 
 ```{r}
 mod_negbin <- beset_glm(dep ~ ., data = adolescents, family = "negbin")
@@ -364,4 +368,8 @@ negbin_summary <- summary(mod_negbin, oneSE = FALSE)
 negbin_summary
 ```
 
-Note that we obtain the same predictors in this model, but the quality of fit, given by the AIC, is better: `r round(negbin_summary$best$aic)` for the negative binomial model vs. `r round(poisson_summary$best$aic)` for the Poisson model, a `r round(100 * (1 -  negbin_summary$best$aic / poisson_summary$best$aic), 1)`% improvement. Also note that **the $R^2_D$ values from the two different models should not be used to compare models that assume a different family of error distribution**. This is because the null model on which the deviance calculation is based differs between the two models: the null model for the Poisson model is an intercept-only model whereas the null model for the negative binomial model has an intercept plus the parameter $\theta$ to account for the overdispersion of the model. If you compare the mean cross entropy scores for the 0 predictor models between the two plots, you will see that there is already an improvement in the negative binomial model just from accounting for this overdispersion.
+Note that we obtain the same predictors in this model, but the quality of fit, given by the AIC, is better: `r round(negbin_summary$best$aic)` for the negative binomial model vs. `r round(poisson_summary$best$aic)` for the Poisson model, a `r round(100 * (1 -  negbin_summary$best$aic / poisson_summary$best$aic), 1)`% improvement. 
+
+Also note that **the $R^2_D$ values from the two different models should not be used to compare models that assume a different family of error distribution**. This is because the null model on which the deviance calculation is based differs between the two models: the null model for the Poisson model is an intercept-only model whereas the null model for the negative binomial model has an intercept plus the parameter $\theta$ to account for the overdispersion of the model. 
+
+In other words, **the null model is stronger for negative binomial regression than it is for Poisson regression**. If you compare the mean cross entropy scores for the 0 predictor models between the two plots, you will see that there is already an improvement in the negative binomial model just from accounting for this overdispersion.
