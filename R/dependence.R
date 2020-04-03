@@ -125,10 +125,10 @@ dependence.beset <- function(
   plot_data <- map_df(plot_data, ~ return(covars))
   plot_data <- bind_cols(x = x_plot, plot_data)
   names(plot_data)[1] <- x
-  y_hat <- predict(object, newdata = plot_data,
-                   newoffset = object$parameters$offset,
-                   alpha = alpha, lambda = lambda,
-                   metric = metric, oneSE = oneSE)
+  y_hat <- predict(
+    object, newdata = plot_data, newoffset = object$parameters$offset,
+    alpha = alpha, lambda = lambda, metric = metric, oneSE = oneSE
+  )
   y_obs <- object$parameters$y
   if(is.factor(y_obs)) y_obs <- as.integer(y_obs) - 1
   impact <- (max(y_hat) - min(y_hat)) / (max(y_obs) - min(y_obs))
@@ -161,8 +161,9 @@ dependence.nested_elnet <- function(
   y <- setdiff(all.vars(object$terms), labels(object$terms))
   if(is.null(x_lab)) x_lab <- x
   if(is.null(y_lab)) y_lab <- y
-  variable_importance <- importance(object, alpha = alpha, lambda = lambda,
-                                    metric = metric, oneSE = oneSE)
+  variable_importance <- importance(
+    object, alpha = alpha, lambda = lambda, metric = metric, oneSE = oneSE
+  )
   keep <- map(x, ~ grep(.x, variable_importance$variable)) %>% as_vector
   variable_importance <- variable_importance[keep,]
   matching_labels <- map(x, ~ grep(.x, variable_importance$variable))
@@ -213,10 +214,14 @@ dependence.nested_elnet <- function(
       plot_data, ~ ggplot(data = .x, aes(x = x, y = y)) +
       geom_line(aes(group = model), alpha = .1) +
       (if(is.factor(.x$x)) {
-        stat_summary(aes(group=1), fun.y=mean, geom="line",
-                     colour="tomato2", size = 1.5)
+        stat_summary(
+          aes(group=1), fun = mean, geom = "line", colour="tomato2", size = 1.5
+        )
       } else {
-        geom_smooth(method = "lm", size = 1.5, color = "tomato2")
+        geom_smooth(
+          method = "lm", formula = y ~ splines::ns(x,2), size = 1.5,
+          color = "tomato2"
+        )
       }) + xlab(.y) + ylab(y_lab) + theme_bw()
     )
   } else {
@@ -226,10 +231,13 @@ dependence.nested_elnet <- function(
     partial_dependence <- ggplot(data = plot_data, aes(x = x, y = y)) +
       geom_line(aes(group = model), alpha = .1) +
         (if(is.factor(plot_data$x)) {
-          stat_summary(aes(group=1), fun.y=mean, geom="line",
-                       colour="tomato2", size = 1.5)
+          stat_summary(
+            aes(group=1), fun = mean, geom="line", colour="tomato2", size = 1.5)
         } else {
-          geom_smooth(method = "lm", size = 1.5, color = "tomato2")
+          geom_smooth(
+            method = "lm", formula = y ~ splines::ns(x,2), size = 1.5,
+            color = "tomato2"
+          )
         }) + xlab(x_lab) + ylab(y_lab) + theme_bw()
   }
   variable_importance <- variable_importance %>%
@@ -344,12 +352,12 @@ dependence.beset_rf <- function(
   attr(data, "terms") <- NULL
   pd <- if(n_cores > 1L){
     if(have_mc){
-      parallel::mclapply(object$forests, beset:::dependence.randomForest,
+      parallel::mclapply(object$forests, dependence.randomForest,
                          data = data, x = x, y = y, cond = cond,
                          x_lab = x_lab, y_lab = y_lab, make_plot = FALSE,
                          mc.cores = n_cores)
     } else {
-      parallel::parLapply(cl, object$forests, beset:::dependence.randomForest,
+      parallel::parLapply(cl, object$forests, dependence.randomForest,
                           data = data, x = x, y = y, cond = cond,
                           x_lab = x_lab, y_lab = y_lab, make_plot = FALSE)
     }
@@ -378,8 +386,10 @@ dependence.beset_rf <- function(
     plot_data, ~ ggplot(data = .x, aes(x = x, y = y)) +
       geom_line(aes(group = model), alpha = .1) + (
         if(is.factor(.x$x)) {
-          stat_summary(aes(group=1), fun.y=mean, geom="line",
-                       colour="tomato2", size = 1.5)
+          stat_summary(
+            aes(group=1), fun = mean, geom = "line", colour="tomato2",
+            size = 1.5
+          )
         } else {
           geom_smooth(method = "loess", size = 1.5, color = "tomato2")
         }

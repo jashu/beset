@@ -86,11 +86,12 @@ predict.nested <- function(object, newdata, type = "response",
                            newoffset = NULL, alpha = NULL, lambda = NULL,
                            n_pred = NULL, metric = "auto", oneSE = TRUE,
                            na.action = na.pass, ...){
-  map(object$beset,
-           ~ predict(., newdata, type, newoffset, alpha, lambda, n_pred, metric,
-                     oneSE, na.action, object$terms)) %>%
-    transpose %>% simplify_all %>% map_dbl(mean)
-
+  map(
+    object$beset, ~ predict(
+      ., newdata, type, newoffset, alpha, lambda, n_pred, metric, oneSE,
+      na.action, object$terms
+    )
+  ) %>% transpose %>% simplify_all %>% map_dbl(mean)
 }
 
 #' @export
