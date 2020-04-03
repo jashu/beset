@@ -4,6 +4,7 @@
 \alias{validate}
 \alias{validate.lm}
 \alias{validate.glm}
+\alias{validate.zeroinfl}
 \alias{validate.glmnet}
 \alias{validate.beset}
 \alias{validate.nested}
@@ -15,6 +16,8 @@ validate(object, ...)
 \method{validate}{lm}(object, data = NULL, n_folds = 10, n_reps = 10, seed = 42, ...)
 
 \method{validate}{glm}(object, data = NULL, n_folds = 10, n_reps = 10, seed = 42, ...)
+
+\method{validate}{zeroinfl}(object, n_folds = 10, n_reps = 10, seed = 42, ...)
 
 \method{validate}{glmnet}(
   object,
@@ -129,6 +132,8 @@ normally would and then pass the model object to \code{validate}.
 \item \code{lm}: Cross-validation of linear models
 
 \item \code{glm}: Cross-validation of GLMs
+
+\item \code{zeroinfl}: Cross-validation of GLMs
 
 \item \code{glmnet}: Cross-validation of GLM nets
 

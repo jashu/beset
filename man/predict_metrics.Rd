@@ -7,7 +7,7 @@
 \usage{
 predict_metrics(object, test_data)
 
-predict_metrics_(y, y_hat, family, phi = NULL, theta = NULL)
+predict_metrics_(y, y_hat, family, mu = NULL, phi = NULL, theta = NULL)
 }
 \arguments{
 \item{object}{A model object of class "glm", "negbin", or "zeroinfl".}

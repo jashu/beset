@@ -56,6 +56,30 @@ set_glm_par <- function(object, data){
        other_args = other_args, family_name = family_name, fitter = fitter)
 }
 
+set_zi_par <- function(object){
+  x <- model.matrix(object, "count")
+  z <- model.matrix(object, "zero")
+  data <- object$model
+  y <- if(!is.null(object$y)){
+    object$y
+  } else if(!is.null(data)){
+    model.response(data)
+  } else {
+    stop(
+      paste(
+        "Model data not found in model object.",
+        "Refit `zeroinfl` and set either `model` or `y` argument to `TRUE`.")
+    )
+  }
+  names(y) <- rownames(x)
+  weights <- object$weights
+  offset <- object$offset
+  control <- object$control
+  control$start <- object$start
+  list(x = x, y = y, z = z, weights = weights, offset = offset,
+       dist = object$dist, link = object$link, control = control)
+}
+
 set_cv_par <- function(n_obs, n_folds, n_reps){
   out <- list(n_folds = n_folds, n_reps = n_reps)
   if(n_obs / n_folds < 2){
@@ -69,27 +93,60 @@ set_cv_par <- function(n_obs, n_folds, n_reps){
   out
 }
 
-get_cv_stats <-  function(y, y_hat, family, n_folds, n_reps,
-                          phi = NULL, theta = NULL){
+get_cv_stats <-  function(y, y_hat, family, n_folds, n_reps, theta = NULL){
   fold_stats <- map(
-    y_hat, ~ predict_metrics_(y = y[rownames(.x)], y_hat = .x, family = family,
-                             phi = phi, theta = theta)) %>%
-    transpose %>% simplify_all
+    y_hat, ~ predict_metrics_(
+      y = if(is.list(.x)) y[names(.x$mu)] else y[rownames(.x)],
+      y_hat = if(is.list(.x)) .x$y_hat else .x,
+      family = family,
+      mu = if(is.list(.x)) .x$mu else NULL,
+      phi = if(is.list(.x)) .x$phi else NULL,
+      theta = theta
+    )
+  ) %>% transpose %>% simplify_all
   btwn_fold_error <- map(
     fold_stats, function(x){
       na_adjustment <- sum(is.na(x)) / n_reps
       sd(x, na.rm = TRUE) / sqrt(n_folds - na_adjustment)
-    })
+    }
+  )
   repeats <- paste("Rep", 1:n_reps, "$", sep = "")
-  hold_out_pred <- map(
-    repeats, ~ y_hat[grepl(.x, names(y_hat))]) %>%
-    map(~ reduce(. , rbind)) %>% map(~.x[names(y),])
-  names(hold_out_pred) <- paste("Rep", 1:n_reps, sep = "")
-  hold_out_pred <- as_tibble(hold_out_pred)
-  rep_stats <- map(hold_out_pred,
-                   ~ predict_metrics_(y = y, y_hat = .x, family = family,
-                                      phi = phi, theta = theta)) %>%
-    transpose %>% simplify_all %>% as_tibble
+  hold_out_pred <- map(repeats, ~ y_hat[grepl(.x, names(y_hat))])
+  if(is.list(y_hat[[1]])){
+    hold_out_mu <- hold_out_pred %>% map(~ map(.x, "mu")) %>%
+      map(~ reduce(. , c)) %>% map(~.x[names(y)])
+    hold_out_phi <- hold_out_pred %>% map(~ map(.x, "phi")) %>%
+      map(~ reduce(. , c)) %>% map(~.x[names(y)])
+    hold_out_yhat <- hold_out_pred %>% map(~ map(.x, "y_hat")) %>%
+      map(~ reduce(. , c)) %>% map(~.x[names(y)])
+    names(hold_out_mu) <- names(hold_out_phi) <- names(hold_out_yhat) <-
+      paste("Rep", 1:n_reps, sep = "")
+    hold_out_mu <- as_tibble(hold_out_mu)
+    hold_out_phi <- as_tibble(hold_out_phi)
+    hold_out_yhat <- as_tibble(hold_out_yhat)
+    hold_out_pred <- list(
+      mu = hold_out_mu,
+      phi = hold_out_phi,
+      yhat = hold_out_yhat
+    )
+    rep_stats <- map(
+      1:n_reps,
+      ~ predict_metrics_(
+        y = y, y_hat = hold_out_yhat[[.x]], family = family,
+        mu = hold_out_mu[[.x]], phi = hold_out_phi[[.x]], theta = theta
+      )
+    ) %>% transpose %>% simplify_all %>% as_tibble
+  } else {
+    hold_out_pred <- map(hold_out_pred, ~ reduce(. , rbind)) %>%
+      map(~.x[names(y),])
+    names(hold_out_pred) <- paste("Rep", 1:n_reps, sep = "")
+    hold_out_pred <- as_tibble(hold_out_pred)
+    rep_stats <- map(
+      hold_out_pred, ~ predict_metrics_(
+        y = y, y_hat = .x, family = family, phi = phi, theta = theta
+      )
+    ) %>% transpose %>% simplify_all %>% as_tibble
+  }
   btwn_rep_range <- if(n_reps > 1){
     map(rep_stats, ~ range(.x, na.rm = TRUE))
   } else map(rep_stats, ~c(NA, NA))

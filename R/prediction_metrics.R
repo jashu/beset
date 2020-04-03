@@ -102,22 +102,25 @@ predict_metrics <- function(object, test_data){
   }
   if(is.null(y)) stop("Response variable not found in `test_data`")
   y_hat <- stats::predict(object, test_data, type="response")
-  phi <- theta <- NULL
+  mu <- phi <- theta <- NULL
   if(family %in% c("zip", "zinb")){
-    y_hat <- stats::predict(object, test_data, type = "count")
+    mu <- stats::predict(object, test_data, type = "count")
     phi <- stats::predict(object, test_data, type = "zero")
   }
   if(family %in% c("negbin","zinb")) theta <- object$theta
-  predict_metrics_(y, y_hat, family, phi, theta)
+  predict_metrics_(y, y_hat, family, mu, phi, theta)
 }
 
 #' @rdname predict_metrics
 #' @export
-predict_metrics_ <- function(y, y_hat, family, phi = NULL, theta = NULL){
+predict_metrics_ <- function(
+  y, y_hat, family, mu = NULL, phi = NULL, theta = NULL
+){
   na <- which(is.na(y) | is.na(y_hat))
   if(length(na) > 0){
     y <- y[-na]
     y_hat <- y_hat[-na]
+    mu <- mu[-na]
     phi <- phi[-na]
   }
   if(is.factor(y)) y <- as.integer(y) - 1
@@ -142,8 +145,8 @@ predict_metrics_ <- function(y, y_hat, family, phi = NULL, theta = NULL){
       binomial = stats::dbinom(y, size = 1, prob = y_hat, log = TRUE),
       poisson = stats::dpois(y, lambda = y_hat, log = TRUE),
       negbin = stats::dnbinom(y, mu = y_hat, size = theta, log = TRUE),
-      zip = VGAM::dzipois(y, lambda = y_hat, pstr0 = phi, log = TRUE),
-      zinb = VGAM::dzinegbin(y, size = theta, munb = y_hat, pstr0 = phi,
+      zip = VGAM::dzipois(y, lambda = mu, pstr0 = phi, log = TRUE),
+      zinb = VGAM::dzinegbin(y, size = theta, munb = mu, pstr0 = phi,
                              log = TRUE)
     )
   )
@@ -171,9 +174,10 @@ predict_metrics_ <- function(y, y_hat, family, phi = NULL, theta = NULL){
       (sum(r[1:n1]) - n1 * (n1 + 1) / 2) / n1 / n2
         } else NA_real_
   }
-  structure(c(
-    if(!is.null(auc)) list(auc = auc) else list(mae = mean(abs(y_hat - y))),
+  structure(
+    c(if(!is.null(auc)) list(auc = auc) else list(mae = mean(abs(y_hat - y))),
     list(mce = -ll_predicted / N, mse = sigma^2,
          rsq = if(length(y) > 2) 1 - dev_pred/dev_null else NA_real_)),
-    class = "prediction_metrics", family = family, theta = theta, phi = phi)
+    class = "prediction_metrics", family = family, theta = theta
+  )
 }

@@ -121,8 +121,9 @@ validate.lm <- function(object, data = NULL, n_folds = 10, n_reps = 10,
   n_obs <- length(y)
   cv_par <- set_cv_par(n_obs, n_folds, n_reps)
   n_folds <- cv_par$n_folds; n_reps <- cv_par$n_reps
-  fold_ids <- create_folds(y = y, n_folds = n_folds, n_reps = n_reps,
-                           seed = seed)
+  fold_ids <- create_folds(
+    y = y, n_folds = n_folds, n_reps = n_reps, seed = seed
+  )
   train_data <- lapply(fold_ids, function(i)
     list(x = lm_par$x[-i, , drop = FALSE],
          y = lm_par$y[-i],
@@ -136,8 +137,10 @@ validate.lm <- function(object, data = NULL, n_folds = 10, n_reps = 10,
          offset = lm_par$offset[i])
   )
   y_hat <- map2(cv_fits, test_data, ~ .y$x %*% coef(.x) + .y$offset)
-  cv_stats <- get_cv_stats(y = y, y_hat = y_hat, family = "gaussian",
-                           n_folds = n_folds, n_reps = n_reps)
+  cv_stats <- get_cv_stats(
+    y = y, y_hat = y_hat, family = "gaussian", n_folds = n_folds,
+    n_reps = n_reps
+  )
   fold_assignments <- get_fold_ids(fold_ids, n_reps)
   structure(
     c(cv_stats, list(
@@ -195,6 +198,67 @@ validate.glm <- function(object, data = NULL, n_folds = 10, n_reps = 10,
                         y = y))),
     class = "cross_valid")
 }
+
+#' @describeIn validate Cross-validation of GLMs
+#' @export
+validate.zeroinfl <- function(
+  object, n_folds = 10, n_reps = 10, seed = 42, ...
+){
+  zi_par <- set_zi_par(object)
+  family <- switch(
+    object$dist,
+    poisson = "zip",
+    negbin = "zinb"
+  )
+  y <- zi_par$y
+  n_obs <- length(y)
+  cv_par <- set_cv_par(n_obs, n_folds, n_reps)
+  n_folds <- cv_par$n_folds; n_reps <- cv_par$n_reps
+  fold_ids <- create_folds(
+    y = y, n_folds = n_folds, n_reps = n_reps, seed = seed
+  )
+  train_data <- lapply(
+    fold_ids, function(i)
+      list(x = zi_par$x[-i, , drop = FALSE],
+           y = zi_par$y[-i],
+           z = zi_par$z[-i, , drop = FALSE],
+           weights = zi_par$weights[-i],
+           offset = list(count = zi_par$offset$count[-i],
+                         zero = zi_par$offset$zero[-i]),
+           dist = zi_par$dist,
+           link = zi_par$link,
+           control = zi_par$control)
+  )
+  cv_fits <- map(train_data, ~ do.call(zi.fit, .x))
+  test_data <- lapply(
+    fold_ids, function(i)
+    list(
+      x = zi_par$x[i, , drop = FALSE],
+      y = zi_par$y[i],
+      z = zi_par$z[i, , drop = FALSE],
+      weights = zi_par$weights[i],
+      offset = list(count = zi_par$offset$count[i],
+                    zero = zi_par$offset$zero[i])
+    )
+  )
+  y_hat <- map2(cv_fits, test_data, predict_zi)
+  cv_stats <- get_cv_stats(
+    y = y, y_hat = y_hat, family = family, n_folds = n_folds,
+    n_reps = n_reps, theta = object$theta
+  )
+  fold_assignments <- get_fold_ids(fold_ids, n_reps)
+  structure(
+    c(cv_stats, list(
+      fold_assignments = fold_assignments,
+      parameters = list(family = family,
+                        n_obs = n_obs,
+                        n_folds = n_folds,
+                        n_reps = n_reps,
+                        seed = seed,
+                        y = y))),
+    class = "cross_valid")
+}
+
 
 #' @describeIn validate Cross-validation of GLM nets
 #' @export
