@@ -61,13 +61,15 @@
 #'
 #' @param y Vector of actual observed values
 #'
-#' @param y_hat Vector of predicted values. For zero-inflated models, the
-#' predicted values for the count component of the model.
+#' @param y_hat Vector of predicted values.
 #'
 #' @param family Character string giving the name of the error distribution for
 #'   \code{y_hat}. Currently supported distributions are "gaussian", "binomial",
 #'   "poisson", "negbin" (negative binomial), "zip" (zero-inflated Poisson), and
 #'    "zinb" (zero-inflated negative binomial).
+#'
+#' @param mu (Required for zero-inflated models) the predicted values for the
+#' count component of the model.
 #'
 #' @param phi (Required for zero-inflated models) the predicted values for the
 #'  zero component of the model.

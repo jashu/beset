@@ -17,13 +17,15 @@ predictors that were used to fit the model \code{object}.}
 
 \item{y}{Vector of actual observed values}
 
-\item{y_hat}{Vector of predicted values. For zero-inflated models, the
-predicted values for the count component of the model.}
+\item{y_hat}{Vector of predicted values.}
 
 \item{family}{Character string giving the name of the error distribution for
 \code{y_hat}. Currently supported distributions are "gaussian", "binomial",
 "poisson", "negbin" (negative binomial), "zip" (zero-inflated Poisson), and
  "zinb" (zero-inflated negative binomial).}
+
+\item{mu}{(Required for zero-inflated models) the predicted values for the
+count component of the model.}
 
 \item{phi}{(Required for zero-inflated models) the predicted values for the
 zero component of the model.}
