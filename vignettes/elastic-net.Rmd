@@ -24,7 +24,7 @@ suppressPackageStartupMessages(library(tidyverse))
 
 Best subset selection, as performed by the `beset_lm` and `beset_glm` functions, performs variable selection explicitly by trying out a bunch of models with all possible combinations of predictors and choosing the one that performs best under cross-validation. The major appeal of this approach is that it is simple: the underlying fitting procedure is the familiar and easy-to-understand generalized linear model (GLM). However, this algorithm scales very poorly with increasing numbers of predictors ($p$), running in $O(2^p)$ time. 
 
-For example, as one goes from 10 to 20 predictors, one goes from fitting 1,024 models to fitting 1,048,576 models. Thus, this algorithm rapidly becomes impractical as one moves beyond 10 predictors and, for most computers, outright impossible beyond 40 predictors. The approach can be salvaged by constraining the search space, for example by capping the number of predictors to a certain number (e.g., using the `p_max` argument of `beset_glm`) or using a greedy search algorithm, such as stepwise selection. However, it should be obvious that such constraints may fail to discover the best predictive model. (For example, suppose there are 40 predictors which all have some small degree of unique, but also largely overlapping, predictive value.) Moreover, any discrete variable selection procedure is inherently variable (Breiman, 1996).[^1]
+For example, as one goes from 10 to 20 predictors, one goes from fitting 1,024 models to fitting 1,048,576 models. Thus, this algorithm rapidly becomes impractical as one moves beyond 10 predictors and, for most computers, outright impossible beyond 40 predictors. The approach can be salvaged by constraining the search space, for example by capping the number of predictors to a certain number (e.g., using the `p_max` argument of `beset_glm`) or using a greedy search algorithm, such as step-wise selection. However, it should be obvious that such constraints may fail to discover the best predictive model. (For example, suppose there are 40 predictors which all have some small degree of unique, but also largely overlapping, predictive value.) Moreover, any discrete variable selection procedure is inherently variable (Breiman, 1996).[^1]
 
 [^1]: Note that the `beset_lm` and `beset_glm` functions have a `nest_cv` option for evaluating the stability of the model selected as "best".
 
@@ -32,7 +32,7 @@ For example, as one goes from 10 to 20 predictors, one goes from fitting 1,024 m
 
 Regularization works by imposing a penalty on the size of the coefficients.[^2] Two common choices are the “lasso” (aka “L1” or “absolute loss”) penalty and the “ridge” (aka “L2” or “squared loss”) penalty. Each type of regularization has its advantages and disadvantages. The lasso penalty encourages a sparse regression model by shrinking the coefficients of useless predictors all the way to zero; however, if faced with a set of strong but correlated variables, it will arbitrarily select one variable and discard the rest. Lasso has another drawback for the *p > n* scenario (when there are more predictors than observations); namely, the lasso cannot select more variables than there are observations. This is a frequent problem for bioinformatics applications, e.g., genomics. The ridge penalty, on the other hand, encourages highly correlated features to be averaged together by shrinking their coefficients toward each other; however, it retains all of the variables, which is not something you generally want unless your prior belief is that every single variable you have measured is important. 
 
-[^2]: It may not be obvious why shrinking model coefficients improves generalizability, but the reason is simple if you understand the bias-variance tradeoff. (The prediction errors of simpler models will be more stable between samples, and the prediction errors of more complex models will be more variable.) One way to make a model simpler is to put fewer predictors into it (the variable selection approach), but another way is to penalize the magnitude of the coefficients, which effectively reduces the model's degrees of freedom: the larger the shrinkage, the less "wiggle room" the model has to improve its fit to the data.  
+[^2]: It may not be obvious why shrinking model coefficients improves generalizability, but the reason is simple if you understand the bias-variance trade-off. (The prediction errors of simpler models will be more stable between samples, and the prediction errors of more complex models will be more variable.) One way to make a model simpler is to put fewer predictors into it (the variable selection approach), but another way is to penalize the magnitude of the coefficients, which effectively reduces the model's degrees of freedom: the larger the shrinkage, the less "wiggle room" the model has to improve its fit to the data.  
 
 ## The elastic net penalty
 
@@ -40,7 +40,7 @@ The elastic net (Zou and Hastie, 2005) achieves the best of both lasso and ridge
 
 As it turns out, there are also computational advantages from blending L1 and L2 penalties. Using only L2 (pure ridge regression) will produce a dense solution and can be very slow or even impossible to compute with large data sets; using only L1 (pure lasso regression) is less numerically stable and can be very slow as well due to slower convergence. The mixture of penalties is governed by the parameter *alpha*, corresponding to the fraction of L1 penalty. In general, there is nothing to gain and quite a lot to lose from setting *alpha* to equal exactly 0 (pure ridge) or exactly 1 (pure lasso). For example, if you want to perform lasso regression, you will achieve equivalent results with faster and more stable computations by including a pinch of L2 penalty, e.g., set *alpha* to 0.99.
 
-In summary, like ridge regression, the elastic net detects which variables are correlated and models them together as whole groups once one of them is selected, and it remains robust when the number of variables exceeds the sample size. Like lasso regression, variable selection is built into the elastic net, and selection is accomplished by evaluating all variables simultaneously. It does not evaluate variables one at a time like stepwise selection, i.e., it is not a greedy algorithm. To use Zou and Hastie’s (2005) metaphor, “it is like a stretchable fishing net that retains ‘all the big fish’.” 
+In summary, like ridge regression, the elastic net detects which variables are correlated and models them together as whole groups once one of them is selected, and it remains robust when the number of variables exceeds the sample size. Like lasso regression, variable selection is built into the elastic net, and selection is accomplished by evaluating all variables simultaneously. It does not evaluate variables one at a time like step-wise selection, i.e., it is not a greedy algorithm. To use Zou and Hastie’s (2005) metaphor, “it is like a stretchable fishing net that retains ‘all the big fish’.” 
 
 # Motivation for the `beset_elnet` function
 
@@ -60,8 +60,7 @@ To illustrate best subset selection with linear models, we will add 5 random noi
 
 ```{r}
 set.seed(42)
-data <- cbind(swiss, 
-                    matrix(replicate(5, rnorm(nrow(swiss))), ncol = 5))
+data <- cbind(swiss, matrix(replicate(5, rnorm(nrow(swiss))), ncol = 5))
 names(data)[7:11] <- paste0("noise", names(data)[7:11])
 ```
 
@@ -77,7 +76,7 @@ There are several optional arguments that we will explore in greater detail late
 
 ## Plotting cross-validation error curves and summarizing results
 
-The plot method for `beset_elnet` allows one to plot any of the following prediction metrics: mean absolute error (`"mae"`), mean cross entropy (`"mce"`), mean squared error (`"mse"`), or $R^2$ (`"rsq"`)). For linear models (`family = "gaussian"`), mean squared error (`"mse"`) will be plotted by default if no metric is specified:
+The plot method for `beset_elnet` allows one to plot any of the following prediction metrics: mean absolute error (`"mae"`), mean cross entropy (`"mce"`), mean squared error (`"mse"`), or $R^2$ (`"rsq"`). For linear models (`family = "gaussian"`), mean squared error (`"mse"`) will be plotted by default if no metric is specified:
 
 ```{r, fig.height=4, fig.width=5}
 plot(mod)
@@ -88,10 +87,11 @@ In the above plot, `Train Sample` refers to how well the model fits the training
 Note the horizontal and vertical dashed lines. The vertical line identifies the minima of the tuning curve, and flags the values of `alpha` and `lambda` that resulted in the very best out-of-sample performance. These values can be obtained from the `summary` method, with the argument `oneSE = FALSE`:
 
 ```{r}
-summary(mod, oneSE = FALSE)
+mod_sum <- summary(mod, oneSE = FALSE)
+mod_sum
 ```
 
-In this example, the minima is at $\alpha = 0.01$ and $\lambda = 1.22$, which is a predominantly ridge regression favoring the inclusion of all predictors, which are ranked in the coefficient table by order of the absolute value of standardized coefficient. Note that the cross-validated $R^2$ (0.55) is much less optimistic than the train-sample $R^2$ (0.72).
+In this example, the minima is at $\alpha =$ `r mod_sum$best$alpha` and $\lambda =$ `r round(mod_sum$best$best_lambda,2)`, which is a predominantly lasso regression favoring fewer predictors, which are ranked in the coefficient table by order of the absolute value of the standardized coefficient. Note that the cross-validated $R^2$ (`r round(mod_sum$r2_cv$mean,2)`) is much less optimistic than the train-sample $R^2$ (`r round(mod_sum$r2,2)`).
 
 The horizontal line in the above plot corresponds to the upper error limit of this minima. As a rule-of-thumb (called the "1SE rule"), points on the curve that fall beneath this line indicate performance that is practically equivalent to the very best. In practice, one can often increase the generalizability of a model by picking a greater penalty than the one that achieves the absolute minimum cross-validation error. Note that there are `lambda` values at every value of `alpha` that fall beneath this line, and that with greater sparsity (larger values of `alpha`), smaller values of `lambda` are needed to optimize prediction. By default, the `summary` method will first pick the largest `alpha` that has part of its tuning curve within 1SE of the minimum cross-validation error, and then the largest value of `lambda` within the 1SE limit for that value of `alpha`:
 
@@ -99,7 +99,7 @@ The horizontal line in the above plot corresponds to the upper error limit of th
 summary(mod)
 ```
 
-Notice that this leads to a much sparser model with only 4 predictors, and the gap between the $R^2$ estimated for the test sample vs. the tune sample has been reduced by using the 1SE rule, and all noise predictors have been eliminated.
+Notice that using the 1SE rule eliminated all of the noise predictors while keeping all of the true predictors. It also reduced the gap between the $R^2$ estimated for the training sample vs. the hold-out samples.
 
 If you want to apply the 1SE rule within a given value of alpha (rather than the default of choosing the sparsest model), simply specify it as an argument to `summary`:
 
@@ -107,7 +107,7 @@ If you want to apply the 1SE rule within a given value of alpha (rather than the
 summary(mod, alpha = 0.01)
 ```
 
-Notice that this has the effect of retaining all of the predictors, while applying a greater amount of shrinkage to all coefficients than when we set `oneSE = FALSE`.
+Notice that this has the effect of retaining all of the predictors, while applying a greater amount of shrinkage (larger lambda penalty) to all coefficients than when we set `oneSE = FALSE`.
 
 ## Performing a nested cross-validation
 
@@ -126,12 +126,18 @@ plot(mod)
 Running a nested cross-validation has other advantages besides unbiased estimates of test error. Namely, it allows us to gauge the uncertainty in the selection of optimal tuning parameters and its impact on the coefficient estimates. If you run the `summary` function on a `"nested"` `beset_elnet` object, you will see that there is now a standard error and min-max range for the chosen values of alpha and lambda. 
 
 ```{r}
-summary(mod)
+mod_sum <- summary(mod)
 ```
 
-In this case, using the 1SE rule, a predominantly lasso penalty is always selected ($\alpha = 0.99$), nor does the regularization vary that much ($\lambda = 1.8 - 2.2$). This universal preference for lasso over ridge regression may reflect that half of the predictors were engineered to be irrelevant; lasso regression should be preferred under this circumstance.
+In this case, using the 1SE rule, a predominantly lasso penalty is always selected ($\alpha = 0.99$), and the regularization does not vary that much ($\lambda =$ `r paste0(round(mod_sum$parameters$lambda$btwn_rep_range, 2), collapse = " - ")`). This universal preference for lasso over ridge regression may reflect that half of the predictors were engineered to be irrelevant; lasso regression should be preferred under this circumstance.
 
-You will also see a standard error and min-max range for the standardized coefficients and for the variance explained in the train sample, tune holdout, and test holdout. Note that the standard-error refers to the standard deviation between folds divided by the square root of the number of folds. The min-max range refers to the repetitions of cross-validation, after averaging over the folds of each repetition. In either case, these numbers reflect uncertainty due to running the procedure on different subsamples of the data set, which may be useful when comparing the relative importance of predictors to the model and performance of different models validated using the same subsampling schema.
+You will also see a standard error and min-max range for the standardized coefficients and for the variance explained in the train sample, tune holdout, and test holdout. Note that the **standard error** refers to the **standard deviation** ***between folds*** divided by the square root of the number of folds. The **min-max range** refers to the ***repetitions*** of cross-validation, after averaging over the folds of each repetition. In either case, these numbers reflect **uncertainty due to running the procedure on different subsamples of the data set**, which may be useful when comparing the relative importance of predictors to the model and performance of different models validated using the same sub-sampling schema.
+
+Qualitatively, you may wish to limit your interpretation to only the most robust predictors that had non-zero coefficients regardless of which subsample the models were trained on. To restrict the output in this way, you can add the argument `robust = TRUE` to the `summary` function.
+
+```{r}
+summary(mod, robust = TRUE)
+```
 
 What happens if we don't use the 1SE rule?
 
