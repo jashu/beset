@@ -49,13 +49,11 @@ predict.beset <- function(object, newdata, type = "response",
   if (missing(newdata) || is.null(newdata)) {
     X <- model.matrix(object)
     newoffset <- object$parameters$offset
-  }
-  else {
+  } else {
     Terms <- delete.response(tt)
     m <- model.frame(Terms, newdata, na.action = na.action,
                      xlev = object$xlevels)
     X <- model.matrix(Terms, m, contrasts.arg = object$contrasts)
-    if("(Intercept)" %in% colnames(X)) X <- X[, -1, drop = FALSE]
     if(is.null(newoffset) && all(object$parameters$fit$offset == 0))
       newoffset <- rep(0, nrow(X))
   }
@@ -64,14 +62,17 @@ predict.beset <- function(object, newdata, type = "response",
       object, alpha = alpha, lambda = lambda, metric = metric, oneSE = oneSE,
       ...
     )
+    if("(Intercept)" %in% colnames(X)) X <- X[, -1, drop = FALSE]
     yhat <- predict(
       model, newx = X, s = model$best_lambda, type = type,
       newoffset = newoffset, ...)
   } else {
-    model <- get_best.beset_glm(object, alpha = alpha, lambda = lambda,
-                                  metric = metric, oneSE = oneSE, ...)
-    yhat <- object$family$linkinv(
-      X[, names(coef(object))] %*% coef(object) + newoffset)
+    model <- get_best.glm(
+      object, n_pred = n_pred, metric = metric, oneSE = oneSE, ...
+    )
+    yhat <- model$family$linkinv(
+      X[, names(coef(model)), drop = FALSE] %*% coef(model) + newoffset
+    )
   }
   as.vector(yhat)
 }
@@ -86,6 +87,9 @@ predict.nested <- function(object, newdata, type = "response",
                            newoffset = NULL, alpha = NULL, lambda = NULL,
                            n_pred = NULL, metric = "auto", oneSE = TRUE,
                            na.action = na.pass, ...){
+  if (missing(newdata) || is.null(newdata)) {
+    newdata <- object$data
+  }
   map(
     object$beset, ~ predict(
       ., newdata, type, newoffset, alpha, lambda, n_pred, metric, oneSE,

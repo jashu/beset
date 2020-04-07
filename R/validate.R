@@ -96,9 +96,10 @@ validate.function <- function(object, x, y, family = "gaussian",
   )
   y_hat <- map2(cv_fits, test_data,
                 ~ predict(.x, newdata = .y$x, type = "response"))
-  cv_stats <- get_cv_stats(y = y, y_hat = y_hat, family = family,
-                           n_folds = n_folds, n_reps = n_reps,
-                           phi = phi, theta = theta)
+  cv_stats <- get_cv_stats(
+    y = y, y_hat = y_hat, family = family, n_folds = n_folds, n_reps = n_reps,
+    theta = theta
+  )
   fold_assignments <- get_fold_ids(fold_ids, n_reps)
   structure(
     c(cv_stats, list(
