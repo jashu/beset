@@ -22,7 +22,8 @@ setup_parallel <- function(parallel_type = NULL, n_cores = NULL, cl = NULL,
     if (!have_mc && !have_snow) n_cores <- 1L
   }
   if (have_snow && is.null(cl)) {
-    cl <- parallel::makePSOCKcluster(rep("localhost", n_cores))
+    cl <- parallel::makePSOCKcluster(
+      rep("localhost", n_cores), setup_strategy = "sequential")
   }
   list(have_mc = have_mc, n_cores = n_cores, cl = cl)
 }
