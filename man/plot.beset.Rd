@@ -4,7 +4,7 @@
 \alias{plot.beset}
 \title{Plot Methods for \code{beset} Objects}
 \usage{
-plot.beset(x, metric = "auto", se = TRUE, ...)
+\method{plot}{beset}(x, metric = "auto", se = TRUE, ...)
 }
 \arguments{
 \item{x}{An object of class \code{"beset_glm"},

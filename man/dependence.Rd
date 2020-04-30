@@ -56,7 +56,7 @@ dependence(object, ...)
   cl = NULL
 )
 
-plot.part_depend(x, order = "delta", p_max = 16, ...)
+\method{plot}{part_depend}(x, order = "delta", p_max = 16, ...)
 }
 \arguments{
 \item{object}{A "beset" model object for which partial dependence plots
