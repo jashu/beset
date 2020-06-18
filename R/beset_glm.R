@@ -156,8 +156,6 @@
 #' \code{\link[snow]{snow}} cluster for use if \code{parallel_type = "sock"}.
 #' If not supplied, a cluster on the local machine is automatically created.
 #'
-#' @inheritParams stats::glm
-#'
 #' @return A "beset_glm" object with the following components:
 #' \describe{
 #'    \item{stats}{a list with three data frames:

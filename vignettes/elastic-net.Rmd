@@ -127,6 +127,7 @@ Running a nested cross-validation has other advantages besides unbiased estimate
 
 ```{r}
 mod_sum <- summary(mod)
+mod_sum
 ```
 
 In this case, using the 1SE rule, a predominantly lasso penalty is always selected ($\alpha = 0.99$), and the regularization does not vary that much ($\lambda =$ `r paste0(round(mod_sum$parameters$lambda$btwn_rep_range, 2), collapse = " - ")`). This universal preference for lasso over ridge regression may reflect that half of the predictors were engineered to be irrelevant; lasso regression should be preferred under this circumstance.
