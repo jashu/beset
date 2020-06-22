@@ -12,7 +12,7 @@
 
 <meta name="author" content="Jason Shumake" />
 
-<meta name="date" content="2020-06-18" />
+<meta name="date" content="2020-06-21" />
 
 <title>Tuning and Validating Elastic Nets with beset</title>
 
@@ -350,7 +350,7 @@ font-style: italic;
 
 <h1 class="title toc-ignore">Tuning and Validating Elastic Nets with beset</h1>
 <h4 class="author">Jason Shumake</h4>
-<h4 class="date">2020-06-18</h4>
+<h4 class="date">2020-06-21</h4>
 
 
 
@@ -569,9 +569,9 @@ font-style: italic;
 ## CV-Tune Holdout              0.567 0.106 0.560 0.575
 ## CV-Test Holdout              0.530 0.194 0.502 0.556
 ## =======================================================</code></pre>
-<p>On the one hand, this has a bad result in that all of the noise predictors make it into the model. On the other hand, the drop-off in variance explained between the CV and Test holdouts is not severe, and the performance on the Test holdouts is slightly better than what was obtained under the 1SE rule.</p>
+<p>On the one hand, this has a bad result in that all of the noise predictors make it into the model (though they are appropriately accorded much less influence than the true predictors). On the other hand, the drop-off in variance explained between the CV and Test holdouts is not severe, and the performance on the Test holdouts is slightly better than what was obtained under the 1SE rule.</p>
 <p>By default, variance explained (or deviance explained for non-Gaussian models) appears at the end of the <code>summary</code> output. You can instead obtain mean absolute error, mean squared error, or mean cross entropy by setting the <code>metric</code> argument to <code>&quot;mae&quot;</code>, <code>&quot;mse&quot;</code>, or <code>&quot;mce&quot;</code>, respectively, in the <code>print</code> method. For example, to see mean squared error in the summary, you could code the following:</p>
-<div class="sourceCode" id="cb18"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb18-1" data-line-number="1"><span class="kw">summary</span>(mod) <span class="op">%&gt;%</span><span class="st"> </span><span class="kw">print</span>(<span class="dt">metric =</span> <span class="st">&quot;mse&quot;</span>)</a></code></pre></div>
+<div class="sourceCode" id="cb18"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb18-1" data-line-number="1"><span class="kw">summary</span>(mod, <span class="dt">robust =</span> <span class="ot">TRUE</span>) <span class="op">%&gt;%</span><span class="st"> </span><span class="kw">print</span>(<span class="dt">metric =</span> <span class="st">&quot;mse&quot;</span>)</a></code></pre></div>
 <pre><code>## 
 ## Results of nested 10-fold cross-validation repeated 10 times
 ## =======================================================
@@ -590,9 +590,6 @@ font-style: italic;
 ## Examination        -0.12900  0.02096 -0.13400 -0.12400
 ## Agriculture        -0.05100  0.02118 -0.06200 -0.03900
 ## noise1              0.00400  0.00378  0.00100  0.00700
-## noise5              0.00200  0.00325  0.00000  0.00800
-## noise2              0.00000  0.00062 -0.00200  0.00000
-## noise3              0.00000  0.00002  0.00000  0.00000
 ## 
 ## 
 ## Prediction Metrics:

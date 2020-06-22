@@ -9,7 +9,7 @@ train_data <- cbind(swiss,
 names(train_data)[7:11] <- paste0("noise", names(train_data)[7:11])
 
 ## -----------------------------------------------------------------------------
-mod <- beset_lm(Fertility ~ ., train_data)
+mod <- beset_lm(Fertility ~ ., train_data, n_cores = 1)
 
 ## ---- fig.height=4, fig.width=5-----------------------------------------------
 plot(mod)
@@ -42,11 +42,13 @@ summary(mod, n_pred = 4)
 data <- partition(train_data, y = "Fertility", seed = 42, frac = .75)
 
 ## ---- fig.height=4, fig.width=5-----------------------------------------------
-mod <- beset_lm(Fertility ~ ., data = data)
+mod <- beset_lm(Fertility ~ ., data = data, n_cores = 1)
 plot(mod)
 
 ## ---- fig.height=4, fig.width=5-----------------------------------------------
-mod <- beset_lm(Fertility ~ ., data = train_data, nest_cv = TRUE, p_max = 5)
+mod <- beset_lm(
+  Fertility ~ ., data = train_data, nest_cv = TRUE, p_max = 5, n_cores = 1
+)
 plot(mod)
 
 ## ---- fig.height=4, fig.width=5-----------------------------------------------
@@ -68,8 +70,9 @@ summary(mod) %>% print(metric = "mse")
 validate(mod, metric = "mse", oneSE = TRUE)
 
 ## -----------------------------------------------------------------------------
-mod <- beset_lm(Fertility ~ Agriculture + Examination + Education +
-                  Catholic + Infant.Mortality, train_data)
+mod <- beset_lm(
+  Fertility ~ Agriculture + Examination + Education + Catholic +
+    Infant.Mortality, train_data, n_cores = 1)
 summary(mod)
 
 ## ---- eval = FALSE------------------------------------------------------------
@@ -79,20 +82,24 @@ summary(mod)
 
 ## -----------------------------------------------------------------------------
 mod <- beset_lm(Fertility ~ Education * Catholic * Infant.Mortality,
-                train_data)
+                train_data, n_cores = 1)
 
 ## -----------------------------------------------------------------------------
 summary(mod)
 
 ## -----------------------------------------------------------------------------
-mod <- beset_lm(Fertility ~ Education + Catholic + Infant.Mortality +
-                  Education:Catholic + Education:Infant.Mortality +
-                  Catholic:Infant.Mortality, train_data, nest_cv = TRUE,
-                force_in = c("Education", "Catholic", "Infant.Mortality"))
+mod <- beset_lm(
+  Fertility ~ Education + Catholic + Infant.Mortality + Education:Catholic +
+    Education:Infant.Mortality + Catholic:Infant.Mortality, train_data, 
+  nest_cv = TRUE, force_in = c("Education", "Catholic", "Infant.Mortality"),
+  n_cores = 1
+)
 summary(mod)
 
 ## -----------------------------------------------------------------------------
-mod <- beset_lm(Fertility ~ ., train_data, n_folds = 5, n_reps = 5)
+mod <- beset_lm(
+  Fertility ~ ., train_data, n_folds = 5, n_reps = 5, n_cores = 1
+)
 summary(mod)
 
 ## ---- fig.height=4, fig.width=5-----------------------------------------------
@@ -103,7 +110,7 @@ data("prostate")
 summary(prostate)
 
 ## -----------------------------------------------------------------------------
-mod <- beset_glm(tumor ~ ., data = prostate, family = "binomial")
+mod <- beset_glm(tumor ~ ., data = prostate, family = "binomial", n_cores = 1)
 
 ## -----------------------------------------------------------------------------
 summary(mod)
@@ -134,7 +141,9 @@ data("adolescents")
 qplot(x = dep, bins = 10, data = na.omit(adolescents)) + theme_classic()
 
 ## -----------------------------------------------------------------------------
-mod_poisson <- beset_glm(dep ~ ., data = adolescents, family = "poisson")
+mod_poisson <- beset_glm(
+  dep ~ ., data = adolescents, family = "poisson", n_cores = 1
+)
 
 ## ---- fig.height=4, fig.width=5-----------------------------------------------
 plot(mod_poisson)
@@ -144,7 +153,9 @@ poisson_summary <- summary(mod_poisson, n_pred = 4)
 poisson_summary
 
 ## -----------------------------------------------------------------------------
-mod_negbin <- beset_glm(dep ~ ., data = adolescents, family = "negbin")
+mod_negbin <- beset_glm(
+  dep ~ ., data = adolescents, family = "negbin", n_cores = 1
+)
 
 ## ---- fig.height=4, fig.width=5-----------------------------------------------
 plot(mod_negbin) 

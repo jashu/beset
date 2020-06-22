@@ -12,7 +12,7 @@
 
 <meta name="author" content="Jason Shumake" />
 
-<meta name="date" content="2020-06-18" />
+<meta name="date" content="2020-06-21" />
 
 <title>beset: Easy cross-validation of GLMs</title>
 
@@ -350,7 +350,7 @@ font-style: italic;
 
 <h1 class="title toc-ignore"><code>beset</code>: Easy cross-validation of GLMs</h1>
 <h4 class="author">Jason Shumake</h4>
-<h4 class="date">2020-06-18</h4>
+<h4 class="date">2020-06-21</h4>
 
 
 
@@ -476,7 +476,6 @@ font-style: italic;
 
 <p>To perform leave-one-out cross-validation (LOOCV), set <code>n_folds</code> to a value equal to the number of observations in your data set. (Technically, any value greater than half the number of observations will also result in LOOCV because <code>validate</code> will autocorrect any such value to equal the number of observations.) Note that under LOOCV, repetitions are pointless and will not be performed, and so ranges will not be reported in the output. Note also that for the AUC statistics and variance/deviance explained, error metrics cannot be calculated under LOOCV because these statistics are undefined for individual predictions; they can only be calculated on the aggregate predictions.</p>
 <div class="sourceCode" id="cb12"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb12-1" data-line-number="1"><span class="kw">validate</span>(log_mod, <span class="dt">n_folds =</span> <span class="kw">nobs</span>(log_mod), <span class="dt">n_reps =</span> <span class="dv">1</span>)</a></code></pre></div>
-<pre><code>## Performing leave-one-out cross-validation</code></pre>
 <pre><code>## Mean predictive performance under leave-one-out cross-validation:
 ##                     Mean  S.E.
 ## Area Under Curve   0.808    NA
@@ -496,9 +495,9 @@ As for the number of repetitions, it is a good idea to evaluate how sensitive yo
 <div id="obtaining-hold-out-predictions-and-fold-assignments" class="section level2">
 <h2>Obtaining hold-out predictions and fold assignments</h2>
 <p>The hold-out predictions of the cross-validation procedure and the corresponding fold-assignments can be obtained by assigning a variable name to the object returned by <code>validate</code>:</p>
-<div class="sourceCode" id="cb15"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb15-1" data-line-number="1">cv_results &lt;-<span class="st"> </span><span class="kw">validate</span>(lin_mod)</a></code></pre></div>
+<div class="sourceCode" id="cb14"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb14-1" data-line-number="1">cv_results &lt;-<span class="st"> </span><span class="kw">validate</span>(lin_mod)</a></code></pre></div>
 <p>The predictions are stored as a data frame named “predictions”. The rows correspond to the equivalent rows of the data frame used to fit the model, and there is a column for each repetition of the cross-validation procedure. Going across columns within a row you can see the variability of the prediction for that individual as a function of fitting the model to different subsamples of the data (none of which included that individual):</p>
-<div class="sourceCode" id="cb16"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb16-1" data-line-number="1">cv_results<span class="op">$</span>predictions</a></code></pre></div>
+<div class="sourceCode" id="cb15"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb15-1" data-line-number="1">cv_results<span class="op">$</span>predictions</a></code></pre></div>
 <pre><code>## # A tibble: 47 x 10
 ##     Rep1  Rep2  Rep3  Rep4  Rep5  Rep6  Rep7  Rep8  Rep9 Rep10
 ##    &lt;dbl&gt; &lt;dbl&gt; &lt;dbl&gt; &lt;dbl&gt; &lt;dbl&gt; &lt;dbl&gt; &lt;dbl&gt; &lt;dbl&gt; &lt;dbl&gt; &lt;dbl&gt;
@@ -514,7 +513,7 @@ As for the number of repetitions, it is a good idea to evaluate how sensitive yo
 ## 10  79.4  79.7  80.3  79.4  78.9  79.5  79.2  79.4  78.8  79.0
 ## # … with 37 more rows</code></pre>
 <p>The fold assignments are stored as a data frame named “fold_assignments”. The values indicate the number of the fold that the case was assigned to; within a repetition, cases with the same fold number make up one of the hold-out data sets (and all cases not having that number were used to train a model to predict that hold-out set):</p>
-<div class="sourceCode" id="cb18"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb18-1" data-line-number="1">cv_results<span class="op">$</span>fold_assignments</a></code></pre></div>
+<div class="sourceCode" id="cb17"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb17-1" data-line-number="1">cv_results<span class="op">$</span>fold_assignments</a></code></pre></div>
 <pre><code>## # A tibble: 47 x 10
 ##     Rep1  Rep2  Rep3  Rep4  Rep5  Rep6  Rep7  Rep8  Rep9 Rep10
 ##    &lt;int&gt; &lt;int&gt; &lt;int&gt; &lt;int&gt; &lt;int&gt; &lt;int&gt; &lt;int&gt; &lt;int&gt; &lt;int&gt; &lt;int&gt;

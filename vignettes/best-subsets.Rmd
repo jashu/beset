@@ -8,7 +8,7 @@ output:
       - !expr system.file("rmarkdown/templates/html_vignette/resources/vignette.css", package = "rmarkdown")
       - style.css
 vignette: >
-  %\VignetteIndexEntry{Best-subset selection of GLMs}
+  %\VignetteIndexEntry{`beset`: Best-subset selection of GLMs}
   %\VignetteEngine{knitr::rmarkdown}
   %\VignetteEncoding{UTF-8}
 ---
@@ -29,17 +29,23 @@ train_data <- cbind(swiss,
 names(train_data)[7:11] <- paste0("noise", names(train_data)[7:11])
 ```
 
-To perform best subset selection with linear models, use `beset_lm` (or equivalently `beset_glm` with default `family = "gaussian"` and `link = "identity"` args). Only 2 arguments are required: a model formula and training data:
+To perform best subset selection with linear models, use `beset_lm` (or equivalently `beset_glm` with default `family = "gaussian"` and `link = "identity"` args). Only 2 arguments are required: a model formula and training data. There are several optional arguments that can be used to set a cap on the number of predictors ('p_max`) and control parallel processing and cross-validation. We will explore these optional parameters in greater detail later on, but you should be aware of the default behavior of some of the more important parameters if they are left unspecified.
+
+1. By default, the parameter `nest_cv` is set to `FALSE`, meaning that a regular, unnested cross-validation will be performed because this is much faster computationally. However, if possible, you are encouraged to set this to `TRUE` so that the model selection procedure itself gets cross-validated. This will be explained further below.
+
+2. All `beset` functions are capable of running cross-validation resampling in parallel across multiple CPUs. You can specify the number of parallel branches with the `n_cores` argument. By default, `beset` will attempt to determine how many cores your machine has available and use one less core than the maximum available. You have several options for setting up the parallel process. For `parallel_type` you can specify either `"fork"` or `"sock"`. For the "fork" option, each parallel thread is a complete duplication of the master process with the shared environment. For the "sock" (short for socket) option, the parallel processes are completely independent. Forking only works on a Mac or other Linux/Unix-based OS, and uses less memory. Sockets work on any OS (and are the only option for Windows) and for most applications of the `beset` package, which need to repeatedly read from the original data set based on resampled row indices, are faster than forking because each parallel process works with its own copy of the data and doesn't have to take turns with the other processes when it needs to resample from the original data. Therefore, `"sock"` is the `beset` default. However, if you are not running R on a Windows PC, you may wish to experiment with `"fork"` because your mileage may vary depending on the size of your data sets, the number of resamples you perform, and the amount of RAM you have available. Another option for advanced users who prefer to set up their own parallel cluster beforehand is to pass the name of a preconfigured cluster using the `cl` argument.  
+
+Note that in the examples below the argument `n_cores` has been set to 1. This is in compliance with CRAN's policy that parallel processes should not be spawned on their servers when building vignettes. If you rerun this code locally, I recommend that you increase or remove the `n_cores` argument to achieve faster performance.
+
+3. By default, `beset_lm` and `beset_glm` will search for models with up to 10 predictors (`p_max = 10`). If you need to fit a larger number of parameters, or if the number of relevant parameters exceeds 1/10 of the sample size, it is recommended that you switch to the `beset_elnet` function instead. And `beset_lm` and `beset_glm` will not allow the number of model parameters to exceed 1/3 of the sample size of the training data.
 
 ```{r}
-mod <- beset_lm(Fertility ~ ., train_data)
+mod <- beset_lm(Fertility ~ ., train_data, n_cores = 1)
 ```
-
-There are several optional arguments that can be used to set a cap on the number of predictors and control parallel processing and cross-validation. We will explore the optional parameters in greater detail later on.
 
 # Plotting cross-validation error curves
 
-The plot method for `beset_lm` and `beset_glm` allows one to plot any of the following prediction metrics: mean absolute error (`"mae"`), mean cross entropy (`"mce"`), mean squared error (`"mse"`), or $R^2$ (`"rsq"`)). For linear models (or GLMs that use a normal error distribution), mean squared error (`"mse"`) will be plotted by default if no metric is specified:
+The plot method for `beset_lm` and `beset_glm` allows one to plot any of the following prediction metrics: mean absolute error (`"mae"`), mean cross entropy (`"mce"`), mean squared error (`"mse"`), or $R^2$ (`"rsq"`). For linear models (or GLMs that use a normal error distribution), mean squared error (`"mse"`) will be plotted by default if no metric is specified:
 
 ```{r, fig.height=4, fig.width=5}
 plot(mod)
@@ -136,7 +142,7 @@ data <- partition(train_data, y = "Fertility", seed = 42, frac = .75)
 The train set is then referenced by the name assigned to the partition object followed by `$train`. The test set is likewise referenced with `$test`. But you can pass this `"data_partition"` object directly as the `data` argument for any `beset_` modeling function, which will generate statistics on the independent test holdout in addition to the cross-validation holdouts from the training data:
 
 ```{r, fig.height=4, fig.width=5}
-mod <- beset_lm(Fertility ~ ., data = data)
+mod <- beset_lm(Fertility ~ ., data = data, n_cores = 1)
 plot(mod)
 ```
 
@@ -149,7 +155,9 @@ As you can see from the above example, a single test set may not provide a repre
 Note that here you should use the full data set as the argument rather than the `data_partition` object. `beset_` modeling functions can either estimate test error using a single train-test partition or using nested cross-validation, and will instruct you to pick one or the other if you ask for both. 
 
 ```{r, fig.height=4, fig.width=5}
-mod <- beset_lm(Fertility ~ ., data = train_data, nest_cv = TRUE, p_max = 5)
+mod <- beset_lm(
+  Fertility ~ ., data = train_data, nest_cv = TRUE, p_max = 5, n_cores = 1
+)
 plot(mod)
 ```
 
@@ -200,8 +208,9 @@ validate(mod, metric = "mse", oneSE = TRUE)
 If you do not want to search over all the variables in your data frame, simply write a formula that specifically names the largest model that you want considered. All subsets of this model will then be explored. For example, let's eliminate our noise variables from consideration:
 
 ```{r}
-mod <- beset_lm(Fertility ~ Agriculture + Examination + Education +
-                  Catholic + Infant.Mortality, train_data)
+mod <- beset_lm(
+  Fertility ~ Agriculture + Examination + Education + Catholic +
+    Infant.Mortality, train_data, n_cores = 1)
 summary(mod)
 ```
 
@@ -217,7 +226,7 @@ First of all, this expands the number of model parameters from 5 to 31. The comp
 
 ```{r}
 mod <- beset_lm(Fertility ~ Education * Catholic * Infant.Mortality,
-                train_data)
+                train_data, n_cores = 1)
 ```
 
 we see that the best predictors of Fertility are the two-way interaction terms `Education` $\times$ `Catholic` and `Catholic` $\times$ `Infant.Mortality` *without any lower order, non-interaction terms that comprise the interaction*. Given that this is no longer a hierarchical linear model, the interpretation of these terms as interaction effects is no longer valid.
@@ -231,10 +240,12 @@ summary(mod)
 In the event that you have covariates that you know should appear in the final model and that you do not want to subject to best subset selection, you can specify this with the argument `force_in`. As an example, let's consider the above search for interactions, but we will insure that the best models are hierarchically complete by only considering possible two-way interactions and forcing the inclusion of all the individual terms.
 
 ```{r}
-mod <- beset_lm(Fertility ~ Education + Catholic + Infant.Mortality +
-                  Education:Catholic + Education:Infant.Mortality +
-                  Catholic:Infant.Mortality, train_data, nest_cv = TRUE,
-                force_in = c("Education", "Catholic", "Infant.Mortality"))
+mod <- beset_lm(
+  Fertility ~ Education + Catholic + Infant.Mortality + Education:Catholic +
+    Education:Infant.Mortality + Catholic:Infant.Mortality, train_data, 
+  nest_cv = TRUE, force_in = c("Education", "Catholic", "Infant.Mortality"),
+  n_cores = 1
+)
 summary(mod)
 ```
 
@@ -245,7 +256,9 @@ This shows that, among hierarchically complete models, the additive model is sti
 This is accomplished with the `n_folds` and `n_reps` arguments. For example, here is the same model but with a $5 \times 5$ cross-validation instead of the default $10 \times 10$:
 
 ```{r}
-mod <- beset_lm(Fertility ~ ., train_data, n_folds = 5, n_reps = 5)
+mod <- beset_lm(
+  Fertility ~ ., train_data, n_folds = 5, n_reps = 5, n_cores = 1
+)
 summary(mod)
 ```
 
@@ -271,7 +284,7 @@ summary(prostate)
 The syntax for fitting a logistic model with `beset_glm` is much the same as you would use with `glm`:
 
 ```{r}
-mod <- beset_glm(tumor ~ ., data = prostate, family = "binomial")
+mod <- beset_glm(tumor ~ ., data = prostate, family = "binomial", n_cores = 1)
 ```
 
 Note that beset issues a warning that 3 rows with missing data are being dropped. As with lm and glm, missing values are not allowed and listwise deletion of missing values is performed, but `beset` does you the courtesy of letting you know that this is happening.
@@ -337,7 +350,9 @@ Given this distribution, linear models, which assume that prediction errors are 
 The first option one might consider is a **Poisson regression**, which can be performed as follows:
 
 ```{r}
-mod_poisson <- beset_glm(dep ~ ., data = adolescents, family = "poisson")
+mod_poisson <- beset_glm(
+  dep ~ ., data = adolescents, family = "poisson", n_cores = 1
+)
 ```
 
 ```{r, fig.height=4, fig.width=5}
@@ -356,7 +371,9 @@ Of course, the Poisson distribution, which has a variance equal to its mean, doe
 Note that this is not a family supported by the `glm` function in R; rather, `beset_glm` calls an internal modified version of the `glm.nb` function from the `MASS` package to fit an extra parameter called *theta* to model overdispersion.
 
 ```{r}
-mod_negbin <- beset_glm(dep ~ ., data = adolescents, family = "negbin")
+mod_negbin <- beset_glm(
+  dep ~ ., data = adolescents, family = "negbin", n_cores = 1
+)
 ```
 
 ```{r, fig.height=4, fig.width=5}

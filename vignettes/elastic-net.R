@@ -40,7 +40,7 @@ summary(mod, robust = TRUE)
 summary(mod, oneSE = FALSE)
 
 ## -----------------------------------------------------------------------------
-summary(mod) %>% print(metric = "mse")
+summary(mod, robust = TRUE) %>% print(metric = "mse")
 
 ## -----------------------------------------------------------------------------
 validate(mod, metric = "auto", oneSE = TRUE, alpha = NULL, lambda = NULL)

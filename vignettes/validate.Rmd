@@ -8,7 +8,7 @@ output:
       - !expr system.file("rmarkdown/templates/html_vignette/resources/vignette.css", package = "rmarkdown")
       - style.css
 vignette: >
-  %\VignetteIndexEntry{Easy cross-validation of GLMs}
+  %\VignetteIndexEntry{`beset`: Easy cross-validation of GLMs}
   %\VignetteEngine{knitr::rmarkdown}
   \usepackage[utf8]{inputenc}
 ---
@@ -91,8 +91,6 @@ To perform leave-one-out cross-validation (LOOCV), set `n_folds` to a value equa
 validate(log_mod, n_folds = nobs(log_mod), n_reps = 1)
 ```
 
-
-
 ```{block2, type = 'rmd-details'}
 **Advice on choosing `n_folds` and `n_reps`**. To understand the impact of the choice of how many folds to use in cross-validation, it is helpful to consider two extremes. 
 
@@ -124,8 +122,6 @@ The fold assignments are stored as a data frame named "fold_assignments". The va
 ```{r}
 cv_results$fold_assignments
 ```
-
- 
 
 ```{block2, type = 'rmd-caution'}
 **The wrong and right way to do cross-validation**. A common blunder is to first perform variable selection on the basis of *all of the samples*, such as computing the pairwise correlation betweeen each predictor and the response and retaining only those that meet a "significance" threshold. If `validate` is used on a model whose variables have been selected in this way, it will underestimate the true prediction error, in proportion to the number of predictors that were pre-screened; the more predictors that were eliminated from the original data set, the more erroneous the cross-validation error will be. 

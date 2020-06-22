@@ -8,7 +8,7 @@ output:
       - !expr system.file("rmarkdown/templates/html_vignette/resources/vignette.css", package = "rmarkdown")
       - style.css
 vignette: >
-  %\VignetteIndexEntry{Tuning and Validating Elastic Nets}
+  %\VignetteIndexEntry{Tuning and Validating Elastic Nets with beset}
   %\VignetteEngine{knitr::rmarkdown}
   %\VignetteEncoding{UTF-8}
 ---
@@ -146,12 +146,12 @@ What happens if we don't use the 1SE rule?
 summary(mod, oneSE = FALSE)
 ```
 
-On the one hand, this has a bad result in that all of the noise predictors make it into the model. On the other hand, the drop-off in variance explained between the CV and Test holdouts is not severe, and the performance on the Test holdouts is slightly better than what was obtained under the 1SE rule. 
+On the one hand, this has a bad result in that all of the noise predictors make it into the model (though they are appropriately accorded much less influence than the true predictors). On the other hand, the drop-off in variance explained between the CV and Test holdouts is not severe, and the performance on the Test holdouts is slightly better than what was obtained under the 1SE rule. 
 
 By default, variance explained (or deviance explained for non-Gaussian models) appears at the end of the `summary` output. You can instead obtain mean absolute error, mean squared error, or mean cross entropy by setting the `metric` argument to `"mae"`, `"mse"`, or `"mce"`, respectively, in the `print` method. For example, to see mean squared error in the summary, you could code the following:
 
 ```{r}
-summary(mod) %>% print(metric = "mse")
+summary(mod, robust = TRUE) %>% print(metric = "mse")
 ```
 
 To see the estimated test performance using all metrics, use `validate`. Include any arguments that specify model selection rules other than the defaults, which are spelled out explicitly in the following example:
