@@ -57,7 +57,7 @@ make_args <- function(form, data, family, link, contrasts, force_in = NULL,
   # arguments passed to glmnet
   if("alpha" %in% names(list(...))){
     if(intercept){
-      x <- x[, -1]
+      x <- x[, -1, drop = FALSE]
       if(!is.null(force_in)){
         frc_cols <- frc_cols[-1] - 1L
       }
