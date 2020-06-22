@@ -129,3 +129,23 @@ rm_lindep <- function(X){
     rm_lindep(X)
   }
 }
+
+check_pmax <- function(p_max, n_obs, n_par){
+  p_max <- min(p_max, n_par)
+  if(p_max > n_obs / 3){
+    p_max <- n_obs %/% 3
+    if(p_max == 0){
+      stop("Sorry, but your sample size is too small for this to work")
+    } else {
+      warning(
+        paste(
+          "Given your sample size, p_max has been reset to ", p_max, ".\n",
+          "  If you require more predictors in your final model, consider\n",
+          "  using regularized regression with `beset_elnet` instead.",
+          sep = ""
+        ), immediate. = TRUE
+      )
+    }
+  }
+  p_max
+}

@@ -1,8 +1,8 @@
 Package: beset
 Type: Package
 Title: Best Subset Predictive Modeling
-Version: 0.0.0.9406
-Date: 2020-03-31
+Version: 0.0.0.9407
+Date: 2020-06-20
 Authors@R: person("Jason", "Shumake", email = "shumake@utexas.edu",
   role = c("aut","cre"))
 Description: Provides a friendly user interface, summary, and plotting methods
@@ -10,14 +10,9 @@ Description: Provides a friendly user interface, summary, and plotting methods
     net GLMs or random forests.
 Depends:
     R (>= 3.6.0),
-    foreach,
     graphics,
     grDevices,
-    Matrix (>= 1.0-6),
-    methods,
-    splines,
     stats,
-    stats4,
     utils
 Imports:
     assertthat (>= 0.2.0),
@@ -47,5 +42,6 @@ RoxygenNote: 7.1.0
 Suggests:
     testthat,
     knitr,
-    rmarkdown
+    rmarkdown,
+    tidyverse
 VignetteBuilder: knitr

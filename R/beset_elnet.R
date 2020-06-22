@@ -20,7 +20,7 @@
 #' a copy of the model \code{\link[stats]{terms}}, \code{data},
 #' \code{contrasts}, and a record of the \code{xlevels} of the factors used in
 #' fitting. This information will be necessary if you apply
-#' \code{\link{predict.beset_elnet}} to new data. If this feature is not needed,
+#' \code{\link{predict.beset}} to new data. If this feature is not needed,
 #' setting \code{skinny = TRUE} will prevent these copies from being made.
 #'
 #' @param nest_cv \code{Logical} value indicating whether or not to perform a
@@ -213,8 +213,9 @@ beset_elnet <- function(
     }
     n_omit <- nrow(data) - nrow(mf)
     if(n_omit > 0){
-      warning(paste("Dropping", n_omit, "rows with missing data."),
-              immediate. = TRUE)
+      warning(
+        paste("Dropping", n_omit, "rows with missing data."), immediate. = TRUE
+      )
       attr(data, "na.action") <- NULL
     }
     terms <- terms(mf)
@@ -229,6 +230,9 @@ beset_elnet <- function(
     }
     data <- mf
     attr(data, "terms") <- NULL
+    # Check that sample size is sufficient for chosen folds
+    cv_par <- set_cv_par(nrow(mf), n_folds, n_reps, nest_cv = nest_cv)
+    n_folds <- cv_par$n_folds; n_reps <- cv_par$n_reps
   } else if(inherits(data, "data_partition")){
     terms <- terms(data$train)
     xlevels <- .getXlevels(terms, data$train)
@@ -290,9 +294,6 @@ beset_elnet <- function(
     y <- all.vars(form)[1]
     x <- all.vars(form)[-1]
     if("." %in% x) x <- NULL
-    n_obs <- nrow(na.omit(data))
-    cv_params <- set_cv_par(n_obs, n_folds, n_reps)
-    n_folds <- cv_params$n_folds; n_reps <- cv_params$n_reps
     fold_ids <- create_folds(data[[y]], n_folds, n_reps, seed)
     all_partitions <- lapply(fold_ids, function(i){
       suppressWarnings(
@@ -359,8 +360,6 @@ beset_elnet <- function(
     epsilon = epsilon, maxit = maxit, lambda_min_ratio = lambda_min_ratio,
     standardize = standardize)
   )
-  n_obs <- nrow(m[[1]]$train$x)
-  cv_params <- set_cv_par(n_obs, n_folds, n_reps)
   names(m) <- alpha
 
   #======================================================================
@@ -411,7 +410,8 @@ beset_elnet <- function(
   # Obtain cross-validation stats
   #------------------------------------------------------------------
   cv_results <- map(
-    fits, ~ validate(.x, n_folds = n_folds, n_reps = n_reps, seed = seed)) %>%
+    fits, ~ validate(.x, n_folds = n_folds, n_reps = n_reps, seed = seed,
+                     silent = TRUE)) %>%
     map("stats") %>% transpose %>% map(reduce, c) %>% as_tibble
   cv_stats <- fit_stats %>% select(alpha, lambda) %>% bind_cols(cv_results)
 

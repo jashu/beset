@@ -55,17 +55,22 @@
 #' @param seed \code{Integer} used to seed the random number generator.
 #'
 #' @param envir \code{Environment} in which to look for variables listed in
+#'
+#' @param silent \code{Logical} indicating whether to suppress warning messsages
+#' related to autocorrection of n_folds and n_reps parameters when they are
+#' inappropriate for sample size or cross-validation method
+#'
 #' object call
 #'
 #' @inheritParams predict_metrics_
 #' @inheritParams beset_glm
+#' @inheritParams summary.beset
 #'
 #' @import purrr
 #' @import parallel
 #' @import dplyr
 #' @import utils
 #' @importFrom randomForest randomForest
-
 #' @export
 validate <- function(object, ...){
   UseMethod("validate")
@@ -73,10 +78,11 @@ validate <- function(object, ...){
 
 validate.function <- function(object, x, y, family = "gaussian",
                               phi = NULL, theta = NULL,
-                              n_folds = 10, n_reps = 10, seed = 42, ...){
+                              n_folds = 10, n_reps = 10, seed = 42,
+                              silent = FALSE, ...){
   names(y) <- names(x)
   n_obs <- length(y)
-  cv_par <- set_cv_par(n_obs, n_folds, n_reps)
+  cv_par <- set_cv_par(n_obs, n_folds, n_reps, silent)
   n_folds <- cv_par$n_folds; n_reps <- cv_par$n_reps
   fold_ids <- create_folds(y = y, n_folds = n_folds, n_reps = n_reps,
                            seed = seed)
@@ -116,11 +122,11 @@ validate.function <- function(object, x, y, family = "gaussian",
 #' @describeIn validate Cross-validation of linear models
 #' @export
 validate.lm <- function(object, data = NULL, n_folds = 10, n_reps = 10,
-                        seed = 42, ...){
+                        seed = 42, silent = FALSE,...){
   lm_par <- set_lm_par(object, data)
   y <- lm_par$y
   n_obs <- length(y)
-  cv_par <- set_cv_par(n_obs, n_folds, n_reps)
+  cv_par <- set_cv_par(n_obs, n_folds, n_reps, silent)
   n_folds <- cv_par$n_folds; n_reps <- cv_par$n_reps
   fold_ids <- create_folds(
     y = y, n_folds = n_folds, n_reps = n_reps, seed = seed
@@ -158,11 +164,11 @@ validate.lm <- function(object, data = NULL, n_folds = 10, n_reps = 10,
 #' @describeIn validate Cross-validation of GLMs
 #' @export
 validate.glm <- function(object, data = NULL, n_folds = 10, n_reps = 10,
-                         seed = 42, ...){
+                         seed = 42, silent = FALSE, ...){
   glm_par <- set_glm_par(object, data)
   y <- glm_par$y
   n_obs <- length(y)
-  cv_par <- set_cv_par(n_obs, n_folds, n_reps)
+  cv_par <- set_cv_par(n_obs, n_folds, n_reps, silent)
   n_folds <- cv_par$n_folds; n_reps <- cv_par$n_reps
   fold_ids <- create_folds(y = y, n_folds = n_folds, n_reps = n_reps,
                            seed = seed)
@@ -196,14 +202,14 @@ validate.glm <- function(object, data = NULL, n_folds = 10, n_reps = 10,
                         n_folds = n_folds,
                         n_reps = n_reps,
                         seed = seed,
-                        y = y))),
+                        y = as.vector(y)))),
     class = "cross_valid")
 }
 
 #' @describeIn validate Cross-validation of GLMs
 #' @export
 validate.zeroinfl <- function(
-  object, n_folds = 10, n_reps = 10, seed = 42, ...
+  object, n_folds = 10, n_reps = 10, seed = 42, silent = FALSE, ...
 ){
   zi_par <- set_zi_par(object)
   family <- switch(
@@ -213,7 +219,7 @@ validate.zeroinfl <- function(
   )
   y <- zi_par$y
   n_obs <- length(y)
-  cv_par <- set_cv_par(n_obs, n_folds, n_reps)
+  cv_par <- set_cv_par(n_obs, n_folds, n_reps, silent)
   n_folds <- cv_par$n_folds; n_reps <- cv_par$n_reps
   fold_ids <- create_folds(
     y = y, n_folds = n_folds, n_reps = n_reps, seed = seed
@@ -266,7 +272,7 @@ validate.zeroinfl <- function(
 validate.glmnet <- function(object, x = NULL, y = NULL, lambda = NULL,
                             offset = NULL, weights = NULL,
                             n_folds = 10, n_reps = 10, seed = 42,
-                            envir = .GlobalEnv, ...){
+                            envir = .GlobalEnv, silent = FALSE, ...){
   arg_list <- as.list(object$call)
   if(is.null(x)){
     x <- eval(arg_list$x, envir = envir)
@@ -291,7 +297,7 @@ validate.glmnet <- function(object, x = NULL, y = NULL, lambda = NULL,
   data <- list(x = x, y = y, offset = offset, weights = weights)
   other_args <- arg_list[setdiff(names(arg_list), c("", names(data)))]
   other_args$lambda <- object$lambda
-  params <- set_cv_par(n_obs, n_folds, n_reps)
+  params <- set_cv_par(n_obs, n_folds, n_reps, silent)
   n_folds <- params$n_folds; n_reps <- params$n_reps
   fold_ids <- create_folds(y = y, n_folds = n_folds, n_reps = n_reps,
                            seed = seed)
@@ -392,14 +398,14 @@ validate.beset <- function(object, ...){
   }
 }
 
-#' @describeIn validate Extract test error estimates from "beset_elnet"
+#' @describeIn validate Extract test error estimates from "nested beset"
 #' objects with nested cross-validation
 #' @export
 validate.nested <- function(object,
                             metric = "auto",
                             oneSE = TRUE, ...){
   metric <- tryCatch(
-    match.arg(metric, c("auto", "auc", "mae", "mce", "mse", "rsq")),
+    match.arg(metric, c("auto", "auc", "mae", "mce", "mse", "rsq", "aic")),
     error = function(c){
       c$message <- gsub("arg", "metric", c$message)
       c$call <- NULL
@@ -456,6 +462,7 @@ validate.nested <- function(object,
                           c("auc", "mae", "mce", "mse", "rsq"))
   tt <- terms(object)
   y0 <-  model.response(model.frame(tt, object$data))
+  if(is.factor(y0)) y0 <- as.integer(y0) - 1L
   Terms <- delete.response(tt)
   m <- model.frame(Terms, object$data, xlev = object$xlevels)
   X <- model.matrix(Terms, m, contrasts.arg = object$contrasts)
@@ -467,9 +474,8 @@ validate.nested <- function(object,
     names(newoffset) <- rownames(object$data)
     newoffset <- newoffset[names(y)]
   }
-
   y <- map(fold_ids, ~ y0[.x])
-  y <- map(rep_idx, ~ y[.x]) %>% map(as_vector)
+  y <- map(rep_idx, ~ y[.x]) %>% map(~reduce(.x, c))
   y_hat <-
     if(inherits(object, "elnet")){
       map2(best_models, fold_ids,
@@ -481,9 +487,9 @@ validate.nested <- function(object,
         ~ .x$family$linkinv(
           X[.y, names(coef(.x)), drop = FALSE] %*% coef(.x) + newoffset[.y]
           )
-        )
+        ) %>% map(t) %>% map(as.vector)
     }
-  y_hat <- map(rep_idx, ~ y_hat[.x]) %>% map(simplify_all) %>% map(as_vector)
+  y_hat <- map(rep_idx, ~ y_hat[.x]) %>% map(~reduce(.x, c))
   theta <- NULL
   if(family == "negbin"){
     rep_stats <- map(rep_idx,
@@ -513,7 +519,7 @@ validate.nested <- function(object,
     ) %>% transpose
   }
   fold_assignments <- get_fold_ids(fold_ids, n_reps)
-  fold_ids <- map(rep_idx, ~ fold_ids[.x]) %>% map(as_vector)
+  fold_ids <- map(rep_idx, ~ fold_ids[.x]) %>% map(~reduce(.x, c))
   names(fold_ids) <- names(y_hat) <- names(fold_assignments)
   structure(
     list(
@@ -526,7 +532,7 @@ validate.nested <- function(object,
                         n_folds = n_folds,
                         n_reps = n_reps,
                         oneSE = oneSE,
-                        y = y0,
+                        y = as.vector(y0),
                         alpha = alpha, lambda = lambda, theta = theta)
       ), class = "cross_valid"
   )
@@ -537,7 +543,7 @@ validate.nested <- function(object,
 validate.randomForest <- function(object, data = NULL, x = NULL,
                                   n_folds = 10, n_reps = 10,
                                   seed = 42, ..., parallel_type = NULL,
-                                  n_cores = NULL, cl = NULL){
+                                  n_cores = NULL, cl = NULL, silent = FALSE){
   rf_par <- as.list(object$call)
   rf_par$keep.forest = TRUE
   other_args <- setdiff(names(rf_par), c("", "formula", "data"))
@@ -561,7 +567,7 @@ validate.randomForest <- function(object, data = NULL, x = NULL,
   if(is.null(x)) x <- data[labels(object$terms)]
   y <- object$y
   n_obs <- length(y)
-  cv_par <- set_cv_par(n_obs, n_folds, n_reps)
+  cv_par <- set_cv_par(n_obs, n_folds, n_reps, silent)
   n_folds <- cv_par$n_folds; n_reps <- cv_par$n_reps
   fold_ids <- create_folds(y = y, n_folds = n_folds, n_reps = n_reps,
                            seed = seed)

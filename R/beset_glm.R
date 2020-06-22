@@ -58,6 +58,10 @@
 #' @import parallel
 #' @import purrr
 #' @importFrom utils combn
+#' @importFrom stats .getXlevels IQR coef coefficients delete.response
+#'  formula glm.control glm.fit lm.wfit make.link median
+#'  model.frame model.matrix model.offset model.response model.weights na.omit
+#'  na.pass optim predict quantile residuals sd terms var
 #' @import dplyr
 #'
 #'
@@ -248,10 +252,20 @@ beset_glm <- function(
     mf <- model.frame(form, data = data)
     terms <- terms(mf)
     xlevels <- .getXlevels(terms, mf)
-
+    # Set number of cross-validation folds and reps
+    n_obs <- nrow(mf)
+    cv_params <- set_cv_par(n_obs = n_obs, n_folds = n_folds, n_reps = n_reps,
+                            nest_cv = nest_cv)
+    n_reps <- cv_params$n_reps; n_folds <- cv_params$n_folds
+    # Check that there are sufficient number of observations for p_max
+    train_size <- n_obs * (n_folds - 1) / n_folds
+    if(nest_cv) train_size <- train_size * (n_folds - 1) / n_folds
+    p_max <- check_pmax(p_max, train_size, length(attr(terms, "term.labels")))
   } else if(inherits(data, "data_partition")){
-    terms <- terms(data$train)
-    xlevels <- .getXlevels(terms, data$train)
+    mf <- model.frame(form, data = data$train)
+    terms <- terms(mf)
+    xlevels <- .getXlevels(terms, mf)
+    p_max <- check_pmax(p_max, nrow(mf), length(attr(terms, "term.labels")))
   } else {
     stop("`data` argument must inherit class 'data.frame' or 'data_partition'")
   }
@@ -369,11 +383,7 @@ beset_glm <- function(
                  epsilon = epsilon, maxit = maxit, force_in = force_in)
 
   #==================================================================
-  # Set number of cross-validation folds and reps
-  #------------------------------------------------------------------
-  n_obs <- length(m$train$y)
-  cv_params <- set_cv_par(n_obs = n_obs, n_folds = n_folds, n_reps = n_reps)
-  n_reps <- cv_params$n_reps; n_folds <- cv_params$n_folds
+
 
   #======================================================================
   # Get all subsets (see utils_subset.R)
@@ -430,13 +440,14 @@ beset_glm <- function(
   cv_results <- if (n_cores > 1L) {
     if(is.null(cl)){
       parallel::mclapply(best_fits, validate, n_folds = n_folds,
-                         n_reps = n_reps, seed = seed, mc.cores = n_cores)
+                         n_reps = n_reps, seed = seed, mc.cores = n_cores,
+                         silent = TRUE)
     } else {
       parallel::parLapply(cl, best_fits, validate, n_folds = n_folds,
-                          n_reps = n_reps, seed = seed)
+                          n_reps = n_reps, seed = seed, silent = TRUE)
     }
   } else map(best_fits, ~ validate(., n_folds = n_folds, n_reps = n_reps,
-                                       seed = seed)
+                                       seed = seed, silent = TRUE)
   )
   cv_results <- cv_results %>% map("stats") %>% transpose %>% as_tibble
 

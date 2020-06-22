@@ -13,11 +13,27 @@
 \usage{
 validate(object, ...)
 
-\method{validate}{lm}(object, data = NULL, n_folds = 10, n_reps = 10, seed = 42, ...)
+\method{validate}{lm}(
+  object,
+  data = NULL,
+  n_folds = 10,
+  n_reps = 10,
+  seed = 42,
+  silent = FALSE,
+  ...
+)
 
-\method{validate}{glm}(object, data = NULL, n_folds = 10, n_reps = 10, seed = 42, ...)
+\method{validate}{glm}(
+  object,
+  data = NULL,
+  n_folds = 10,
+  n_reps = 10,
+  seed = 42,
+  silent = FALSE,
+  ...
+)
 
-\method{validate}{zeroinfl}(object, n_folds = 10, n_reps = 10, seed = 42, ...)
+\method{validate}{zeroinfl}(object, n_folds = 10, n_reps = 10, seed = 42, silent = FALSE, ...)
 
 \method{validate}{glmnet}(
   object,
@@ -30,6 +46,7 @@ validate(object, ...)
   n_reps = 10,
   seed = 42,
   envir = .GlobalEnv,
+  silent = FALSE,
   ...
 )
 
@@ -47,12 +64,15 @@ validate(object, ...)
   ...,
   parallel_type = NULL,
   n_cores = NULL,
-  cl = NULL
+  cl = NULL,
+  silent = FALSE
 )
 }
 \arguments{
 \item{object}{A model object for which a cross-validated R-squared is
 desired.}
+
+\item{...}{Additional arguments passed to model summary methods.}
 
 \item{data}{Data frame that was used to train the model. Only needed if
 the training data is not contained in the model \code{object}.}
@@ -64,6 +84,12 @@ cross-validation.}
 should be repeated.}
 
 \item{seed}{\code{Integer} used to seed the random number generator.}
+
+\item{silent}{\code{Logical} indicating whether to suppress warning messsages
+related to autocorrection of n_folds and n_reps parameters when they are
+inappropriate for sample size or cross-validation method
+
+object call}
 
 \item{x}{Model matrix that was used to train elastic net.}
 
@@ -80,8 +106,20 @@ net.}
 \item{weights}{= \code{Numeric} offset vector that was used to train
 elastic net.}
 
-\item{envir}{\code{Environment} in which to look for variables listed in
-object call}
+\item{envir}{\code{Environment} in which to look for variables listed in}
+
+\item{metric}{\code{Character} string giving prediction metric on which to
+base model selection. Can be one of \code{"auc"} for area under the (ROC)
+curve (only available for binomial family), \code{"mae"} for mean absolute
+error (not available for binomial family), \code{"mae"} for mean absolute
+error, \code{"mce"} for mean cross entropy, or \code{"mse"} for mean squared
+error. Default is \code{"auto"} which plots MSE for Gaussian-family models
+and MCE for all other families.}
+
+\item{oneSE}{\code{Logical} indicating whether or not to use the "one
+standard error" rule. If \code{TRUE} (default) the simplest model within one
+standard error of the optimal model is returned. If \code{FALSE} the model
+with the optimal cross-validation performance is returned.}
 
 \item{parallel_type}{(Optional) character string indicating the type of
 parallel operation to be used, either \code{"fork"} or \code{"sock"}. If
@@ -139,7 +177,7 @@ normally would and then pass the model object to \code{validate}.
 
 \item \code{beset}: Cross-validation of beset objects
 
-\item \code{nested}: Extract test error estimates from "beset_elnet"
+\item \code{nested}: Extract test error estimates from "nested beset"
 objects with nested cross-validation
 
 \item \code{randomForest}: Cross-validation of random forests

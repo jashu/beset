@@ -80,20 +80,41 @@ set_zi_par <- function(object){
        dist = object$dist, link = object$link, control = control)
 }
 
-set_cv_par <- function(n_obs, n_folds, n_reps){
-  out <- list(n_folds = n_folds, n_reps = n_reps)
-  if(n_obs / n_folds < 2){
-    message("Performing leave-one-out cross-validation")
-    out$n_folds <- n_obs
-    out$n_reps <- 1
+set_cv_par <- function(n_obs, n_folds, n_reps, silent = FALSE,
+                       nest_cv = FALSE){
+  if(n_folds > n_obs) n_folds <- n_obs
+  if(n_folds < n_obs){
+    fold_size <- n_obs / n_folds
+    if(nest_cv) fold_size <- fold_size * (n_folds - 1) / n_folds
+    if(fold_size < 2){
+      if(!silent){
+        warning(
+          paste(
+            "Your sample size is too small to perform ", n_folds,
+            "-fold cross-validation.\n",
+            "  Performing leave-one-out cross-validation instead.", sep = ""
+          ), immediate. = TRUE
+        )
+      }
+      n_folds <- n_obs
+    }
   }
-  if(n_reps > out$n_reps) message(
-    paste("NOTE: Repetitions of leave-one-out cross-validation\n",
-          "are pointless and will not be performed.", sep = ""))
-  out
+  if(n_folds == n_obs && n_reps > 1){
+    if(!silent){
+      message(
+        paste(
+          "\nNOTE: Repetitions of leave-one-out cross-validation are pointless",
+          "  and will not be performed.", sep = ""
+        )
+      )
+    }
+    n_reps <- 1
+  }
+  list(n_folds = n_folds, n_reps = n_reps)
 }
 
-get_cv_stats <-  function(y, y_hat, family, n_folds, n_reps, theta = NULL){
+get_cv_stats <-  function(y, y_hat, family, n_folds, n_reps, phi = NULL,
+                          theta = NULL){
   fold_stats <- map(
     y_hat, ~ predict_metrics_(
       y = if(is.list(.x)) y[names(.x$mu)] else y[rownames(.x)],
@@ -215,7 +236,7 @@ stratify_folds <- function(y, n_folds = 10){
     purrr::walk(unique(y), function(x){
       folds[y == x] <<- assign_folds(sum(y == x), n_folds)
     })
-  # Otherwise abort stratefication and use simple randomization
+  # Otherwise abort stratification and use simple randomization
   } else {
     folds <- assign_folds(length(y), n_folds)
   }
