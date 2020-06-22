@@ -1,4 +1,5 @@
 #' @importFrom utils tail
+#' @importFrom stats printCoefmat
 #' @import purrr
 #' @import dplyr
 
@@ -70,6 +71,7 @@ print.predictive_gain <- function(x, digits = 3, ...){
   )
   results_frame <- as.data.frame(results_frame)
   metrics <- names(x$Model1)
+  if(attr(x, "family") != "gaussian") metrics[metrics == "rsq"] <- "r2d"
   row.names(results_frame) <- map(
     metrics, ~ switch(.x,
                       rsq = "Variance Explained",
@@ -238,7 +240,14 @@ print.summary_nested_beset <- function(x, standardize = TRUE, metric = "rsq",
     cat("\nModels with best cross-validation", selection_metric,
         ":\n")
   }
-  form_frame <- as.data.frame(x$param$form)
+  form_frame <- if(inherits(x$parameters$form, "table")){
+    as.data.frame(x$parameters$form)
+  } else {
+    tibble(
+      best_form = names(x$parameters$form),
+      Freq = x$parameters$form
+    )
+  }
   form_frame$Freq <- form_frame$Freq / sum(form_frame$Freq) * 100
   form_frame$Freq <- paste("(", round(form_frame$Freq), "%)", sep = "")
   out <- map2_chr(form_frame$best_form, form_frame$Freq, paste)
@@ -265,7 +274,8 @@ print.summary_nested_beset <- function(x, standardize = TRUE, metric = "rsq",
     if(standardize) cat(" ranked in order of importance")
     cat(":\n")
     printCoefmat(coef_frame, digits = 3, quote = FALSE, has.Pvalue = FALSE,
-                 cs.ind = 1:4, zap.ind = 1:4, tst.ind = NULL)
+                 cs.ind = 1:ncol(coef_frame), zap.ind = 1:ncol(coef_frame),
+                 tst.ind = NULL)
   } else {
     cat("\n\nNo reliable predictors.")
   }
@@ -301,7 +311,8 @@ print.summary_nested_beset <- function(x, standardize = TRUE, metric = "rsq",
                                     mce = "Mean Cross Entropy",
                                     mse = "Mean Squared Error")
   printCoefmat(results_frame, digits = 3, quote = FALSE, has.Pvalue = FALSE,
-               cs.ind = 1:4, zap.ind = 1:4, tst.ind = NULL)
+               cs.ind = 1:ncol(results_frame), zap.ind = 1:ncol(results_frame),
+               tst.ind = NULL)
   cat("=======================================================")
 }
 
@@ -310,6 +321,7 @@ print.summary_nested_elnet <- function(
   x, standardize = TRUE, metric = "rsq", ...
 ){
   stnd <- if(standardize) "standardized" else "unstandardized"
+  n_obs <- x$parameters$n_obs
   n_folds <- x$parameters$n_folds
   n_reps <- x$parameters$n_reps
   oneSE <- x$parameters$oneSE
@@ -320,7 +332,12 @@ print.summary_nested_elnet <- function(
                              mae = "Mean Absolute Error",
                              mce = "Mean Cross Entropy",
                              mse = "Mean Squared Error")
-  cat("\nResults of nested ", n_folds, "-fold cross-validation ", sep = "")
+  cat("\nResults of nested ")
+  if(n_obs == n_folds){
+    cat("leave-one-out cross-validation")
+  } else {
+    cat(n_folds, "-fold cross-validation ", sep = "")
+  }
   if(n_reps > 1){
     cat("repeated ", n_reps, " times", sep = "")
   }
@@ -369,7 +386,8 @@ print.summary_nested_elnet <- function(
     if(standardize) cat(" ranked in order of importance")
     cat(":\n")
     printCoefmat(coef_frame, digits = 3, quote = FALSE, has.Pvalue = FALSE,
-                 cs.ind = 1:4, zap.ind = 1:4, tst.ind = NULL)
+                 cs.ind = 1:ncol(coef_frame), zap.ind = 1:ncol(coef_frame),
+                 tst.ind = NULL)
   } else {
     cat("\n\nNo reliable predictors.")
   }
@@ -494,7 +512,7 @@ print.beset_rf <- function(x, ...){
 }
 
 #' @export
-print.R2 <- function(x, digits = 2){
+print.R2 <- function(x, digits = 2, ...){
   cat("Fit R-squared: ", formatC(x$R2fit, digits = digits))
   if(!is.null(x$R2new)){
     cat(",\tPrediction R-squared: ", formatC(x$R2new, digits = digits))
