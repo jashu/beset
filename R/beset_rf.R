@@ -177,7 +177,7 @@ beset_rf <- function(form, data, n_trees = 500, sample_rate = 1 - exp(-1),
     n_cores <- length(cl)
   } else if(is.null(n_cores) || n_cores > 1){
     if(is.null(parallel_type)) parallel_type <- "sock"
-    parallel_control <- beset:::setup_parallel(
+    parallel_control <- setup_parallel(
       parallel_type = parallel_type, n_cores = n_cores, cl = cl)
     n_cores <- parallel_control$n_cores
     cl <- parallel_control$cl
@@ -186,11 +186,11 @@ beset_rf <- function(form, data, n_trees = 500, sample_rate = 1 - exp(-1),
   # Set up cross-validation
   #----------------------------------------------------------------------
   n_obs <- length(y)
-  cv_par <- beset:::set_cv_par(n_obs, n_folds, n_reps)
+  cv_par <- set_cv_par(n_obs, n_folds, n_reps)
   n_folds <- cv_par$n_folds; n_reps <- cv_par$n_reps
-  fold_ids <- beset:::create_folds(y = y, n_folds = n_folds, n_reps = n_reps,
-                                   seed = seed)
-
+  fold_ids <- create_folds(
+    y = y, n_folds = n_folds, n_reps = n_reps, seed = seed
+  )
   train_data <- lapply(fold_ids, function(i)
     c(list(x = x[-i, , drop = FALSE],
            y = y[-i],

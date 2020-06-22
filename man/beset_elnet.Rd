@@ -75,7 +75,7 @@ columns, remove some of the dependent columns. Defaults to FALSE.}
 a copy of the model \code{\link[stats]{terms}}, \code{data},
 \code{contrasts}, and a record of the \code{xlevels} of the factors used in
 fitting. This information will be necessary if you apply
-\code{\link{predict.beset_elnet}} to new data. If this feature is not needed,
+\code{\link{predict.beset}} to new data. If this feature is not needed,
 setting \code{skinny = TRUE} will prevent these copies from being made.}
 
 \item{standardize}{Logical flag for x variable standardization, prior to

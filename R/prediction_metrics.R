@@ -83,9 +83,10 @@
 #' mean absolute error ("mae") takes the place of "auc" but otherwise the
 #' metrics are the same.
 #'
-#' @seealso \code{\link{r2d}}, \code{\link[stats]{logLik}},
-#' \code{\link{deviance.zeroinfl}}
+#' @seealso \code{\link{r2d}}, \code{\link[stats]{logLik}}
 #'
+#' @importFrom stats binomial dnbinom dpois pnbinom pnorm poisson ppois predict
+#'  qnorm
 #' @export
 predict_metrics <- function(object, test_data){
   model_type <- class(object)[1]
@@ -116,7 +117,7 @@ predict_metrics <- function(object, test_data){
 #' @rdname predict_metrics
 #' @export
 predict_metrics_ <- function(
-  y, y_hat, family, mu = NULL, phi = NULL, theta = NULL
+  y, y_hat, family, theta = NULL, mu = NULL, phi = NULL
 ){
   na <- which(is.na(y) | is.na(y_hat))
   if(length(na) > 0){
@@ -158,7 +159,7 @@ predict_metrics_ <- function(
       gaussian = -N/2 * log(2*pi*sigma^2),
       binomial = 0,
       poisson = stats::dpois(y, lambda = y, log = TRUE),
-      negbin = stats::dnbinom(y, mu = y, size = theta, log = TRUE),
+      negbin = stats::dnbinom(y, size = theta, mu = y,  log = TRUE),
       zip = stats::dpois(y, lambda = y, log = TRUE),
       zinb = stats::dnbinom(y, size = theta, mu = y, log = TRUE)
     )

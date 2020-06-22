@@ -38,7 +38,7 @@ get_best <- function(object, ...){
 
 
 #' @export
-get_best.glm <- function(object, n_pred = NULL, metric, oneSE = TRUE){
+get_best.glm <- function(object, n_pred = NULL, metric, oneSE = TRUE, ...){
   minimize <- TRUE; if(metric == "auc") minimize <- FALSE
   cv_stats <- object$stats$cv
   if(is.null(n_pred)){
@@ -75,8 +75,9 @@ get_best.glm <- function(object, n_pred = NULL, metric, oneSE = TRUE){
 }
 
 #' @export
-get_best.elnet <- function(object, metric, alpha = NULL, lambda = NULL,
-                           oneSE = TRUE){
+get_best.elnet <- function(
+  object, metric, alpha = NULL, lambda = NULL, oneSE = TRUE, ...
+){
   if(is.null(alpha) || is.null(lambda)){
     minimize <- TRUE; if(metric == "auc") minimize <- FALSE
     cv_stats <- object$stats$cv

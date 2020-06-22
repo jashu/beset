@@ -172,7 +172,7 @@ dependence.nested_elnet <- function(
   variable_importance <- variable_importance %>% group_by(variable) %>%
     summarize_all(max)
   if(is.null(n_cores) || n_cores > 1){
-    parallel_control <- beset:::setup_parallel(
+    parallel_control <- setup_parallel(
       parallel_type = parallel_type, n_cores = n_cores, cl = cl)
     have_mc <- parallel_control$have_mc
     n_cores <- parallel_control$n_cores
@@ -333,7 +333,7 @@ dependence.beset_rf <- function(
   parallel_type = NULL, n_cores = NULL, cl = NULL
 ){
   if(is.null(n_cores) || n_cores > 1){
-    parallel_control <- beset:::setup_parallel(
+    parallel_control <- setup_parallel(
       parallel_type = parallel_type, n_cores = n_cores, cl = cl)
     have_mc <- parallel_control$have_mc
     n_cores <- parallel_control$n_cores
@@ -362,7 +362,7 @@ dependence.beset_rf <- function(
                           x_lab = x_lab, y_lab = y_lab, make_plot = FALSE)
     }
   } else {
-    lapply(object$forests, beset:::dependence.randomForest, data = data,
+    lapply(object$forests, dependence.randomForest, data = data,
            x = x, y = y, cond = cond, x_lab = x_lab, y_lab = y_lab,
            make_plot = FALSE)
   }

@@ -119,7 +119,7 @@ structure(varimp, class = c("variable_importance", class(varimp)))
 
 #' @export
 #' @rdname importance
-plot.variable_importance <- function(x, p_max = 20, labels = NULL){
+plot.variable_importance <- function(x, p_max = 20, labels = NULL, ...){
   if(!is.null(labels)){
     if(n_distinct(labels[[2]]) < nrow(labels)){
       duplicate_labels <- table(labels[[2]])

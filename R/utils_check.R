@@ -1,4 +1,4 @@
-# CHECKING UTILS
+#' CHECKING UTILS
 
 # create a dictionary that maps names of model frame to column indices of
 # model matrix
@@ -7,7 +7,7 @@ mf_to_mm <- function(mf){
   lapply(mf[-1], function(x){
     idx <- idx_start
     if(is.factor(x)){
-      idx_stop <- idx_start + length(levels(x)) - 2L
+      idx_stop <- idx_start + length(base::levels(x)) - 2L
       idx <- idx_start:idx_stop
       idx_start <<- idx_stop + 1L
     } else {

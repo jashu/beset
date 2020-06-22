@@ -16,7 +16,7 @@ importance(object, ...)
 
 \method{importance}{part_depend}(object, ...)
 
-\method{plot}{variable_importance}(x, p_max = 20, labels = NULL)
+\method{plot}{variable_importance}(x, p_max = 20, labels = NULL, ...)
 }
 \arguments{
 \item{object}{A model object for which variable importance scores are
