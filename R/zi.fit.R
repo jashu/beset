@@ -282,7 +282,7 @@ zi.fit <- function(x, y, z, weights, offset, dist, link, control){
       while (abs((ll_old - ll_new)/ll_old) > control$reltol) {
         ll_old <- ll_new
         model_count <- suppressWarnings(
-          glm.nb(
+          MASS::glm.nb(
             Y ~ 0 + X + offset(offset), weights = weights *
               (1 - probi), start = start$count, init.theta = start$theta
           )
