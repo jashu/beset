@@ -3,13 +3,22 @@
 \name{compare}
 \alias{compare}
 \alias{compare.cross_valid}
-\alias{compare.data.frame}
 \alias{compare.numeric}
 \alias{compare.beset}
 \alias{compare.lm}
+\alias{compare.zeroinfl}
 \title{Compare Predictive Performance of Two Models}
 \usage{
-compare(yhat1, yhat2, ...)
+compare(
+  yhat1,
+  yhat2,
+  n_rep = 1000,
+  conf = 0.95,
+  parallel_type = NULL,
+  n_cores = NULL,
+  cl = NULL,
+  ...
+)
 
 \method{compare}{cross_valid}(
   yhat1,
@@ -18,29 +27,45 @@ compare(yhat1, yhat2, ...)
   conf = 0.95,
   parallel_type = NULL,
   n_cores = NULL,
-  cl = NULL
+  cl = NULL,
+  ...
 )
 
-\method{compare}{data.frame}(
+\method{compare}{numeric}(
   yhat1,
   yhat2,
-  y,
   n_rep = 1000,
   conf = 0.95,
-  family = "gaussian",
-  phi = NULL,
-  theta = NULL,
+  parallel_type = NULL,
+  n_cores = NULL,
+  cl = NULL,
+  y,
+  ...
+)
+
+\method{compare}{beset}(
+  yhat1,
+  yhat2,
+  n_rep = 1000,
+  conf = 0.95,
   parallel_type = NULL,
   n_cores = NULL,
   cl = NULL,
   ...
 )
 
-\method{compare}{numeric}(yhat1, yhat2, y, ...)
+\method{compare}{lm}(
+  yhat1,
+  yhat2,
+  n_rep = 1000,
+  conf = 0.95,
+  parallel_type = NULL,
+  n_cores = NULL,
+  cl = NULL,
+  ...
+)
 
-\method{compare}{beset}(yhat1, yhat2, ...)
-
-\method{compare}{lm}(yhat1, yhat2, ...)
+\method{compare}{zeroinfl}(yhat1, yhat2, ...)
 }
 \arguments{
 \item{yhat1}{A data frame consisting of cross-validated predictions from a
@@ -73,10 +98,6 @@ disable parallel processing.}
 \item{cl}{(Optional) \code{\link[parallel]{parallel}} or
 \code{\link[snow]{snow}} cluster for use if \code{parallel_type = "sock"}.
 If not supplied, a cluster on the local machine is automatically created.}
-
-\item{family}{Character string naming the error distribution to be used in
-the model. Available families are listed under 'List of available families
-and link functions'.}
 }
 \description{
 Compare Predictive Performance of Two Models
@@ -85,12 +106,12 @@ Compare Predictive Performance of Two Models
 \itemize{
 \item \code{cross_valid}: S3 method for class 'cross_valid'
 
-\item \code{data.frame}: S3 method for class 'data.frame'
-
 \item \code{numeric}: S3 method for class 'numeric'
 
 \item \code{beset}: two 'beset' class models
 
 \item \code{lm}: two 'glm' or 'lm' class models
+
+\item \code{zeroinfl}: two 'zeroinfl' class models
 }}
 
