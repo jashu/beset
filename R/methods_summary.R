@@ -22,7 +22,16 @@
 #'
 #' @param robust \code{Logical} indicating whether or not to produce summary
 #' output for only robust predictors, defined here as having non-zero beta
-#' coefficients for every repetition of the cross-validation procedure
+#' coefficients for every repetition of the cross-validation procedure.
+#'
+#' @param lambda Value of the elastic-net penalty parameter lambda at which
+#' predictions are required. If omitted, cross-validated optimal or
+#' 1SE-from-optimal lambda will be used, depending on \code{oneSE} argument.
+#'
+#' @param alpha Value of the elastic-net mixing parameter alpha at which
+#' predictions are required. Must be a value of alpha that was tried during
+#' training. If omitted, cross-validated optimal or 1SE-from-optimal alpha will
+#' be used, depending on \code{oneSE} argument.
 #'
 #' @param ... Additional arguments passed to model summary methods.
 #'
