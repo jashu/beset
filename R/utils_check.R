@@ -1,4 +1,4 @@
-#' CHECKING UTILS
+# CHECKING UTILS
 
 # create a dictionary that maps names of model frame to column indices of
 # model matrix

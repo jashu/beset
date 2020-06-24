@@ -113,8 +113,7 @@ set_cv_par <- function(n_obs, n_folds, n_reps, silent = FALSE,
   list(n_folds = n_folds, n_reps = n_reps)
 }
 
-get_cv_stats <-  function(y, y_hat, family, n_folds, n_reps, phi = NULL,
-                          theta = NULL){
+get_cv_stats <-  function(y, y_hat, family, n_folds, n_reps, theta = NULL){
   fold_stats <- map(
     y_hat, ~ predict_metrics_(
       y = if(is.list(.x)) y[names(.x$mu)] else y[rownames(.x)],
@@ -164,7 +163,7 @@ get_cv_stats <-  function(y, y_hat, family, n_folds, n_reps, phi = NULL,
     hold_out_pred <- as_tibble(hold_out_pred)
     rep_stats <- map(
       hold_out_pred, ~ predict_metrics_(
-        y = y, y_hat = .x, family = family, phi = phi, theta = theta
+        y = y, y_hat = .x, family = family, theta = theta
       )
     ) %>% transpose %>% simplify_all %>% as_tibble
   }
