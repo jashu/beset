@@ -16,7 +16,7 @@ importance(object, ...)
 
 \method{importance}{part_depend}(object, ...)
 
-\method{plot}{variable_importance}(x, p_max = 20, labels = NULL, ...)
+\method{plot}{variable_importance}(x, p_max = 20, labels = NULL, max_import = NULL, ...)
 }
 \arguments{
 \item{object}{A model object for which variable importance scores are
@@ -32,6 +32,10 @@ plot}
 gives the variable names used in the model and column 2 gives a corresponding
 descriptive label. If \code{labels} are defined, the variable importance plot
 will replace the model variable names with their descriptive labels.}
+
+\item{max_import}{(Optional) numeric value specifying the maximum value of
+the x axis for the relative importance plot. Default is the upper limit of
+the largest importance score}
 }
 \description{
 \code{importance} is a generic function for obtaining resampled variable

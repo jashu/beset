@@ -16,6 +16,10 @@
 #' descriptive label. If \code{labels} are defined, the variable importance plot
 #' will replace the model variable names with their descriptive labels.
 #'
+#' @param max_import (Optional) numeric value specifying the maximum value of
+#' the x axis for the relative importance plot. Default is the upper limit of
+#' the largest importance score
+#'
 #' @param ... Additional named arguments that define the model selection rules.
 #' See \code{\link{summary.beset}}.
 #'
@@ -119,7 +123,8 @@ structure(varimp, class = c("variable_importance", class(varimp)))
 
 #' @export
 #' @rdname importance
-plot.variable_importance <- function(x, p_max = 20, labels = NULL, ...){
+plot.variable_importance <- function(
+  x, p_max = 20, labels = NULL, max_import = NULL, ...){
   if(!is.null(labels)){
     if(n_distinct(labels[[2]]) < nrow(labels)){
       duplicate_labels <- table(labels[[2]])
@@ -143,11 +148,12 @@ plot.variable_importance <- function(x, p_max = 20, labels = NULL, ...){
   x$variable <- factor(x$variable, levels = rev(impvar))
   theme_set(theme_classic())
   p_max <- min(nrow(x), p_max)
+  dash_end <- if(is.null(max_import)) max(x$max_import) else max_import
   p <- ggplot(data = x[1:p_max,],
               aes(x = variable, y = importance)) +
     geom_point(col = "tomato2", size = 3) +
     geom_segment(aes(x = variable, xend = variable,
-                     y = 0, yend = max(x$max_import)),
+                     y = 0, yend = dash_end),
                  linetype = "dashed",
                  size = 0.1) +
     geom_segment(aes(x = variable, xend = variable,
