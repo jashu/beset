@@ -7,7 +7,7 @@
 \usage{
 predict_metrics(object, test_data)
 
-predict_metrics_(y, y_hat, family, theta = NULL, mu = NULL, phi = NULL)
+predict_metrics_(y, y_hat, family, mu = NULL, phi = NULL, theta = NULL)
 }
 \arguments{
 \item{object}{A model object of class "glm", "negbin", or "zeroinfl".}
@@ -24,14 +24,14 @@ predictors that were used to fit the model \code{object}.}
 "poisson", "negbin" (negative binomial), "zip" (zero-inflated Poisson), and
  "zinb" (zero-inflated negative binomial).}
 
-\item{theta}{(Required for negative binomial models) the estimated dispersion
-parameter \code{theta}.}
-
 \item{mu}{(Required for zero-inflated models) the predicted values for the
 count component of the model.}
 
 \item{phi}{(Required for zero-inflated models) the predicted values for the
 zero component of the model.}
+
+\item{theta}{(Required for negative binomial models) the estimated dispersion
+parameter \code{theta}.}
 }
 \value{
 For binomial models, a list giving the area under the ROC curve

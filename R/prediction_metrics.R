@@ -117,7 +117,7 @@ predict_metrics <- function(object, test_data){
 #' @rdname predict_metrics
 #' @export
 predict_metrics_ <- function(
-  y, y_hat, family, theta = NULL, mu = NULL, phi = NULL
+  y, y_hat, family, mu = NULL, phi = NULL, theta = NULL
 ){
   na <- which(is.na(y) | is.na(y_hat))
   if(length(na) > 0){
