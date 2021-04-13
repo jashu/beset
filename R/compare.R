@@ -31,7 +31,7 @@ compare.cross_valid <- function(
   cl = NULL, ...
 ){
   y <- yhat1$parameters$y
-  if(!isTRUE(all.equal(y, yhat2$parameters$y))){
+  if(!all(y == yhat2$parameters$y)){
     stop("Observed responses for `yhat1` and `yhat2` do not match")
   }
   out <- list(Model1 = map_dbl(yhat1$stats, "mean"),
