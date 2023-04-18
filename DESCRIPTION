@@ -1,8 +1,8 @@
 Package: beset
 Type: Package
 Title: Best Subset Predictive Modeling
-Version: 0.0.0.9409
-Date: 2021-11-19
+Version: 0.0.0.9410
+Date: 2023-04-18
 Authors@R: person("Jason", "Shumake", email = "shumake@utexas.edu",
   role = c("aut","cre"))
 Description: Provides a friendly user interface, summary, and plotting methods
@@ -38,7 +38,7 @@ Imports:
 Encoding: UTF-8
 License: GPL-3
 LazyData: TRUE
-RoxygenNote: 7.1.2
+RoxygenNote: 7.2.3
 Suggests:
     testthat,
     knitr,

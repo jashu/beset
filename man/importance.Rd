@@ -45,14 +45,14 @@ of the first argument.
 }
 \section{Methods (by class)}{
 \itemize{
-\item \code{nested}: Determine variable importance for "nested"
+\item \code{importance(nested)}: Determine variable importance for "nested"
 \code{\link{beset_glm}} and \code{\link{beset_elnet}} objects
 
-\item \code{beset_rf}: Relative importance method for "beset_rf" objects
+\item \code{importance(beset_rf)}: Relative importance method for "beset_rf" objects
 
-\item \code{part_depend}: Relative importance based on partial dependence
+\item \code{importance(part_depend)}: Relative importance based on partial dependence
+
 }}
-
 \examples{
 rf <- beset_rf(Fertility ~ ., data = swiss)
 importance(rf)

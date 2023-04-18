@@ -167,19 +167,19 @@ normally would and then pass the model object to \code{validate}.
 }
 \section{Methods (by class)}{
 \itemize{
-\item \code{lm}: Cross-validation of linear models
+\item \code{validate(lm)}: Cross-validation of linear models
 
-\item \code{glm}: Cross-validation of GLMs
+\item \code{validate(glm)}: Cross-validation of GLMs
 
-\item \code{zeroinfl}: Cross-validation of GLMs
+\item \code{validate(zeroinfl)}: Cross-validation of GLMs
 
-\item \code{glmnet}: Cross-validation of GLM nets
+\item \code{validate(glmnet)}: Cross-validation of GLM nets
 
-\item \code{beset}: Cross-validation of beset objects
+\item \code{validate(beset)}: Cross-validation of beset objects
 
-\item \code{nested}: Extract test error estimates from "nested beset"
+\item \code{validate(nested)}: Extract test error estimates from "nested beset"
 objects with nested cross-validation
 
-\item \code{randomForest}: Cross-validation of random forests
-}}
+\item \code{validate(randomForest)}: Cross-validation of random forests
 
+}}

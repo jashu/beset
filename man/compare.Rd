@@ -104,14 +104,14 @@ Compare Predictive Performance of Two Models
 }
 \section{Methods (by class)}{
 \itemize{
-\item \code{cross_valid}: S3 method for class 'cross_valid'
+\item \code{compare(cross_valid)}: S3 method for class 'cross_valid'
 
-\item \code{numeric}: S3 method for class 'numeric'
+\item \code{compare(numeric)}: S3 method for class 'numeric'
 
-\item \code{beset}: two 'beset' class models
+\item \code{compare(beset)}: two 'beset' class models
 
-\item \code{lm}: two 'glm' or 'lm' class models
+\item \code{compare(lm)}: two 'glm' or 'lm' class models
 
-\item \code{zeroinfl}: two 'zeroinfl' class models
+\item \code{compare(zeroinfl)}: two 'zeroinfl' class models
+
 }}
-

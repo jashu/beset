@@ -109,10 +109,10 @@ variable \code{\link{importance}} and partial \code{\link{dependence}}.
 }
 \section{Methods (by generic)}{
 \itemize{
-\item \code{plot}: Plot OOB and holdout MSE, R-squared, or error rate as a
+\item \code{plot(beset_rf)}: Plot OOB and holdout MSE, R-squared, or error rate as a
 function of number of trees in forest
-}}
 
+}}
 \examples{
 # Using default 10 X 10 repeated k-fold cross-validation
 data("prostate", package = "beset")
